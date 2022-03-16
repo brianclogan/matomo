@@ -6,8 +6,9 @@
  */
 
 function _pk_translate(translationStringId, values) {
-
-    if( typeof(piwik_translations[translationStringId]) != 'undefined' ){
+    if (typeof(piwik_translations) !== 'undefined'
+        && typeof(piwik_translations[translationStringId]) != 'undefined'
+    ) {
         var translation = piwik_translations[translationStringId];
         if (typeof values != 'undefined' && values && values.length) {
             values.unshift(translation);
@@ -20,7 +21,7 @@ function _pk_translate(translationStringId, values) {
     return "The string "+translationStringId+" was not loaded in javascript. Make sure it is added in the Translate.getClientSideTranslationKeys hook.";
 }
 
-var piwikHelper = {
+window.piwikHelper = {
 
     htmlDecode: function(value)
     {
@@ -108,6 +109,9 @@ var piwikHelper = {
         return value;
     },
 
+    /**
+     * @deprecated use window.vueSanitize instead
+     */
     escape: function (value)
     {
         var escape = angular.element(document).injector().get('$sanitize');
@@ -144,6 +148,68 @@ var piwikHelper = {
 
     getAngularDependency: function (dependency) {
         return angular.element(document).injector().get(dependency);
+    },
+
+    // initial call for 'body' later in this file
+    compileVueEntryComponents: function (selector) {
+      function toKebabCase(arg) {
+        return arg.substring(0, 1).toLowerCase() + arg.substring(1)
+          .replace(/[A-Z]/g, function (s) { return '-' + s.toLowerCase(); });
+      }
+
+      $('[vue-entry]', selector).each(function () {
+        var entry = $(this).attr('vue-entry');
+
+        var parts = entry.split('.');
+        if (parts.length !== 2) {
+          throw new Error('Expects vue-entry to have format Plugin.Component, where Component is exported Vue component. Got: ' + entry);
+        }
+
+        var createVNode = Vue.createVNode;
+        var createVueApp = CoreHome.createVueApp;
+        var plugin = window[parts[0]];
+        if (!plugin) {
+          throw new Error('Unknown plugin in vue-entry: ' + plugin);
+        }
+
+        var component = plugin[parts[1]];
+        if (!component) {
+          throw new Error('Unknown component in vue-entry: ' + entry);
+        }
+
+        var componentParams = {};
+        $.each(this.attributes, function () {
+          if (this.name === 'vue-entry') {
+            return;
+          }
+
+          var value = this.value;
+          try {
+            value = JSON.parse(this.value);
+          } catch (e) {
+            // pass
+          }
+
+          componentParams[toKebabCase(this.name)] = value;
+        });
+
+        var app = createVueApp({
+          render: function () {
+            return createVNode(component, componentParams);
+          },
+        });
+        app.mount(this);
+
+        this.addEventListener('matomoVueDestroy', function () {
+          app.unmount();
+        });
+      });
+    },
+
+    destroyVueComponent: function (selector) {
+      $('[vue-entry]', selector).each(function () {
+        this.dispatchEvent(new CustomEvent('matomoVueDestroy'));
+      });
     },
 
     /**
@@ -269,12 +335,28 @@ var piwikHelper = {
 
         $('[role]', domElem).each(function(){
             var $button = $(this);
+
+            // skip this button if it's part of another modal, the current modal can launch
+            // (which is true if there are more than one parent elements contained in domElem,
+            // w/ css class ui-confirm)
+            const uiConfirm = $button.parents('.ui-confirm').filter(function () {
+              return domElem[0] === this || $.contains(domElem[0], this);
+            });
+            if (uiConfirm.length > 1) {
+              return;
+            }
+
             var role  = $button.attr('role');
             var title = $button.attr('title');
             var text  = $button.val();
             $button.hide();
 
             var button = $('<a href="javascript:;" class="modal-action modal-close waves-effect waves-light btn-flat "></a>');
+
+            if(role === 'validation'){
+                button = $('<a href="javascript:;" class="modal-action waves-effect waves-light btn"></a>');
+            }
+
             button.text(text);
             if (title) {
                 button.attr('title', title);
@@ -290,7 +372,7 @@ var piwikHelper = {
                     window.location.href = $button.data('href');
                 })
             }
-            
+
 
             $footer.append(button);
         });
@@ -628,3 +710,9 @@ try {
 
 } catch (e) {}
 }(jQuery));
+
+(function ($) {
+  $(function () {
+    piwikHelper.compileVueEntryComponents('body');
+  });
+}(jQuery))

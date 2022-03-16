@@ -8,17 +8,14 @@
  */
 namespace Piwik\Plugins\Feedback;
 
-use Piwik\Common;
-use Piwik\Container\StaticContainer;
 use Piwik\Date;
-use Piwik\Option;
-use Piwik\Piwik;
-use Piwik\Version;
 use Piwik\View;
+use Piwik\Piwik;
+use Piwik\Common;
+use Piwik\Version;
+use Piwik\Container\StaticContainer;
+use Piwik\DataTable\Renderer\Json;
 
-/**
- *
- */
 class Controller extends \Piwik\Plugin\Controller
 {
     function index()
@@ -31,18 +28,4 @@ class Controller extends \Piwik\Plugin\Controller
         return $view->render();
     }
 
-    /**
-     * Store the next date that the feedback reminder popup should be displayed to this user.
-     */
-    public function updateFeedbackReminderDate()
-    {
-        Piwik::checkUserIsNotAnonymous();
-        $nextReminder = Common::getRequestVar('nextReminder');
-        if ($nextReminder !== Feedback::NEVER_REMIND_ME_AGAIN) {
-            $nextReminder = Date::now()->getStartOfDay()->addDay($nextReminder)->toString('Y-m-d');
-        }
-
-        $optionKey = 'Feedback.nextFeedbackReminder.' . Piwik::getCurrentUserLogin();
-        Option::set($optionKey, $nextReminder);
-    }
 }

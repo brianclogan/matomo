@@ -24,6 +24,7 @@ use Piwik\CronArchive\SharedSiteIds;
 use Piwik\CronArchive\StopArchiverException;
 use Piwik\DataAccess\ArchiveSelector;
 use Piwik\DataAccess\ArchiveTableCreator;
+use Piwik\DataAccess\ArchiveWriter;
 use Piwik\DataAccess\Model;
 use Piwik\DataAccess\RawLogDao;
 use Piwik\Exception\UnexpectedWebsiteFoundException;
@@ -161,6 +162,23 @@ class CronArchive
      */
     public $maxConcurrentArchivers = false;
 
+    /**
+     * Maximum number of sites to process during a single execution of the archiver.
+     *
+     * @var int|null
+     */
+    public $maxSitesToProcess = null;
+
+    /**
+     * Maximum number of archives to process during a single execution of the archiver.
+     *
+     * Note that this is not a hard limit as the limit is only checked after all
+     * archives for a site have been processed.
+     *
+     * @var int|null
+     */
+    public $maxArchivesToProcess = null;
+
     private $archivingStartingTime;
 
     private $formatter;
@@ -199,8 +217,6 @@ class CronArchive
      */
     private $periodIdsToLabels;
 
-    private $processNewSegmentsFrom;
-
     /**
      * @var ArchiveFilter
      */
@@ -212,18 +228,19 @@ class CronArchive
     private $cliMultiRequestParser;
 
     /**
+     * @var bool|mixed
+     */
+    private $supportsAsync;
+
+    /**
      * Constructor.
      *
-     * @param string|null $processNewSegmentsFrom When to archive new segments from. See [General] process_new_segments_from
-     *                                            for possible values.
      * @param LoggerInterface|null $logger
      */
-    public function __construct($processNewSegmentsFrom = null, LoggerInterface $logger = null)
+    public function __construct(LoggerInterface $logger = null)
     {
         $this->logger = $logger ?: StaticContainer::get('Psr\Log\LoggerInterface');
         $this->formatter = new Formatter();
-
-        $this->processNewSegmentsFrom = $processNewSegmentsFrom ?: StaticContainer::get('ini.General.process_new_segments_from');
 
         $this->invalidator = StaticContainer::get('Piwik\Archive\ArchiveInvalidator');
 
@@ -235,7 +252,8 @@ class CronArchive
 
         $this->rawLogDao = new RawLogDao();
 
-        $this->cliMultiRequestParser = new RequestParser($this->makeCliMulti()->supportsAsync());
+        $this->supportsAsync = $this->makeCliMulti()->supportsAsync();
+        $this->cliMultiRequestParser = new RequestParser($this->supportsAsync);
 
         $this->archiveFilter = new ArchiveFilter();
     }
@@ -270,7 +288,7 @@ class CronArchive
 
     public function init()
     {
-        $this->segmentArchiving = new SegmentArchiving($this->processNewSegmentsFrom, $this->dateLastForced);
+        $this->segmentArchiving = StaticContainer::get(SegmentArchiving::class);
 
         /**
          * This event is triggered during initializing archiving.
@@ -302,6 +320,12 @@ class CronArchive
         $this->filterWebsiteIds($websitesIds, $allWebsites);
         $this->allWebsites = $websitesIds;
         $this->websiteIdArchiveList = $this->makeWebsiteIdArchiveList($websitesIds);
+
+        if (method_exists($this->websiteIdArchiveList, 'isContinuingPreviousRun') &&
+            $this->websiteIdArchiveList->isContinuingPreviousRun()
+        ) {
+            $this->logger->info("- Continuing ongoing archiving run by pulling from shared idSite queue.");
+        }
 
         if ($this->archiveFilter) {
             $this->archiveFilter->logFilterInfo($this->logger);
@@ -336,9 +360,10 @@ class CronArchive
             return;
         }
 
-
         $this->logger->debug("Applying queued rearchiving...");
-        $this->invalidator->applyScheduledReArchiving();
+        \Piwik\Tracker\Cache::withDelegatedCacheClears(function () {
+            $this->invalidator->applyScheduledReArchiving();
+        });
 
         $failedJobs = $this->model->resetFailedArchivingJobs();
         if ($failedJobs) {
@@ -351,6 +376,8 @@ class CronArchive
 
         $queueConsumer = new QueueConsumer($this->logger, $this->websiteIdArchiveList, $countOfProcesses, $pid,
             $this->model, $this->segmentArchiving, $this, $this->cliMultiRequestParser, $this->archiveFilter);
+
+        $queueConsumer->setMaxSitesToProcess($this->maxSitesToProcess);
 
         while (true) {
             if ($this->isMaintenanceModeEnabled()) {
@@ -381,6 +408,10 @@ class CronArchive
 
             $successCount = $this->launchArchivingFor($archivesToProcess, $queueConsumer);
             $numArchivesFinished += $successCount;
+            if ($this->maxArchivesToProcess && $numArchivesFinished >= $this->maxArchivesToProcess) {
+                $this->logger->info("Maximum number of archives to process per execution has been reached.");
+                break;
+            }
         }
 
         $this->disconnectDb();
@@ -458,15 +489,15 @@ class CronArchive
         $cliMulti->timeRequests();
 
         $responses = $cliMulti->request($urls);
-        
+
         $this->disconnectDb();
-        
+
         $timers = $cliMulti->getTimers();
         $successCount = 0;
 
         foreach ($urls as $index => $url) {
             $content = array_key_exists($index, $responses) ? $responses[$index] : null;
-            $this->checkResponse($content, $url);
+            $checkInvalid = $this->checkResponse($content, $url);
 
             $stats = json_decode($content, $assoc = true);
             if (!is_array($stats)) {
@@ -483,7 +514,10 @@ class CronArchive
 
             $visitsForPeriod = $this->getVisitsFromApiResponse($stats);
 
-            $this->logArchiveJobFinished($url, $timers[$index], $visitsForPeriod, $archivesBeingQueried[$index]['plugin'], $archivesBeingQueried[$index]['report']);
+
+            $this->logArchiveJobFinished($url, $timers[$index], $visitsForPeriod,
+              $archivesBeingQueried[$index]['plugin'], $archivesBeingQueried[$index]['report'], !$checkInvalid);
+
 
             $this->deleteInvalidatedArchives($archivesBeingQueried[$index]);
 
@@ -494,20 +528,11 @@ class CronArchive
 
         $this->requests += count($urls);
 
-        $idInvalidations = array_column($archives, 'idinvalidation');
-        $this->checkNoDanglingInvalidations($idInvalidations);
-
         return $successCount;
     }
 
     private function deleteInvalidatedArchives($archive)
     {
-        $idArchives = $this->model->getInvalidatedArchiveIdsAsOldOrOlderThan($archive);
-        if (!empty($idArchives)) {
-            $date = Date::factory($archive['date1']);
-            $this->model->deleteArchiveIds(ArchiveTableCreator::getNumericTable($date), ArchiveTableCreator::getBlobTable($date), $idArchives);
-        }
-
         $this->model->deleteInvalidations([$archive]);
     }
 
@@ -550,13 +575,15 @@ class CronArchive
         return [$url, $segment, $plugin];
     }
 
-    private function logArchiveJobFinished($url, $timer, $visits, $plugin = null, $report = null)
+    private function logArchiveJobFinished($url, $timer, $visits, $plugin = null, $report = null, $wasSkipped = null)
     {
         $params = UrlHelper::getArrayFromQueryString($url);
         $visits = (int) $visits;
 
-        $this->logger->info("Archived website id {$params['idSite']}, period = {$params['period']}, date = "
-            . "{$params['date']}, segment = '" . (isset($params['segment']) ? $params['segment'] : '') . "', "
+        $message = $wasSkipped ? "Skipped Archiving website" : "Archived website";
+
+        $this->logger->info($message." id {$params['idSite']}, period = {$params['period']}, date = "
+            . "{$params['date']}, segment = '" . (isset($params['segment']) ? urldecode(urldecode($params['segment'])) : '') . "', "
             . ($plugin ? "plugin = $plugin, " : "") . ($report ? "report = $report, " : "") . "$visits visits found. $timer");
     }
 
@@ -611,6 +638,11 @@ class CronArchive
 
         $this->disconnectDb();
 
+        Piwik::addAction('ScheduledTasks.execute.end', function () {
+            // check if we need to reconnect after each task executes
+            $this->disconnectDb();
+        });
+
         // TODO: this is a HACK to get the purgeOutdatedArchives task to work when run below. without
         //       it, the task will not run because we no longer run the tasks through CliMulti.
         //       harder to implement alternatives include:
@@ -618,7 +650,8 @@ class CronArchive
         //         runs
         //       - setting a new DI environment for core:archive which CoreAdminHome can use to conditionally
         //         enable/disable the task
-        $_GET['trigger'] = 'archivephp';
+        Rules::$disablePureOutdatedArchive = true;
+
         CoreAdminHomeAPI::getInstance()->runScheduledTasks();
 
         $this->logSection("");
@@ -674,11 +707,11 @@ class CronArchive
     {
         if (!defined('PIWIK_ARCHIVE_NO_TRUNCATE')) {
             $m = str_replace(array("\n", "\t"), " ", $m);
-            if (Common::mb_strlen($m) > self::TRUNCATE_ERROR_MESSAGE_SUMMARY) {
+            if (mb_strlen($m) > self::TRUNCATE_ERROR_MESSAGE_SUMMARY) {
                 $numCharactersKeepFromEnd = 100;
-                $m = Common::mb_substr($m, 0, self::TRUNCATE_ERROR_MESSAGE_SUMMARY - $numCharactersKeepFromEnd)
+                $m = mb_substr($m, 0, self::TRUNCATE_ERROR_MESSAGE_SUMMARY - $numCharactersKeepFromEnd)
                      . ' ... ' .
-                    Common::mb_substr($m, -1 * $numCharactersKeepFromEnd);
+                    mb_substr($m, -1 * $numCharactersKeepFromEnd);
             }
         }
         $this->errors[] = $m;
@@ -687,11 +720,17 @@ class CronArchive
 
     private function logNetworkError($url, $response)
     {
+
+        if (preg_match("/Segment (.*?) is not a supported segment/i", $response, $match)) {
+            $this->logger->info($match[0]);
+            return false;
+        }
+
         $message = "Got invalid response from API request: $url. ";
         if (empty($response)) {
             $message .= "The response was empty. This usually means a server error. A solution to this error is generally to increase the value of 'memory_limit' in your php.ini file. ";
 
-            if($this->makeCliMulti()->supportsAsync()) {
+            if($this->supportsAsync) {
                 $message .= " For more information and the error message please check in your PHP CLI error log file. As this core:archive command triggers PHP processes over the CLI, you can find where PHP CLI logs are stored by running this command: php -i | grep error_log";
             } else {
                 $message .= " For more information and the error message please check your web server's error Log file. As this core:archive command triggers PHP processes over HTTP, you can find the error message in your Matomo's web server error logs. ";
@@ -730,7 +769,7 @@ class CronArchive
         $websiteIds = array_intersect($websiteIds, $allWebsites);
 
         if (!empty($this->shouldSkipSpecifiedSites)) {
-            $websiteIds = array_intersect($websiteIds, $this->shouldSkipSpecifiedSites);
+            $websiteIds = array_diff($websiteIds, $this->shouldSkipSpecifiedSites);
         }
 
         /**
@@ -765,9 +804,16 @@ class CronArchive
 
     public function invalidateArchivedReportsForSitesThatNeedToBeArchivedAgain($idSiteToInvalidate)
     {
+        \Piwik\Tracker\Cache::withDelegatedCacheClears(function () use ($idSiteToInvalidate) {
+            $this->invalidateArchivedReportsForSitesThatNeedToBeArchivedAgainImpl($idSiteToInvalidate);
+        });
+    }
+
+    private function invalidateArchivedReportsForSitesThatNeedToBeArchivedAgainImpl($idSiteToInvalidate)
+    {
         if (empty($this->segmentArchiving)) {
             // might not be initialised if init is not called
-            $this->segmentArchiving = new SegmentArchiving($this->processNewSegmentsFrom, $this->dateLastForced);
+            $this->segmentArchiving = StaticContainer::get(SegmentArchiving::class);
         }
 
         $this->logger->debug("Checking for queued invalidations...");
@@ -827,26 +873,6 @@ class CronArchive
             $this->invalidateWithSegments($idSiteToInvalidate, $date, 'range', $_forceInvalidateNonexistant = true);
         }
 
-        // for new segments, invalidate past dates
-        $segmentDatesToInvalidate = $this->segmentArchiving->getSegmentArchivesToInvalidateForNewSegments($idSiteToInvalidate);
-
-        foreach ($segmentDatesToInvalidate as $info) {
-            $this->logger->info('  Segment "{segment}" was created or changed recently and will therefore archive today (for site ID = {idSite})', [
-                'segment' => $info['segment'],
-                'idSite' => $idSiteToInvalidate,
-            ]);
-
-            $earliestDate = $info['date'];
-
-            $allDates = PeriodFactory::build('range', $earliestDate . ',today')->getSubperiods();
-            $allDates = array_map(function (Period $p) {
-                return $p->getDateStart()->toString();
-            }, $allDates);
-            $allDates = implode(',', $allDates);
-
-            $this->getApiToInvalidateArchivedReport()->invalidateArchivedReports($idSiteToInvalidate, $allDates, $period = false, $info['segment']);
-        }
-
         $this->setInvalidationTime();
 
         $this->logger->debug("Done invalidating");
@@ -871,10 +897,14 @@ class CronArchive
             'date' => $date->getDatetime(),
         ]);
 
-        $this->invalidateWithSegments([$idSite], $date->toString(), 'day');
+        // if we are invalidating yesterday here, we are only interested in checking if there is no archive for yesterday, or the day has changed since
+        // the last archive was archived (in which there may have been more visits before midnight). so we disable the ttl check, since any archive
+        // will be good enough, if the date hasn't changed.
+        $isYesterday = $dateStr == 'yesterday';
+        $this->invalidateWithSegments([$idSite], $date->toString(), 'day', false, $doNotIncludeTtlInExistingArchiveCheck = $isYesterday);
     }
 
-    private function invalidateWithSegments($idSites, $date, $period, $_forceInvalidateNonexistant = false)
+    private function invalidateWithSegments($idSites, $date, $period, $_forceInvalidateNonexistant = false, $doNotIncludeTtlInExistingArchiveCheck = false)
     {
         if ($date instanceof Date) {
             $date = $date->toString();
@@ -892,33 +922,82 @@ class CronArchive
 
         foreach ($idSites as $idSite) {
             $params = new Parameters(new Site($idSite), $periodObj, new Segment('', [$idSite], $periodObj->getDateStart(), $periodObj->getDateEnd()));
-            if ($this->isThereExistingValidPeriod($params)) {
+            if ($this->canWeSkipInvalidatingBecauseThereIsAUsablePeriod($params, $doNotIncludeTtlInExistingArchiveCheck)) {
                 $this->logger->debug('  Found usable archive for {archive}, skipping invalidation.', ['archive' => $params]);
             } else {
                 $this->getApiToInvalidateArchivedReport()->invalidateArchivedReports($idSite, $date, $period, $segment = false, $cascadeDown = false,
                     $_forceInvalidateNonexistant);
             }
 
-            foreach ($this->segmentArchiving->getAllSegmentsToArchive($idSite) as $segment) {
-                $params = new Parameters(new Site($idSite), $periodObj, new Segment($segment['definition'], [$idSite], $periodObj->getDateStart(), $periodObj->getDateEnd()));
-                if ($this->isThereExistingValidPeriod($params)) {
+            foreach ($this->segmentArchiving->getAllSegmentsToArchive($idSite) as $segmentDefinition) {
+
+               // check if the segment is available
+                if (!$this->isSegmentAvailable($segmentDefinition, [$idSite])) {
+                    continue;
+                }
+                $params = new Parameters(new Site($idSite), $periodObj, new Segment($segmentDefinition, [$idSite], $periodObj->getDateStart(), $periodObj->getDateEnd()));
+                if ($this->canWeSkipInvalidatingBecauseThereIsAUsablePeriod($params, $doNotIncludeTtlInExistingArchiveCheck)) {
                     $this->logger->debug('  Found usable archive for {archive}, skipping invalidation.', ['archive' => $params]);
                 } else {
-                    $this->getApiToInvalidateArchivedReport()->invalidateArchivedReports($idSite, $date, $period, $segment['definition'],
+                    if (empty($this->segmentArchiving)) {
+                        // might not be initialised if init is not called
+                        $this->segmentArchiving = StaticContainer::get(SegmentArchiving::class);
+                    }
+
+                    $segmentInfo = $this->segmentArchiving->findSegmentForHash($params->getSegment()->getHash(), $idSite);
+
+                    if ($segmentInfo) {
+                        $segmentArchiveStartDate = $this->segmentArchiving->getReArchiveSegmentStartDate($segmentInfo);
+
+                        if ($segmentArchiveStartDate !== null && $segmentArchiveStartDate->isLater($params->getPeriod()->getDateEnd()->getEndOfDay())) {
+                            // the system is not allowed to invalidate reports for this period
+                            // automatically, only a user can specifically invalidate
+                            continue;
+                        }
+                    }
+
+                    $this->getApiToInvalidateArchivedReport()->invalidateArchivedReports($idSite, $date, $period, $segmentDefinition,
                         $cascadeDown = false, $_forceInvalidateNonexistant);
                 }
             }
         }
     }
 
-    public function isThereExistingValidPeriod(Parameters $params)
+
+    /**
+     * check if segments that contain dimensions that don't exist anymore
+     * @param $segmentDefinition
+     * @param $idSites
+     * @return bool
+     */
+    protected function isSegmentAvailable($segmentDefinition, $idSites)
+    {
+        try {
+            new Segment($segmentDefinition, $idSites);
+        } catch (\Exception $e) {
+            $this->logger->info("Segment '".$segmentDefinition."' is not a supported segment");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Returns true if there is an existing valid period we can use, or false if there isn't and the invalidation should go through.
+     *
+     * Note: this method should only be used in the context of invalidation.
+     *
+     * @params Parameters $params The parameters for the archive we want to invalidate.
+     */
+    public function canWeSkipInvalidatingBecauseThereIsAUsablePeriod(Parameters $params, $doNotIncludeTtlInExistingArchiveCheck = false)
     {
         $today = Date::factoryInTimezone('today', Site::getTimezoneFor($params->getSite()->getId()));
 
         $isYesterday = $params->getPeriod()->getLabel() == 'day' && $params->getPeriod()->getDateStart()->toString() == Date::factory('yesterday')->toString();
 
         $isPeriodIncludesToday = $params->getPeriod()->isDateInPeriod($today);
-        $minArchiveProcessedTime = $isPeriodIncludesToday ? Date::now()->subSeconds(Rules::getPeriodArchiveTimeToLiveDefault($params->getPeriod()->getLabel())) : null;
+
+        $minArchiveProcessedTime = $doNotIncludeTtlInExistingArchiveCheck ? null :
+            Date::now()->subSeconds(Rules::getPeriodArchiveTimeToLiveDefault($params->getPeriod()->getLabel()));
 
         // empty plugins param since we only check for an 'all' archive
         list($idArchive, $visits, $visitsConverted, $ignore, $tsArchived) = ArchiveSelector::getArchiveIdAndVisits($params, $minArchiveProcessedTime, $includeInvalidated = $isPeriodIncludesToday);
@@ -967,6 +1046,13 @@ class CronArchive
             }
 
             if (in_array($id, $higherPeriods)) { // period exists in table
+                continue;
+            }
+
+            // period is disabled in API
+            if (!PeriodFactory::isPeriodEnabledForAPI($label)
+                || PeriodFactory::isAnyLowerPeriodDisabledForAPI($label)
+            ) {
                 continue;
             }
 
@@ -1086,11 +1172,18 @@ class CronArchive
             }
         }
 
+        if ($this->maxSitesToProcess) {
+            $this->logger->info("- Maximum {$this->maxSitesToProcess} websites will be processed.");
+        }
+        if ($this->maxArchivesToProcess) {
+            $this->logger->info("- Maximum {$this->maxArchivesToProcess} archives will be processed (soft limit).");
+        }
+
         // Try and not request older data we know is already archived
         if ($this->lastSuccessRunTimestamp !== false) {
             $dateLast = time() - $this->lastSuccessRunTimestamp;
             $this->logger->info("- Archiving was last executed without error "
-                . $this->formatter->getPrettyTimeFromSeconds($dateLast, true) . " ago");
+                . $this->formatter->getPrettyTimeFromSeconds($dateLast, true) . " ago.");
         }
     }
 
@@ -1274,7 +1367,8 @@ class CronArchive
             $instanceId = SettingsPiwik::getPiwikInstanceId();
 
             foreach ($processes as $process) {
-                if (strpos($process, 'console core:archive') !== false &&
+                if (strpos($process, ' core:archive') !== false &&
+                    strpos($process, 'console ') !== false &&
                     (!$instanceId
                         || strpos($process, '--matomo-domain=' . $instanceId) !== false
                         || strpos($process, '--matomo-domain="' . $instanceId . '"') !== false
@@ -1332,27 +1426,6 @@ class CronArchive
         }
 
         return new SharedSiteIds($websitesIds, SharedSiteIds::OPTION_ALL_WEBSITES);
-    }
-
-    /**
-     * @deprecaed
-     */
-    public function checkNoDanglingInvalidations(array $idInvalidations)
-    {
-        $table = Common::prefixTable('archive_invalidations');
-        $idInvalidations = array_map('intval', $idInvalidations);
-
-        $sql = "SELECT idinvalidation FROM `$table` WHERE idinvalidation IN (" . implode(',', $idInvalidations) . ") AND status = "
-            . ArchiveInvalidator::INVALIDATION_STATUS_IN_PROGRESS;
-
-        $inProgress = Db::fetchAll($sql);
-        $inProgress = array_column($inProgress, 'idinvalidation');
-
-        if (!empty($inProgress)) {
-            $this->logger->error("Found dangling invalidations that were not correctly reset or removed, this should be reported on the forums: {invalidations}", [
-                'idinvalidations' => json_encode($inProgress),
-            ]);
-        }
     }
 
     private function siteExists($idSite)

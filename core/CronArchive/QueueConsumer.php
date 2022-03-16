@@ -108,6 +108,13 @@ class QueueConsumer
      */
     private $currentSiteArchivingStartTime;
 
+    /**
+     * @var int|null
+     */
+    private $maxSitesToProcess = null;
+
+    private $processedSiteCount = 0;
+
     public function __construct(LoggerInterface $logger, $websiteIdArchiveList, $countOfProcesses, $pid, Model $model,
                                 SegmentArchiving $segmentArchiving, CronArchive $cronArchive, RequestParser $cliMultiRequestParser,
                                 ArchiveFilter $archiveFilter = null)
@@ -129,14 +136,29 @@ class QueueConsumer
         $this->periodIdsToLabels = array_flip(Piwik::$idPeriods);
     }
 
+    /**
+     * Get next archives to process.
+     *
+     * Returns either an array of archives to process for the current site (may be
+     * empty if there are no more archives to process for it) or null when there are
+     * no more sites to process.
+     *
+     * @return null|array
+     */
     public function getNextArchivesToProcess()
     {
         if (empty($this->idSite)) {
+            if ($this->maxSitesToProcess && $this->processedSiteCount >= $this->maxSitesToProcess) {
+                $this->logger->info("Maximum number of sites to process per execution has been reached.");
+                return null;
+            }
             $this->idSite = $this->getNextIdSiteToArchive();
             if (empty($this->idSite)) { // no sites left to archive, stop
                 $this->logger->debug("No more sites left to archive, stopping.");
                 return null;
             }
+
+            ++$this->processedSiteCount;
 
             /**
              * This event is triggered before the cron archiving process starts archiving data for a single
@@ -215,7 +237,7 @@ class QueueConsumer
                 continue;
             }
 
-            if ($this->hasIntersectingPeriod($archivesToProcess, $invalidatedArchive)) {
+            if (self::hasIntersectingPeriod($archivesToProcess, $invalidatedArchive)) {
                 $this->logger->debug("Found archive with intersecting period with others in concurrent batch, skipping until next batch: $invalidationDesc");
 
                 $idinvalidation = $invalidatedArchive['idinvalidation'];
@@ -233,8 +255,13 @@ class QueueConsumer
             list($isUsableExists, $archivedTime) = $this->usableArchiveExists($invalidatedArchive);
             if ($isUsableExists) {
                 $now = Date::now()->getDatetime();
-                $this->logger->debug("Found invalidation with usable archive (not yet outdated, ts_archived of existing = $archivedTime, now = $now) skipping until archive is out of date: $invalidationDesc");
                 $this->addInvalidationToExclude($invalidatedArchive);
+                if (empty($invalidatedArchive['plugin'])) {
+                    $this->logger->debug("Found invalidation with usable archive (not yet outdated, ts_archived of existing = $archivedTime, now = $now) skipping until archive is out of date: $invalidationDesc");
+                } else {
+                    $this->logger->debug("Found invalidation with usable archive (not yet outdated, ts_archived of existing = $archivedTime, now = $now) ignoring and deleting: $invalidationDesc");
+                    $this->model->deleteInvalidations([$invalidatedArchive]);
+                }
                 continue;
             } else {
                 $now = Date::now()->getDatetime();
@@ -260,7 +287,6 @@ class QueueConsumer
                 continue;
             }
 
-            // TODO: should use descriptive string instead of just invalidation ID
             $reason = $this->shouldSkipArchiveBecauseLowerPeriodOrSegmentIsInProgress($invalidatedArchive);
             if ($reason) {
                 $this->logger->debug("Skipping invalidated archive, $reason: $invalidationDesc");
@@ -299,7 +325,7 @@ class QueueConsumer
 
             $this->logger->info("Finished archiving for site {idSite}, {requests} API requests, {timer} [{processed} / {totalNum} done]", [
                 'idSite' => $this->idSite,
-                'processed' => $this->websiteIdArchiveList->getNumProcessedWebsites(),
+                'processed' => $this->processedSiteCount,
                 'totalNum' => $this->websiteIdArchiveList->getNumSites(),
                 'timer' => $this->siteTimer,
                 'requests' => $this->siteRequests,
@@ -344,6 +370,14 @@ class QueueConsumer
             $this->detectPluginForArchive($nextArchive);
 
             $periodLabel = $this->periodIdsToLabels[$nextArchive['period']];
+            if (!PeriodFactory::isPeriodEnabledForAPI($periodLabel)
+                || PeriodFactory::isAnyLowerPeriodDisabledForAPI($periodLabel)
+            ) {
+                $this->logger->info("Found invalidation for period that is disabled in the API, skipping and removing: {$nextArchive['idinvalidation']}");
+                $this->model->deleteInvalidations([$nextArchive]);
+                continue;
+            }
+
             $periodDate = $periodLabel == 'range' ? $nextArchive['date1'] . ',' . $nextArchive['date2'] : $nextArchive['date1'];
             $nextArchive['periodObj'] = PeriodFactory::build($periodLabel, $periodDate);
 
@@ -387,7 +421,7 @@ class QueueConsumer
         return $loader->canSkipThisArchive(); // if no point in archiving, skip
     }
 
-    private function shouldSkipArchiveBecauseLowerPeriodOrSegmentIsInProgress(array $archiveToProcess)
+    public function shouldSkipArchiveBecauseLowerPeriodOrSegmentIsInProgress(array $archiveToProcess)
     {
         $inProgressArchives = $this->cliMultiRequestParser->getInProgressArchivingCommands();
 
@@ -398,10 +432,25 @@ class QueueConsumer
                 continue;
             }
 
+            if (empty($archiveBeingProcessed['idSite'])
+                || $archiveBeingProcessed['idSite'] != $archiveToProcess['idsite']
+            ) {
+                continue; // different site
+            }
+
+            // we don't care about lower periods being concurrent if they are for different segments (that are not "all visits")
+            if (!empty($archiveBeingProcessed['segment'])
+                && !empty($archiveToProcess['segment'])
+                && $archiveBeingProcessed['segment'] != $archiveToProcess['segment']
+                && urldecode($archiveBeingProcessed['segment']) != $archiveToProcess['segment']
+            ) {
+                continue;
+            }
+
             $archiveBeingProcessed['periodObj'] = PeriodFactory::build($archiveBeingProcessed['period'], $archiveBeingProcessed['date']);
 
             if ($this->isArchiveOfLowerPeriod($archiveToProcess, $archiveBeingProcessed)) {
-                return "lower period in progress (period = {$archiveBeingProcessed['period']}, date = {$archiveBeingProcessed['date']})";
+                return "lower or same period in progress in another local climulti process (period = {$archiveBeingProcessed['period']}, date = {$archiveBeingProcessed['date']})";
             }
 
             if ($this->isArchiveNonSegmentAndInProgressArchiveSegment($archiveToProcess, $archiveBeingProcessed)) {
@@ -447,13 +496,32 @@ class QueueConsumer
         $archive['plugin'] = $this->getPluginNameForArchiveIfAny($archive);
     }
 
-    private function hasIntersectingPeriod(array $archivesToProcess, $invalidatedArchive)
+    // static so it can be unit tested
+    public static function hasIntersectingPeriod(array $archivesToProcess, $invalidatedArchive)
     {
         if (empty($archivesToProcess)) {
             return false;
         }
 
         foreach ($archivesToProcess as $archive) {
+            $isSamePeriod = $archive['period'] == $invalidatedArchive['period']
+                && $archive['date1'] == $invalidatedArchive['date1']
+                && $archive['date2'] == $invalidatedArchive['date2'];
+
+            // don't do the check for $archvie, if we have the same period and segment as $invalidatedArchive
+            // we only want to to do the intersecting periods check if there are different periods or one of the
+            // invalidations is for an "all visits" archive.
+            //
+            // it's allowed to archive the same period concurrently for different segments, where neither is
+            // "All Visits"
+            if (!empty($archive['segment'])
+                && !empty($invalidatedArchive['segment'])
+                && $archive['segment'] != $invalidatedArchive['segment']
+                && $isSamePeriod
+            ) {
+                continue;
+            }
+
             if ($archive['periodObj']->isPeriodIntersectingWith($invalidatedArchive['periodObj'])) {
                 return true;
             }
@@ -473,6 +541,7 @@ class QueueConsumer
         $hash = substr($flag, 4);
         $storedSegment = $this->segmentArchiving->findSegmentForHash($hash, $archive['idsite']);
         if (!isset($storedSegment['definition'])) {
+            $this->logger->debug("Could not find stored segment for done flag hash: $flag");
             $archive['segment'] = null;
             return false;
         }
@@ -517,13 +586,14 @@ class QueueConsumer
 
     private function getInvalidationDescription(array $invalidatedArchive)
     {
-        return sprintf("[idinvalidation = %s, idsite = %s, period = %s(%s - %s), name = %s]",
+        return sprintf("[idinvalidation = %s, idsite = %s, period = %s(%s - %s), name = %s, segment = %s]",
             $invalidatedArchive['idinvalidation'],
             $invalidatedArchive['idsite'],
             $this->periodIdsToLabels[$invalidatedArchive['period']],
             $invalidatedArchive['date1'],
             $invalidatedArchive['date2'],
-            $invalidatedArchive['name']
+            $invalidatedArchive['name'],
+            $invalidatedArchive['segment'] ?? ''
         );
     }
 
@@ -564,5 +634,20 @@ class QueueConsumer
     public function getIdSite()
     {
         return $this->idSite;
+    }
+
+    /**
+     * Set or get the maximum number of sites to process
+     *
+     * @param int|null $newValue New value or null to just return current value
+     *
+     * @return int|null New or existing value
+     */
+    public function setMaxSitesToProcess($newValue = null)
+    {
+        if (null !== $newValue) {
+            $this->maxSitesToProcess = $newValue;
+        }
+        return $this->maxSitesToProcess;
     }
 }

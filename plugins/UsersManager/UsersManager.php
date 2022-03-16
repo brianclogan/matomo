@@ -36,7 +36,6 @@ class UsersManager extends \Piwik\Plugin
     public function registerEvents()
     {
         return array(
-            'AssetManager.getJavaScriptFiles'        => 'getJsFiles',
             'AssetManager.getStylesheetFiles'        => 'getStylesheetFiles',
             'SitesManager.deleteSite.end'            => 'deleteSite',
             'Tracker.Cache.getSiteAttributes'        => 'recordAdminUsersInCache',
@@ -122,34 +121,17 @@ class UsersManager extends \Piwik\Plugin
     }
 
     /**
-     * Return list of plug-in specific JavaScript files to be imported by the asset manager
-     *
-     * @see \Piwik\AssetManager
-     */
-    public function getJsFiles(&$jsFiles)
-    {
-        $jsFiles[] = "plugins/UsersManager/angularjs/users-manager/users-manager.component.js";
-        $jsFiles[] = "plugins/UsersManager/angularjs/paged-users-list/paged-users-list.component.js";
-        $jsFiles[] = "plugins/UsersManager/angularjs/user-edit-form/user-edit-form.component.js";
-        $jsFiles[] = "plugins/UsersManager/angularjs/user-permissions-edit/user-permissions-edit.component.js";
-        $jsFiles[] = "plugins/UsersManager/angularjs/personal-settings/personal-settings.controller.js";
-        $jsFiles[] = "plugins/UsersManager/angularjs/personal-settings/anonymous-settings.controller.js";
-        $jsFiles[] = "plugins/UsersManager/angularjs/permissions-metadata/permissions-metadata.service.js";
-        $jsFiles[] = "plugins/UsersManager/angularjs/capabilities-edit/capabilities-edit.component.js";
-    }
-
-    /**
      * Get CSS files
      */
     public function getStylesheetFiles(&$stylesheets)
     {
         $stylesheets[] = "plugins/UsersManager/stylesheets/usersManager.less";
 
-        $stylesheets[] = "plugins/UsersManager/angularjs/users-manager/users-manager.component.less";
-        $stylesheets[] = "plugins/UsersManager/angularjs/paged-users-list/paged-users-list.component.less";
-        $stylesheets[] = "plugins/UsersManager/angularjs/user-edit-form/user-edit-form.component.less";
-        $stylesheets[] = "plugins/UsersManager/angularjs/user-permissions-edit/user-permissions-edit.component.less";
-        $stylesheets[] = "plugins/UsersManager/angularjs/capabilities-edit/capabilities-edit.component.less";
+        $stylesheets[] = "plugins/UsersManager/vue/src/UsersManager/UsersManager.less";
+        $stylesheets[] = "plugins/UsersManager/vue/src/PagedUsersList/PagedUsersList.less";
+        $stylesheets[] = "plugins/UsersManager/vue/src/UserEditForm/UserEditForm.less";
+        $stylesheets[] = "plugins/UsersManager/vue/src/UserPermissionsEdit/UserPermissionsEdit.less";
+        $stylesheets[] = "plugins/UsersManager/vue/src/CapabilitiesEdit/CapabilitiesEdit.less";
     }
 
     /**
@@ -194,7 +176,7 @@ class UsersManager extends \Piwik\Plugin
         if (!self::isValidPasswordString($password)) {
             throw new Exception(Piwik::translate('UsersManager_ExceptionInvalidPassword', array(self::PASSWORD_MIN_LENGTH)));
         }
-        if (Common::mb_strlen($password) > self::PASSWORD_MAX_LENGTH) {
+        if (mb_strlen($password) > self::PASSWORD_MAX_LENGTH) {
             throw new Exception(Piwik::translate('UsersManager_ExceptionInvalidPasswordTooLong', array(self::PASSWORD_MAX_LENGTH)));
         }
     }
@@ -244,6 +226,8 @@ class UsersManager extends \Piwik\Plugin
         $translationKeys[] = "General_Done";
         $translationKeys[] = "General_Pagination";
         $translationKeys[] = "General_PleaseTryAgain";
+        $translationKeys[] = "General_Username";
+        $translationKeys[] = "General_Password";
         $translationKeys[] = "UsersManager_DeleteConfirm";
         $translationKeys[] = "UsersManager_ConfirmGrantSuperUserAccess";
         $translationKeys[] = "UsersManager_ConfirmProhibitOtherUsersSuperUserAccess";
@@ -261,6 +245,7 @@ class UsersManager extends \Piwik\Plugin
         $translationKeys[] = "UsersManager_PrivNone";
         $translationKeys[] = "UsersManager_ManageUsers";
         $translationKeys[] = "UsersManager_ManageUsersDesc";
+        $translationKeys[] = "UsersManager_ManageUsersAdminDesc";
         $translationKeys[] = 'Mobile_NavigationBack';
         $translationKeys[] = 'UsersManager_AddExistingUser';
         $translationKeys[] = 'UsersManager_AddUser';
@@ -332,5 +317,16 @@ class UsersManager extends \Piwik\Plugin
         $translationKeys[] = 'UsersManager_IncludedInUsersRole';
         $translationKeys[] = 'UsersManager_NewsletterSignupFailureMessage';
         $translationKeys[] = 'UsersManager_NewsletterSignupSuccessMessage';
+        $translationKeys[] = 'UsersManager_FirstWebsitePermission';
+        $translationKeys[] = 'UsersManager_YourUsernameCannotBeChanged';
+        $translationKeys[] = 'General_Language';
+        $translationKeys[] = 'LanguagesManager_AboutPiwikTranslations';
+        $translationKeys[] = 'General_TimeFormat';
+        $translationKeys[] = 'UsersManager_ReportToLoadByDefault';
+        $translationKeys[] = 'UsersManager_ReportDateToLoadByDefault';
+        $translationKeys[] = 'UsersManager_NewsletterSignupTitle';
+        $translationKeys[] = 'UsersManager_NewsletterSignupMessage';
+        $translationKeys[] = 'UsersManager_WhenUsersAreNotLoggedInAndVisitPiwikTheyShouldAccess';
+        $translationKeys[] = 'UsersManager_ForAnonymousUsersReportDateToLoadByDefault';
     }
 }

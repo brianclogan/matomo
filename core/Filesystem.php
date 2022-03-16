@@ -21,17 +21,27 @@ use Piwik\Exception\Exception;
 class Filesystem
 {
     /**
+     * @var bool
+     * @internal
+     */
+    public static $skipCacheClearOnUpdate = false;
+
+    /**
      * Called on Core install, update, plugin enable/disable
      * Will clear all cache that could be affected by the change in configuration being made
      */
     public static function deleteAllCacheOnUpdate($pluginName = false)
     {
+        if (self::$skipCacheClearOnUpdate) {
+            return;
+        }
+
         AssetManager::getInstance()->removeMergedAssets($pluginName);
         View::clearCompiledTemplates();
         TrackerCache::deleteTrackerCache();
         PiwikCache::flushAll();
         self::clearPhpCaches();
-        
+
         $pluginManager = Plugin\Manager::getInstance();
         $plugins = $pluginManager->getLoadedPlugins();
         foreach ($plugins as $plugin) {
@@ -142,6 +152,7 @@ class Filesystem
             // check if filesystem is NFS
             if ($returnCode == 0
                 && count($output) > 1
+                && preg_match('/\bnfs\d?\b/', implode("\n", $output))
             ) {
                 return true;
             }
@@ -151,9 +162,11 @@ class Filesystem
             $output = @shell_exec($command);
             if ($output) {
                 $commandFailed = (false !== strpos($output, "no file systems processed"));
-                $output = explode("\n", trim($output));
+                $output = trim($output);
+                $outputArray = explode("\n", $output);
                 if (!$commandFailed
-                    && count($output) > 1) {
+                    && count($outputArray) > 1
+                    && preg_match('/\bnfs\d?\b/', $output)) {
                     // check if filesystem is NFS
                     return true;
                 }
@@ -174,7 +187,7 @@ class Filesystem
      * @return array The list of paths that match the pattern.
      * @api
      */
-    public static function globr($sDir, $sPattern, $nFlags = null)
+    public static function globr($sDir, $sPattern, $nFlags = 0)
     {
         if (($aFiles = \_glob("$sDir/$sPattern", $nFlags)) == false) {
             $aFiles = array();
@@ -281,8 +294,17 @@ class Filesystem
      */
     public static function directoryDiff($source, $target)
     {
-        $sourceFiles = self::globr($source, '*');
-        $targetFiles = self::globr($target, '*');
+        $flags = 0;
+        $pattern = '*';
+
+        if (defined('GLOB_BRACE')) {
+            // The GLOB_BRACE flag is not available on some non GNU systems, like Solaris or Alpine Linux.
+            $flags = GLOB_BRACE;
+            $pattern = '{,.}*[!.]*'; // matches all files and folders, including those starting with ".", but excludes "." and ".."
+        }
+
+        $sourceFiles = self::globr($source, $pattern, $flags);
+        $targetFiles = self::globr($target, $pattern, $flags);
 
         $sourceFiles = array_map(function ($file) use ($source) {
             return str_replace($source, '', $file);
@@ -292,7 +314,11 @@ class Filesystem
             return str_replace($target, '', $file);
         }, $targetFiles);
 
-        $diff = array_diff($targetFiles, $sourceFiles);
+        if (FileSystem::isFileSystemCaseInsensitive()) {
+            $diff = array_udiff($targetFiles, $sourceFiles, 'strcasecmp');
+        } else {
+            $diff = array_diff($targetFiles, $sourceFiles);
+        }
 
         return array_values($diff);
     }
@@ -536,6 +562,23 @@ class Filesystem
     }
 
     /**
+     * Check if the filesystem is case sensitive by writing a temporary file
+     *
+     * @return bool
+     */
+    public static function isFileSystemCaseInsensitive() : bool
+    {
+        $testFileName = 'caseSensitivityTest.txt';
+        $pathTmp = StaticContainer::get('path.tmp');
+        @file_put_contents($pathTmp.'/'.$testFileName, 'Nothing to see here.');
+        if (\file_exists($pathTmp.'/'.strtolower($testFileName))) {
+             // Wrote caseSensitivityTest.txt but casesensitivitytest.txt exists, so case insensitive
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * in tmp/ (sub-)folder(s) we create empty index.htm|php files
      *
      * @param $path
@@ -550,7 +593,9 @@ class Filesystem
             $path . '/index.php'
         );
         foreach ($filesToCreate as $file) {
-            @file_put_contents($file, 'Nothing to see here.');
+            if (!is_file($file)) {
+                @file_put_contents($file, 'Nothing to see here.');
+            }
         }
     }
 }

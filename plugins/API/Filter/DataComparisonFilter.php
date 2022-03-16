@@ -221,7 +221,7 @@ class DataComparisonFilter
             $comparisonSeries[] = $compareMetadata['compareSeriesPretty'];
 
             $compareTable = $this->requestReport($method, $modifiedParams);
-            $this->comparisonRowGenerator->compareTables($compareMetadata, $table, $compareTable);
+            $this->comparisonRowGenerator->compareTables($compareMetadata, $table, empty($compareTable) ? null : $compareTable);
         }
 
         // calculate changes (including processed metric changes)
@@ -521,12 +521,7 @@ class DataComparisonFilter
         $valueToCompare = $fromRow ? $fromRow->getColumn($columnName) : 0;
         $valueToCompare = $valueToCompare ?: 0;
 
-        $change = DataTable\Filter\CalculateEvolutionFilter::calculate($value, $valueToCompare, $precision = 1, $appendPercent = false);
-
-        if ($change >= 0) {
-            $change = '+' . $change;
-        }
-        $change .= '%';
+        $change = DataTable\Filter\CalculateEvolutionFilter::calculate($value, $valueToCompare, $precision = 1, true, true);
 
         return $change;
     }

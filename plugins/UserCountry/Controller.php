@@ -11,10 +11,12 @@ namespace Piwik\Plugins\UserCountry;
 use Exception;
 use Piwik\Common;
 use Piwik\IP;
+use Piwik\Notification;
 use Piwik\Piwik;
 use Piwik\Plugin\Manager;
 use Piwik\Plugins\GeoIp2\LocationProvider\GeoIp2;
 use Piwik\Plugins\UserCountry\LocationProvider\DefaultProvider;
+use Piwik\Plugins\UserCountry\LocationProvider\DisabledProvider;
 use Piwik\SettingsPiwik;
 use Piwik\View;
 
@@ -45,10 +47,39 @@ class Controller extends \Piwik\Plugin\ControllerAdmin
         $view->thisIP = IP::getIpFromHeader();
         $view->hasGeoIp2Provider = Manager::getInstance()->isPluginActivated('GeoIp2');
 
+        if (!LocationProvider::getCurrentProvider()) {
+            $provider = LocationProvider::getProviderById(LocationProvider::getCurrentProviderId());
+
+            if ($provider) {
+                $message = Piwik::translate('UserCountry_GeolocationProviderBroken', '<strong>' . $provider->getInfo()['title'] . '</strong>');
+            } else {
+                $message = Piwik::translate('UserCountry_GeolocationProviderUnavailable', '<strong>' . LocationProvider::getCurrentProviderId() . '</strong>');
+            }
+
+            $notification          = new Notification($message);
+            $notification->context = Notification::CONTEXT_ERROR;
+            $notification->raw     = true;
+            Notification\Manager::notify('UserCountry_GeoLocationProviderBroken', $notification);
+        } else {
+            $isWorking = LocationProvider::getCurrentProvider()->isWorking();
+            if (true !== $isWorking) {
+                $message = Piwik::translate('UserCountry_GeolocationProviderBroken', '<strong>' . LocationProvider::getCurrentProvider()->getInfo()['title'] . '</strong>');
+
+                if ($isWorking) {
+                    $message .= '<br /><br />' . $isWorking;
+                }
+
+                $notification          = new Notification($message);
+                $notification->context = Notification::CONTEXT_ERROR;
+                $notification->raw     = true;
+                Notification\Manager::notify('UserCountry_GeoLocationProviderBroken', $notification);
+            }
+        }
+
         // check if there is a working provider (that isn't the default one)
         $isThereWorkingProvider = false;
         foreach ($allProviderInfo as $id => $provider) {
-            if ($id != DefaultProvider::ID
+            if ($id != DefaultProvider::ID && $id != DisabledProvider::ID
                 && $provider['status'] == LocationProvider::INSTALLED
             ) {
                 $isThereWorkingProvider = true;

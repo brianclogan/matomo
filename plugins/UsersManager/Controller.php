@@ -35,6 +35,8 @@ use Piwik\Validators\CharacterLength;
 use Piwik\Validators\NotEmpty;
 use Piwik\View;
 use Piwik\Session\SessionInitializer;
+use Piwik\Plugins\CoreAdminHome\Emails\TokenAuthCreatedEmail;
+use Piwik\Plugins\CoreAdminHome\Emails\TokenAuthDeletedEmail;
 
 class Controller extends ControllerAdmin
 {
@@ -64,11 +66,6 @@ class Controller extends ControllerAdmin
         $this->userModel = $userModel;
 
         parent::__construct();
-    }
-
-    static function orderByName($a, $b)
-    {
-        return strcmp($a['name'], $b['name']);
     }
 
     /**
@@ -108,7 +105,7 @@ class Controller extends ControllerAdmin
             ['key' => 'superuser', 'value' => Piwik::translate('Installation_SuperUser'), 'disabled' => true],
         ];
         $view->filterAccessLevels = [
-            ['key' => '', 'value' => Piwik::translate('UsersManager_ShowAll')],
+            ['key' => '', 'value' => ''], // show all
             ['key' => 'noaccess', 'value' => Piwik::translate('UsersManager_PrivNone')],
             ['key' => 'some', 'value' => Piwik::translate('UsersManager_AtLeastView')],
             ['key' => 'view', 'value' => Piwik::translate('UsersManager_PrivView')],
@@ -330,12 +327,29 @@ class Controller extends ControllerAdmin
                 $notification->context = Notification::CONTEXT_SUCCESS;
                 Notification\Manager::notify('successdeletetokens', $notification);
 
+                $container = StaticContainer::getContainer();
+                $email = $container->make(TokenAuthDeletedEmail::class, array(
+                    'login' => Piwik::getCurrentUserLogin(),
+                    'emailAddress' => Piwik::getCurrentUserEmail(),
+                    'tokenDescription' => '',
+                    'all' => true
+                ));
+                $email->safeSend();
             } elseif (is_numeric($idTokenAuth)) {
+                $description = $this->userModel->getUserTokenDescriptionByIdTokenAuth($idTokenAuth, Piwik::getCurrentUserLogin());
                 $this->userModel->deleteToken($idTokenAuth, Piwik::getCurrentUserLogin());
 
                 $notification = new Notification(Piwik::translate('UsersManager_TokenSuccessfullyDeleted'));
                 $notification->context = Notification::CONTEXT_SUCCESS;
                 Notification\Manager::notify('successdeletetoken', $notification);
+
+                $container = StaticContainer::getContainer();
+                $email = $container->make(TokenAuthDeletedEmail::class, array(
+                    'login' => Piwik::getCurrentUserLogin(),
+                    'emailAddress' => Piwik::getCurrentUserEmail(),
+                    'tokenDescription' => $description
+                ));
+                $email->safeSend();
             }
         }
 
@@ -366,6 +380,14 @@ class Controller extends ControllerAdmin
             $generatedToken = $this->userModel->generateRandomTokenAuth();
 
             $this->userModel->addTokenAuth($login, $generatedToken, $description, Date::now()->getDatetime());
+
+            $container = StaticContainer::getContainer();
+            $email = $container->make(TokenAuthCreatedEmail::class, array(
+                'login' => Piwik::getCurrentUserLogin(),
+                'emailAddress' => Piwik::getCurrentUserEmail(),
+                'tokenDescription' => $description
+            ));
+            $email->safeSend();
 
             return $this->renderTemplate('addNewTokenSuccess', array('generatedToken' => $generatedToken));
         } elseif (isset($_POST['description'])) {
@@ -447,7 +469,7 @@ class Controller extends ControllerAdmin
                 $anonymousDefaultReport = Piwik::getLoginPluginName();
             } else {
                 // we manually imitate what would happen, in case the anonymous user logs in
-                // and is redirected to the first website available to him in the list
+                // and is redirected to the first website available to them in the list
                 // @see getDefaultWebsiteId()
                 $anonymousDefaultReport = '1';
                 $anonymousDefaultSite = $anonymousSites[0]['key'];

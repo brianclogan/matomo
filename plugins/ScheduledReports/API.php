@@ -28,6 +28,7 @@ use Piwik\Plugins\LanguagesManager\LanguagesManager;
 use Piwik\Plugins\SegmentEditor\API as APISegmentEditor;
 use Piwik\Plugins\SitesManager\API as SitesManagerApi;
 use Piwik\ReportRenderer;
+use Piwik\Scheduler\RetryableException;
 use Piwik\Scheduler\Schedule\Schedule;
 use Piwik\Site;
 use Piwik\Translation\Translator;
@@ -37,7 +38,7 @@ use Psr\Log\LoggerInterface;
  * The ScheduledReports API lets you manage Scheduled Email reports, as well as generate, download or email any existing report.
  *
  * "generateReport" will generate the requested report (for a specific date range, website and in the requested language).
- * "sendEmailReport" will send the report by email to the recipients specified for this report.
+ * "sendReport" will send the report by email to the recipients specified for this report.
  *
  * You can also get the list of all existing reports via "getReports", create new reports via "addReport",
  * or manage existing reports with "updateReport" and "deleteReport".
@@ -608,9 +609,9 @@ class API extends \Piwik\Plugin\API
                         $report['period_param']
                     );
 
-            } catch (Exception $e) {
+            } catch (\Throwable $e) {
                 $this->enableSaveReportOnDisk = false;
-                throw $e;
+                throw new RetryableException($e->getMessage());
             }
 
             $this->enableSaveReportOnDisk = false;
@@ -663,7 +664,7 @@ class API extends \Piwik\Plugin\API
                     $reportSubject,
                     $reportTitle,
                     $additionalFiles,
-                    \Piwik\Period\Factory::build($report['period'], $date),
+                    \Piwik\Period\Factory::build($report['period_param'], $date),
                     $force
                 )
             );

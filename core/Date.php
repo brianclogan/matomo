@@ -41,7 +41,7 @@ class Date
 
     /** The default date time string format. */
     const DATE_TIME_FORMAT = 'Y-m-d H:i:s';
-    
+
     /** Timestamp when first website came online - Tue, 06 Aug 1991 00:00:00 GMT. */
     const FIRST_WEBSITE_TIMESTAMP = 681436800;
 
@@ -135,6 +135,12 @@ class Date
             $date = self::yesterday();
         } elseif ($dateString === 'yesterdaySameTime') {
             $date = self::yesterdaySameTime();
+        } else if (preg_match('/last[ -]?week/i', urldecode($dateString))) {
+            $date = self::lastWeek();
+        } else if (preg_match('/last[ -]?month/i', urldecode($dateString))) {
+            $date = self::lastMonth();
+        } else if (preg_match('/last[ -]?year/i', urldecode($dateString))) {
+            $date = self::lastYear();
         } elseif (!is_int($dateString)
             && (
                 // strtotime returns the timestamp for April 1st for a date like 2011-04-01,today
@@ -149,7 +155,7 @@ class Date
             $date = new Date($dateString);
         }
         $timestamp = $date->getTimestamp();
-    
+
         if ($timestamp < self::FIRST_WEBSITE_TIMESTAMP) {
             $dateOfFirstWebsite = new self(self::FIRST_WEBSITE_TIMESTAMP);
             $message = Piwik::translate('General_ExceptionInvalidDateBeforeFirstWebsite', array(
@@ -159,7 +165,7 @@ class Date
             ));
             throw new Exception($message . ": $dateString");
         }
-        
+
         if (empty($timezone)) {
             return $date;
         }
@@ -187,6 +193,12 @@ class Date
             return self::yesterdayInTimezone($timezone);
         } else if ($dateString === 'yesterdaySameTime') {
             return self::yesterdaySameTimeInTimezone($timezone);
+        } else if (preg_match('/last[ -]?week/i', urldecode($dateString))) {
+            return self::lastWeekInTimezone($timezone);
+        } else if (preg_match('/last[ -]?month/i', urldecode($dateString))) {
+            return self::lastMonthInTimezone($timezone);
+        } else if (preg_match('/last[ -]?year/i', urldecode($dateString))) {
+            return self::lastYearInTimezone($timezone);
         } else {
             throw new \Exception("Date::factoryInTimezone() should not be used with $dateString.");
         }
@@ -212,6 +224,21 @@ class Date
     private static function yesterdaySameTimeInTimezone($timezone)
     {
         return self::nowInTimezone($timezone)->subDay(1);
+    }
+
+    private static function lastWeekInTimezone($timezone)
+    {
+        return new Date(strtotime('-1week', self::todayInTimezone($timezone)->getTimestamp()));
+    }
+
+    private static function lastMonthInTimezone($timezone)
+    {
+        return new Date(strtotime('-1month', self::todayInTimezone($timezone)->getTimestamp()));
+    }
+
+    private static function lastYearInTimezone($timezone)
+    {
+        return new Date(strtotime('-1year', self::todayInTimezone($timezone)->getTimestamp()));
     }
 
     /**
@@ -586,7 +613,37 @@ class Date
      */
     public static function yesterdaySameTime()
     {
-        return new Date(strtotime("yesterday " . date('H:i:s'), self::getNowTimestamp()));
+        return new Date(strtotime("yesterday " . date('H:i:s', self::getNowTimestamp()), self::getNowTimestamp()));
+    }
+
+    /**
+     * Returns a date object set to the day a week ago at midnight in UTC.
+     *
+     * @return \Piwik\Date
+     */
+    public static function lastWeek()
+    {
+        return new Date(strtotime("-1week 00:00:00", self::getNowTimestamp()));
+    }
+
+    /**
+     * Returns a date object set to the day a month ago at midnight in UTC.
+     *
+     * @return \Piwik\Date
+     */
+    public static function lastMonth()
+    {
+        return new Date(strtotime("-1month 00:00:00", self::getNowTimestamp()));
+    }
+
+    /**
+     * Returns a date object set to the day a year ago at midnight in UTC.
+     *
+     * @return \Piwik\Date
+     */
+    public static function lastYear()
+    {
+        return new Date(strtotime("-1year 00:00:00", self::getNowTimestamp()));
     }
 
     /**
@@ -743,7 +800,7 @@ class Date
         }
 
         if ($ucfirst) {
-          $out = Common::mb_strtoupper(Common::mb_substr($out, 0, 1)) . Common::mb_substr($out, 1);
+          $out = mb_strtoupper(mb_substr($out, 0, 1)) . mb_substr($out, 1);
         }
 
         return $out;
@@ -925,6 +982,20 @@ class Date
     public function addDay($n)
     {
         $ts = strtotime("+$n day", $this->timestamp);
+        return new Date($ts, $this->timezone);
+    }
+
+    /**
+     * Adds `$n` Month to `$this` date and returns the result in a new Date.
+     * instance.
+     *
+     * @param int $n Number of days to add, must be > 0.
+     * @return \Piwik\Date
+     */
+
+    public function addMonth($n)
+    {
+        $ts = strtotime("+$n month", $this->timestamp);
         return new Date($ts, $this->timezone);
     }
 

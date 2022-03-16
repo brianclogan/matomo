@@ -28,6 +28,7 @@ use Piwik\Plugins\Marketplace\Controller as MarketplaceController;
 use Piwik\Plugins\Marketplace\Plugins;
 use Piwik\Settings\Storage\Backend\PluginSettingsTable;
 use Piwik\SettingsPiwik;
+use Piwik\SettingsServer;
 use Piwik\Translation\Translator;
 use Piwik\Url;
 use Piwik\Version;
@@ -76,8 +77,8 @@ class Controller extends Plugin\ControllerAdmin
      * @param Plugins $marketplacePlugins
      * @param PasswordVerifier $passwordVerify
      */
-    public function __construct(Translator $translator, 
-                                Plugin\SettingsProvider $settingsProvider, 
+    public function __construct(Translator $translator,
+                                Plugin\SettingsProvider $settingsProvider,
                                 PluginInstaller $pluginInstaller,
                                 PasswordVerifier $passwordVerify,
                                 $marketplacePlugins = null
@@ -167,12 +168,9 @@ class Controller extends Plugin\ControllerAdmin
             $nonce = Nonce::getNonce(static::ACTIVATE_NONCE);
         }
 
-        $superUsers = Request::processRequest('UsersManager.getUsersHavingSuperUserAccess', [], []);
-        $emails = implode(',', array_column($superUsers, 'email'));
-
         $view = new View('@CorePluginsAdmin/tagManagerTeaser');
         $this->setGeneralVariablesView($view);
-        $view->superUserEmails = $emails;
+        $view->contactEmail = implode(',', Piwik::getContactEmailAddresses());
         $view->nonce = $nonce;
         return $view->render();
     }
@@ -236,6 +234,7 @@ class Controller extends Plugin\ControllerAdmin
         }
 
         $view->isPluginUploadEnabled = CorePluginsAdmin::isPluginUploadEnabled();
+        $view->uploadLimit = SettingsServer::getPostMaxUploadSize();
         $view->installNonce = Nonce::getNonce(MarketplaceController::INSTALL_NONCE);
 
         return $view;
@@ -298,7 +297,7 @@ class Controller extends Plugin\ControllerAdmin
                 // If the plugin has been renamed, we do not show message to ask user to update plugin
                 list($pluginNameRenamed, $methodName) = Request::getRenamedModuleAndAction($pluginName, 'index');
                 if ($pluginName != $pluginNameRenamed) {
-                    $suffix = "You may uninstall the plugin or manually delete the files in piwik/plugins/$pluginName/";
+                    $suffix = "You may uninstall the plugin or manually delete the files in /path/to/matomo/plugins/$pluginName/";
                 }
 
                 if ($this->pluginManager->isPluginInFilesystem($pluginName)) {
@@ -348,7 +347,7 @@ class Controller extends Plugin\ControllerAdmin
         if (ob_get_length()) {
             ob_clean();
         }
-        
+
         $this->tryToRepairPiwik();
 
         if (empty($lastError) && defined('PIWIK_TEST_MODE') && PIWIK_TEST_MODE) {
@@ -401,7 +400,7 @@ class Controller extends Plugin\ControllerAdmin
         $view->deactivateNonce = Nonce::getNonce(static::DEACTIVATE_NONCE);
         $view->deactivateIAmSuperUserSalt = Common::getRequestVar('i_am_super_user', '', 'string');
         $view->uninstallNonce  = Nonce::getNonce(static::UNINSTALL_NONCE);
-        $view->emailSuperUser  = implode(',', Piwik::getAllSuperUserAccessEmailAddresses());
+        $view->contactEmail  = implode(',', Piwik::getContactEmailAddresses());
         $view->piwikVersion    = Version::VERSION;
         $view->showVersion     = !Common::getRequestVar('tests_hide_piwik_version', 0);
         $view->pluginCausesIssue = '';
@@ -423,14 +422,28 @@ class Controller extends Plugin\ControllerAdmin
 
     public function activate($redirectAfter = true)
     {
-        $pluginName = $this->initPluginModification(static::ACTIVATE_NONCE);
         $this->dieIfPluginsAdminIsDisabled();
+
+        $params = [
+            'module' => 'CorePluginsAdmin',
+            'action' => 'activate',
+            'pluginName' => Common::getRequestVar('pluginName'),
+            'nonce' => Common::getRequestVar('nonce'),
+            'redirectTo' => Common::getRequestVar('redirectTo', '', 'string'),
+            'referrer' => urlencode(Url::getReferrer()),
+        ];
+
+        if (!$this->passwordVerify->requirePasswordVerifiedRecently($params)) {
+            return;
+        }
+
+        $pluginName = $this->initPluginModification(static::ACTIVATE_NONCE);
 
         $this->pluginManager->activatePlugin($pluginName);
 
         if ($redirectAfter) {
             $message = $this->translator->translate('CorePluginsAdmin_SuccessfullyActicated', array($pluginName));
-            
+
             if ($this->settingsProvider->getSystemSettings($pluginName)) {
                 $target   = sprintf('<a href="index.php%s#%s">',
                     Url::getCurrentQueryStringWithParametersModified(array('module' => 'CoreAdminHome', 'action' => 'generalSettings')),
@@ -467,6 +480,18 @@ class Controller extends Plugin\ControllerAdmin
 
     public function deactivate($redirectAfter = true)
     {
+        $params = [
+            'module' => 'CorePluginsAdmin',
+            'action' => 'deactivate',
+            'pluginName' => Common::getRequestVar('pluginName'),
+            'nonce' => Common::getRequestVar('nonce'),
+            'redirectTo' => Common::getRequestVar('redirectTo'),
+            'referrer' => urlencode(Url::getReferrer()),
+        ];
+        if (!$this->passwordVerify->requirePasswordVerifiedRecently($params)) {
+            return;
+        }
+
         if($this->isAllowedToTroubleshootAsSuperUser()) {
             Access::doAsSuperUser(function() use ($redirectAfter) {
                 $this->doDeactivatePlugin($redirectAfter);
@@ -478,8 +503,20 @@ class Controller extends Plugin\ControllerAdmin
 
     public function uninstall($redirectAfter = true)
     {
-        $pluginName = $this->initPluginModification(static::UNINSTALL_NONCE);
         $this->dieIfPluginsAdminIsDisabled();
+
+        $params = [
+            'module' => 'CorePluginsAdmin',
+            'action' => 'uninstall',
+            'pluginName' => Common::getRequestVar('pluginName'),
+            'nonce' => Common::getRequestVar('nonce'),
+            'referrer' => urlencode(Url::getReferrer()),
+        ];
+        if (!$this->passwordVerify->requirePasswordVerifiedRecently($params)) {
+            return;
+        }
+
+        $pluginName = $this->initPluginModification(static::UNINSTALL_NONCE);
 
         $uninstalled = $this->pluginManager->uninstallPlugin($pluginName);
 
@@ -505,7 +542,7 @@ class Controller extends Plugin\ControllerAdmin
     public function showLicense()
     {
         Piwik::checkUserHasSomeViewAccess();
-        
+
         $pluginName = Common::getRequestVar('pluginName', null, 'string');
 
         if (!Plugin\Manager::getInstance()->isPluginInFilesystem($pluginName)) {
@@ -550,7 +587,17 @@ class Controller extends Plugin\ControllerAdmin
 
     protected function redirectAfterModification($redirectAfter)
     {
-        if ($redirectAfter) {
+        if (!$redirectAfter) {
+            return;
+        }
+
+        $referrer = Common::getRequestVar('referrer', false);
+        $referrer = Common::unsanitizeInputValue($referrer);
+        if (!empty($referrer)
+            && Url::isLocalUrl($referrer)
+        ) {
+            Url::redirectToUrl($referrer);
+        } else {
             Url::redirectToReferrer();
         }
     }

@@ -90,7 +90,9 @@ $( document ).ready(function() {
         edge: 'right'
     });
 
-    $('select').material_select();
+    $('.navbar.collapsible').collapsible();
+
+    $('select').not('.ui-datepicker select').material_select();
 
     piwikHelper.registerShortcut('?', _pk_translate('CoreHome_ShortcutHelp') , function (event) {
         // don't open if an modal is already shown

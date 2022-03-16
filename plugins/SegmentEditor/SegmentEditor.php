@@ -16,6 +16,7 @@ use Piwik\CacheId;
 use Piwik\Common;
 use Piwik\Config;
 use Piwik\Container\StaticContainer;
+use Piwik\CronArchive\SegmentArchiving;
 use Piwik\DataAccess\ArchiveSelector;
 use Piwik\Notification;
 use Piwik\Piwik;
@@ -28,6 +29,8 @@ use Piwik\Site;
 use Piwik\Period;
 use Piwik\Url;
 use Piwik\View;
+use Piwik\Plugins\UsersManager\API as UsersManagerApi;
+use Piwik\Date;
 
 /**
  */
@@ -51,7 +54,8 @@ class SegmentEditor extends \Piwik\Plugin
             'Visualization.onNoData'                     => 'onNoData',
             'Archive.noArchivedData'                     => 'onNoArchiveData',
             'Db.getTablesInstalled'                      => 'getTablesInstalled',
-            'SitesManager.deleteSite.end'                => 'onDeleteSite'
+            'SitesManager.deleteSite.end'                => 'onDeleteSite',
+            'UsersManager.deleteUser'                    => 'onDeleteUser',
         );
     }
 
@@ -122,7 +126,20 @@ class SegmentEditor extends \Piwik\Plugin
     public function getKnownSegmentsToArchiveForSite(&$segments, $idSite)
     {
         $model = new Model();
-        $segmentToAutoArchive = $model->getSegmentsToAutoArchive($idSite);
+        $segmentToAutoArchive = $model->getAllSegmentsAndIgnoreVisibility();
+
+        $forceAutoArchive = SegmentArchiving::getShouldForceArchiveAllSegments();
+        foreach ($segmentToAutoArchive as $index => $segmentInfo) {
+            if (!SegmentArchiving::isSegmentForSite($segmentInfo, $idSite)) {
+                unset($segmentToAutoArchive[$index]);
+            }
+
+            if (!$forceAutoArchive
+                && empty($segmentInfo['auto_archive'])
+            ) {
+                unset($segmentToAutoArchive[$index]);
+            }
+        }
 
         foreach ($segmentToAutoArchive as $segmentInfo) {
             $segments[] = $segmentInfo['definition'];
@@ -235,7 +252,7 @@ class SegmentEditor extends \Piwik\Plugin
         // check if segment archive does not exist
         $processorParams = new \Piwik\ArchiveProcessor\Parameters(new Site($idSite), $period, $segment);
         $archiveIdAndStats = ArchiveSelector::getArchiveIdAndVisits($processorParams, null);
-        if (!empty($archiveIdAndStats[0])) {
+        if (!empty($archiveIdAndStats[0]) || !empty($archiveIdAndStats[1])) {
             return null;
         }
 
@@ -299,6 +316,16 @@ class SegmentEditor extends \Piwik\Plugin
         return Config::getInstance()->General['allow_adding_segments_for_all_websites'] == 1;
     }
 
+    /**
+     * Returns whether create realtime segments is enabled or not.
+     *
+     * @return bool
+     */
+    public static function isCreateRealtimeSegmentsEnabled(): bool
+    {
+        return Config::getInstance()->General['enable_create_realtime_segments'] == 1;
+    }
+
     public function getClientSideTranslationKeys(&$translationKeys)
     {
         $translationKeys[] = 'SegmentEditor_CustomSegment';
@@ -343,5 +370,39 @@ class SegmentEditor extends \Piwik\Plugin
             $cache->save($cacheKey, $segments);
         }
         return $segments;
+    }
+
+    public function onDeleteUser($userLogin)
+    {
+        $this->transferAllUserSegmentsToSuperUser($userLogin);
+    }
+
+    public function transferAllUserSegmentsToSuperUser($userLogin)
+    {
+        $model = new Model();
+        $updatedAt = Date::factory('now')->toString('Y-m-d H:i:s');
+
+        $superUsers = UsersManagerApi::getInstance()->getUsersHavingSuperUserAccess();
+        $superUserLogin = false;
+
+        foreach ($superUsers as $superUser) {
+            if ($superUser['login'] !== $userLogin) {
+                $superUserLogin = $superUser['login'];
+                break;
+            }
+        }
+
+        if (!$superUserLogin) {
+            return;
+        }
+
+        foreach ($model->getAllSegments($userLogin) as $segment) {
+            if ($segment['login'] === $userLogin) {
+                $model->updateSegment($segment['idsegment'], array(
+                    'login' => $superUserLogin,
+                    'ts_last_edit' => $updatedAt
+                ));
+            }
+        }
     }
 }

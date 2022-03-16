@@ -18,6 +18,7 @@ use Piwik\Menu\MenuTop;
 use Piwik\Piwik;
 use Piwik\Plugin;
 use Piwik\Plugin\ControllerAdmin;
+use Piwik\Changes\UserChanges;
 use Piwik\Plugins\CorePluginsAdmin\CorePluginsAdmin;
 use Piwik\Plugins\Marketplace\Marketplace;
 use Piwik\Plugins\CustomVariables\CustomVariables;
@@ -30,6 +31,7 @@ use Piwik\Url;
 use Piwik\View;
 use Piwik\Widget\WidgetsList;
 use Piwik\SettingsPiwik;
+use Piwik\Plugins\UsersManager\Model as UsersModel;
 
 class Controller extends ControllerAdmin
 {
@@ -56,6 +58,10 @@ class Controller extends ControllerAdmin
         $isMarketplaceEnabled = Marketplace::isMarketplaceEnabled();
         $isFeedbackEnabled = Plugin\Manager::getInstance()->isPluginLoaded('Feedback');
         $widgetsList = WidgetsList::get();
+
+        if ($isInternetEnabled && $isMarketplaceEnabled) {
+            $this->securityPolicy->addPolicy('img-src', '*.matomo.org');
+        }
 
         $hasDonateForm = $widgetsList->isDefined('CoreHome', 'getDonateForm');
         $hasPiwikBlog = $widgetsList->isDefined('RssWidget', 'rssPiwik');
@@ -121,9 +127,10 @@ class Controller extends ControllerAdmin
             'Cram-md5' => 'Cram-md5',
         );
         $view->mailEncryptions = array(
-            '' => '',
+            '' => 'auto',
             'ssl' => 'SSL',
-            'tls' => 'TLS'
+            'tls' => 'TLS',
+            'none' => 'none',
         );
         $mail = new Mail();
         $view->mailHost = $mail->getMailHost();
@@ -155,8 +162,8 @@ class Controller extends ControllerAdmin
             $mail['username'] = Common::unsanitizeInputValue(Common::getRequestVar('mailUsername', ''));
             $mail['password'] = Common::unsanitizeInputValue(Common::getRequestVar('mailPassword', ''));
 
-            if (!array_key_exists('mailPassword', $_POST)) {
-                // use old password if it wasn't set in request
+            if (!array_key_exists('mailPassword', $_POST) && Config::getInstance()->mail['host'] === $mail['host']) {
+                // use old password if it wasn't set in request (and the host wasn't changed)
                 $mail['password'] = Config::getInstance()->mail['password'];
             }
 
@@ -225,6 +232,10 @@ class Controller extends ControllerAdmin
         }
 
         $view->defaultSite = array('id' => $view->idSite, 'name' => $view->defaultReportSiteName);
+        $view->defaultSiteDecoded = [
+            'id' => $view->idSite,
+            'name' => Common::unsanitizeInputValue($view->defaultReportSiteName),
+        ];
 
         $allUrls = APISitesManager::getInstance()->getSiteUrlsFromId($view->idSite);
         if (isset($allUrls[1])) {
@@ -280,6 +291,7 @@ class Controller extends ControllerAdmin
     {
         // Whether to display or not the general settings (cron, beta, smtp)
         $view->isGeneralSettingsAdminEnabled = self::isGeneralSettingsAdminEnabled();
+        $view->isMultiServerEnvironment = SettingsPiwik::isMultiServerEnvironment();
         $view->isPluginsAdminEnabled = CorePluginsAdmin::isPluginsAdminEnabled();
         if ($view->isGeneralSettingsAdminEnabled) {
             $this->displayWarningIfConfigFileNotWritable();
@@ -297,11 +309,31 @@ class Controller extends ControllerAdmin
         $view->todayArchiveTimeToLive = $todayArchiveTimeToLive;
         $view->todayArchiveTimeToLiveDefault = Rules::getTodayArchiveTimeToLiveDefault();
         $view->enableBrowserTriggerArchiving = $enableBrowserTriggerArchiving;
+        $view->showSegmentArchiveTriggerInfo = Rules::isBrowserArchivingAvailableForSegments();
 
         $mail = Config::getInstance()->mail;
         $mail['noreply_email_address'] = Config::getInstance()->General['noreply_email_address'];
         $mail['noreply_email_name'] = Config::getInstance()->General['noreply_email_name'];
         $view->mail = $mail;
+    }
+
+    /**
+     * Show the what is new changes list
+     */
+    public function whatIsNew()
+    {
+        Piwik::checkUserHasSomeViewAccess();
+        Piwik::checkUserIsNotAnonymous();
+
+        $model = new UsersModel();
+        $user = $model->getUser(Piwik::getCurrentUserLogin());
+        if (is_array($user)) {
+            $userChanges = new UserChanges($user);
+            $changes = $userChanges->getChanges();
+            return $this->renderTemplate('whatIsNew', ['changes' => $changes]);
+        } else {
+            throw new \Exception('Unable to getUser() when attempting to show whatIsNew');
+        }
     }
 
 }

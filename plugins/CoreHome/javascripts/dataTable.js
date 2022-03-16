@@ -39,8 +39,9 @@ function DataTable(element) {
 
 DataTable._footerIconHandlers = {};
 
-DataTable.initNewDataTables = function () {
-    $('div.dataTable').each(function () {
+DataTable.initNewDataTables = function (reportId) {
+    var selector = typeof reportId === 'string' ? '[data-report='+JSON.stringify(reportId)+']' : 'div.dataTable';
+    $(selector).each(function () {
         if (!$(this).attr('id')) {
             var tableType = $(this).attr('data-table-type') || 'DataTable',
                 klass = require('piwik/UI')[tableType] || require(tableType);
@@ -111,9 +112,22 @@ $.extend(DataTable.prototype, UIControl.prototype, {
         this.isEmpty = $('.pk-emptyDataTable', domElem).length > 0;
         this.bindEventsAndApplyStyle(domElem);
         this._init(domElem);
+        this.enableStickHead(domElem);
         this.initialized = true;
+
     },
 
+    enableStickHead: function (domElem) {
+      // Bind to the resize event of the window object
+      $(window).on('resize', function () {
+        var tableScrollerWidth = $(domElem).find('.dataTableScroller').width();
+        var tableWidth = $(domElem).find('table').width();
+        if (tableScrollerWidth < tableWidth) {
+          $('.dataTableScroller').css('overflow-x', 'scroll');
+        }
+        // Invoke the resize event immediately
+      }).resize();
+    },
     //function triggered when user click on column sort
     onClickSort: function (domElem) {
         var self = this;
@@ -237,7 +251,7 @@ $.extend(DataTable.prototype, UIControl.prototype, {
             delete self.param.filter_offset;
             delete self.param.filter_limit;
         }
-	    
+
         delete self.param.showtitle;
 
         var container = $('#' + self.workingDivId + ' .piwik-graph');
@@ -363,7 +377,7 @@ $.extend(DataTable.prototype, UIControl.prototype, {
         self.handleSearchBox(domElem);
         self.handleColumnDocumentation(domElem);
         self.handleRowActions(domElem);
-		self.handleCellTooltips(domElem);
+        self.handleCellTooltips(domElem);
         self.handleRelatedReports(domElem);
         self.handleTriggeredEvents(domElem);
         self.handleColumnHighlighting(domElem);
@@ -412,14 +426,6 @@ $.extend(DataTable.prototype, UIControl.prototype, {
             $domElem.width('');
             parentDataTable.width('');
 
-            var $table = $('table.dataTable', domElem);
-            if ($table.closest('.reportsByDimensionView').length) {
-                var requiredTableWidth = $table.width() - 40; // 40 is padding on card content
-                if (domElem.width() > requiredTableWidth) {
-                    domElem.css('max-width', requiredTableWidth + 'px');
-                }
-            }
-
             var tableWidth = getTableWidth(domElem);
 
             if (tableWidth <= maxTableWidth) {
@@ -432,9 +438,9 @@ $.extend(DataTable.prototype, UIControl.prototype, {
 
             if (dataTableInCard && dataTableInCard.length) {
                 // makes sure card has the same width
-                dataTableInCard.width(maxTableWidth);
+                dataTableInCard.css('max-width', maxTableWidth);
             } else {
-                $domElem.width(maxTableWidth);
+                $domElem.css('max-width', maxTableWidth);
             }
 
             if (parentDataTable && parentDataTable.length) {
@@ -442,9 +448,9 @@ $.extend(DataTable.prototype, UIControl.prototype, {
                 // applied in getLabelWidth() since they will have the same size.
 
                 if (dataTableInCard.length) {
-                    dataTableInCard.width(maxTableWidth);
+                    dataTableInCard.css('max-width', maxTableWidth);
                 } else {
-                    parentDataTable.width(maxTableWidth);
+                    parentDataTable.css('max-width', maxTableWidth);
                 }
             }
         }
@@ -479,8 +485,14 @@ $.extend(DataTable.prototype, UIControl.prototype, {
             ) {
                 labelWidth = maxLabelWidth; // prevent for instance table in Actions-Pages is not too wide
             }
+            var allColumns = $('tr:nth-child(1) td.label', domElem).length;
+            var firstTableColumn = $('table:first tbody>tr:first td.label', domElem).length;
+            var amount = allColumns;
+            if (allColumns > 2 * firstTableColumn) {
+                amount = 2 * firstTableColumn;
+            }
 
-            return parseInt(labelWidth / $('tr:nth-child(1) td.label', domElem).length, 10);
+            return parseInt(labelWidth / amount, 10);
         }
 
         function getLabelColumnMinWidth(domElem)
@@ -551,7 +563,6 @@ $.extend(DataTable.prototype, UIControl.prototype, {
             var labelColumnMinWidth = getLabelColumnMinWidth(domElem);
             var labelColumnMaxWidth = getLabelColumnMaxWidth(domElem);
             var labelColumnWidth    = getLabelWidth(domElem, tableWidth, 125, 440);
-
             if (labelColumnMinWidth > labelColumnWidth) {
                 labelColumnWidth = labelColumnMinWidth;
             }
@@ -566,8 +577,6 @@ $.extend(DataTable.prototype, UIControl.prototype, {
             }
 
             $('td span.label', domElem).each(function () { self.tooltip($(this)); });
-
-            self.overflowContentIfNeeded(domElem);
         }
 
         if (!self.windowResizeTableAttached) {
@@ -605,51 +614,6 @@ $.extend(DataTable.prototype, UIControl.prototype, {
         }
     },
 
-    overflowContentIfNeeded: function (domElem, showScrollbarIfMoreThanThisPxOverlap) {
-
-        var $domNodeToSetOverflow;
-
-        if (this.isDashboard()) {
-            $domNodeToSetOverflow = domElem.parents('.widgetContent').first();
-        } else if (this.isWidgetized()) {
-            $domNodeToSetOverflow = domElem.parents('.widget').first();
-        } else {
-            var inReportPage = domElem.parents('.theWidgetContent').first();
-            var displayedAsCard = inReportPage.find('> .card > .card-content');
-            if (displayedAsCard.length) {
-                $domNodeToSetOverflow = displayedAsCard.first();
-            } else {
-                $domNodeToSetOverflow = inReportPage;
-            }
-        }
-
-        if (!$domNodeToSetOverflow || !$domNodeToSetOverflow.length) {
-            return;
-        }
-
-        // show scrollbars for a report if table does not fit into widget/report page. This happens especially
-        // with AllTableColumn visualization
-        var tableWidth = domElem.width();
-        var dataTableWidth = domElem.find('table.dataTable').width();
-        var widthToCheckElementIsActuallyThere = 10;
-
-        // in dataTables there is a marginLeft -20px and marginRight -20px applied and jquery seems to not consider
-        // this. This results in the actual table always being 40px wider than the domElem. We add another 11px
-        // just in case some calculations are not 100% right
-        var normalOverlapBecauseTableIsFullWidth = showScrollbarIfMoreThanThisPxOverlap || 51;
-        if (tableWidth > widthToCheckElementIsActuallyThere && dataTableWidth > widthToCheckElementIsActuallyThere
-            && (dataTableWidth - tableWidth) > normalOverlapBecauseTableIsFullWidth) {
-            // when after adjusting the columns the widget/report is still wider than the actual dataTable, we need
-            // to make it scrollable otherwise reports overlap each other
-
-            $domNodeToSetOverflow.css('overflow-y', 'scroll');
-
-        } else if ($domNodeToSetOverflow.css('overflow-y') === 'scroll') {
-            // undo the overflow as apparently not needed anymore?
-            $domNodeToSetOverflow.css('overflow-y', 'auto');
-        }
-    },
-
     handleLimit: function (domElem) {
         var tableRowLimits = this.props.datatable_row_limits || piwik.config.datatable_row_limits,
         evolutionLimits =
@@ -668,8 +632,6 @@ $.extend(DataTable.prototype, UIControl.prototype, {
 
         var self = this;
         if (typeof self.parentId != "undefined" && self.parentId != '') {
-            // no limit selector for subtables
-            $('.limitSelection', domElem).remove();
             return;
         }
 
@@ -767,7 +729,16 @@ $.extend(DataTable.prototype, UIControl.prototype, {
                 return;
             }
 
+            var piwikPeriods = piwikHelper.getAngularDependency('piwikPeriods');
+            var currentPeriod = piwikPeriods.parse(self.param['period'], self.param['date']);
+            var endDateOfPeriod = currentPeriod.getDateRange()[1];
+            endDateOfPeriod = piwikPeriods.format(endDateOfPeriod);
+
+            var newPeriod = piwikPeriods.get(period);
+            $('.periodName', domElem).html(newPeriod.getDisplayText());
+
             self.param['period'] = period;
+            self.param['date'] = endDateOfPeriod;
             self.reloadAjaxDataTable();
         });
     },
@@ -877,7 +848,7 @@ $.extend(DataTable.prototype, UIControl.prototype, {
             $searchAction.find('.icon-search').off('click', searchForPattern);
 
             $searchInput.val('');
-            
+
             if (currentPattern) {
                 // we search for this pattern so if there was a search term before, and someone closes the search
                 // we show all results again
@@ -1017,7 +988,7 @@ $.extend(DataTable.prototype, UIControl.prototype, {
 
     handleEvolutionAnnotations: function (domElem) {
         var self = this;
-        if (self.param.viewDataTable == 'graphEvolution'
+        if ((self.param.viewDataTable === 'graphEvolution' || self.param.viewDataTable === 'graphStackedBarEvolution')
             && $('.annotationView', domElem).length > 0) {
             // get dates w/ annotations across evolution period (have to do it through AJAX since we
             // determine placement using the elements created by jqplot)
@@ -1465,34 +1436,9 @@ $.extend(DataTable.prototype, UIControl.prototype, {
     },
 
     handleColumnHighlighting: function (domElem) {
-        var maxWidth = {};
+
         var currentNthChild = null;
         var self = this;
-
-        // give all values consistent width
-        $('td', domElem).each(function () {
-            var $this = $(this);
-            if ($this.hasClass('label')) {
-                return;
-            }
-
-            var table    = $this.closest('table');
-            var nthChild = $this.parent('tr').children().index($(this)) + 1;
-            var rows     = $('> tbody > tr', table);
-
-            if (!maxWidth[nthChild]) {
-                maxWidth[nthChild] = 0;
-                rows.find("td:nth-child(" + (nthChild) + ").column .value").add('> thead th:not(.label) .thDIV', table).each(function (index, element) {
-                    var width = $(element).width();
-                    if (width > maxWidth[nthChild]) {
-                        maxWidth[nthChild] = width;
-                    }
-                });
-                rows.find("td:nth-child(" + (nthChild) + ").column .value").each(function (index, element) {
-                    $(element).closest('td').css({width: maxWidth[nthChild]});
-                });
-            }
-        });
 
         // highlight all columns on hover
         $(domElem).on('mouseenter', 'td', function (e) {
@@ -1636,7 +1582,7 @@ $.extend(DataTable.prototype, UIControl.prototype, {
         $('th:has(.columnDocumentation)', domElem).each(function () {
             var th = $(this);
             var tooltip = th.find('.columnDocumentation');
-            
+
             tooltip.next().hover(function () {
                 var left = (-1 * tooltip.outerWidth() / 2) + th.width() / 2;
                 var top = -1 * tooltip.outerHeight();
@@ -1667,10 +1613,12 @@ $.extend(DataTable.prototype, UIControl.prototype, {
                     top: 0
                 });
 
+                $(".dataTable thead").addClass('with-z-index');
                 tooltip.stop(true, true).fadeIn(250);
             },
             function () {
-                $(this).prev().stop(true, true).fadeOut(400);
+              $(this).prev().stop(true, true).fadeOut(250);
+              $(".dataTable thead").removeClass('with-z-index');
             });
         });
     },
@@ -1739,7 +1687,18 @@ $.extend(DataTable.prototype, UIControl.prototype, {
                 if (scope) {
                     var $doc = domElem.find('.reportDocumentation');
                     if ($doc.length) {
+                        // hackish solution to get binded html of p tag within the help node
+                        // at this point the ng-bind-html is not yet converted into html when report is not
+                        // initially loaded. Using $compile doesn't work. So get and set it manually
+                        var helpParagraph = $('p[ng-bind-html]', $doc);
+
+                        if (helpParagraph.length) {
+                            var $parse = angular.element(document).injector().get('$parse');
+                            helpParagraph.html($parse(helpParagraph.attr('ng-bind-html')));
+                        }
+
                         scope.inlineHelp = $.trim($doc.html());
+
                     }
                     scope.featureName = $.trim(relatedReportName);
                     setTimeout(function (){
@@ -1839,7 +1798,7 @@ $.extend(DataTable.prototype, UIControl.prototype, {
         if (!trs || !trs.length || !trs[0]) {
             return;
         }
-        var parent = $(trs[0]).parents('table');
+        var parent = $(trs[0]).closest('table');
 
         var self = this;
 
@@ -1977,17 +1936,13 @@ $.extend(DataTable.prototype, UIControl.prototype, {
                     // ensure the tooltips of parent elements are hidden when the action tooltip is shown
                     // otherwise it can happen that tooltips for subtable rows are shown as well.
                     open: function() {
-                        var tooltip = $(this).parents().filter(function() {
-                            return jQuery.hasData(this) && $(this).data('ui-tooltip');
-                        }).tooltip('instance');
+                        var tooltip = $(this).parents('.matomo-widget').tooltip('instance');
                         if (tooltip) {
                             tooltip.disable();
                         }
                     },
                     close: function() {
-                        var tooltip = $(this).parents().filter(function() {
-                            return jQuery.hasData(this) && $(this).data('ui-tooltip');
-                        }).tooltip('instance');
+                        var tooltip = $(this).parents('.matomo-widget').tooltip('instance');
                         if (tooltip) {
                             tooltip.enable();
                         }

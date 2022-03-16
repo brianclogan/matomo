@@ -16,11 +16,14 @@
         "DefaultLocationProviderDesc1": "The default location provider guesses a visitor's country based on the language they use.",
         "DefaultLocationProviderDesc2": "This is not very accurate, so %1$swe recommend installing and using %2$sa geolocation database%3$s.%4$s",
         "DefaultLocationProviderExplanation": "You are using the default location provider, which means Matomo will guess the visitor's location based on the language they use. %1$sRead this%2$s to learn how to setup more accurate geolocation.",
+        "DisabledLocationProvider": "Disables the geolocation.",
         "DistinctCountries": "%s distinct countries",
         "FromDifferentCities": "different cities",
         "GeoIPDocumentationSuffix": "In order to see data for this report, you must setup GeoIP in the Geolocation admin tab. The commercial %1$sMaxmind%2$s GeoIP databases are more accurate than the free ones. To see how accurate they are, click %3$shere%4$s.",
         "Geolocation": "Geolocation",
         "GeolocationPageDesc": "On this page you can change how Matomo determines visitor locations.",
+        "GeolocationProviderBroken": "The configured geolocation provider %1$s is broken. Please fix the provider or configure another one to get geolocation working again.",
+        "GeolocationProviderUnavailable": "The configured geolocation provider %1$s is not available anymore, please configure another one.",
         "getCityDocumentation": "This report shows the cities your visitors were in when they accessed your website.",
         "getContinentDocumentation": "This report shows which continent your visitors were in when they accessed your website.",
         "getCountryDocumentation": "This report shows which country your visitors were in when they accessed your website.",
@@ -42,6 +45,7 @@
         "ToGeolocateOldVisits": "To get location data for your old visits, use the script described %1$shere%2$s.",
         "WidgetLocation": "Visitor Location",
         "GeoIpDbIpAccuracyNote": "Note: the DBIP databases are free and can be downloaded automatically, but geolocation results (specifically city results) are not as accurate as MaxMind's. MaxMind, however, requires that you create an account even for the free database. If you want to use MaxMind's geolocation database, you can start the process %1$shere%2$s",
-        "MaxMindLinkExplanation": "If you are using MaxMind's geolocation databases and you do not already know how to generate your download URL, %1$sclick here to learn how%2$s."
+        "MaxMindLinkExplanation": "If you are using MaxMind's geolocation databases and you do not already know how to generate your download URL, %1$sclick here to learn how%2$s.",
+        "LocationsSubcategoryHelp": "The Locations section is the best way to find out where people are when they visit your site. It reveals the countries, continents, regions, cities that you visitors come from, in tables and map form. Additionally, you can see what language their browser is set to, helping identify international visitors in alternative locations."
     }
 }

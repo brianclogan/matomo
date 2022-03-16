@@ -14,6 +14,7 @@ use Piwik\Archive\DataTableFactory;
 use Piwik\Common;
 use Piwik\Container\StaticContainer;
 use Piwik\DataTable\Map;
+use Piwik\Exception\InvalidDimensionException;
 use Piwik\Filesystem;
 use Piwik\Period;
 use Piwik\Piwik;
@@ -237,8 +238,18 @@ class API extends \Piwik\Plugin\API
 
             $ordinateColumns = array();
             if (empty($columns)) {
-                $ordinateColumns[] =
-                    empty($reportColumns[self::DEFAULT_ORDINATE_METRIC]) ? key($metadata['metrics']) : self::DEFAULT_ORDINATE_METRIC;
+                if (!empty($reportColumns[self::DEFAULT_ORDINATE_METRIC])) {
+                    $ordinateColumns[] = self::DEFAULT_ORDINATE_METRIC;
+                } else if (!empty($metadata['metrics'])) {
+                    $ordinateColumns[] = key($metadata['metrics']);
+                } else {
+                    throw new Exception(
+                      Piwik::translate(
+                        'ImageGraph_ColumnOrdinateMissing',
+                        array(self::DEFAULT_ORDINATE_METRIC, implode(',', array_keys($reportColumns)))
+                      )
+                    );
+                }
             } else {
                 $ordinateColumns = explode(',', $columns);
                 foreach ($ordinateColumns as $column) {
@@ -493,6 +504,8 @@ class API extends \Piwik\Plugin\API
 
             // render graph
             $graph->renderGraph();
+        } catch (InvalidDimensionException $e) {
+            throw $e;
         } catch (\Exception $e) {
 
             $graph = new \Piwik\Plugins\ImageGraph\StaticGraph\Exception();

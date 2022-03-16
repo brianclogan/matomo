@@ -11,6 +11,7 @@ namespace Piwik;
 use Exception;
 use Piwik\Container\StaticContainer;
 use Piwik\Exception\MissingFilePermissionException;
+use Piwik\Plugins\Overlay\Overlay;
 use Piwik\Session\SaveHandler\DbTable;
 use Psr\Log\LoggerInterface;
 use Zend_Session;
@@ -100,13 +101,7 @@ class Session extends Zend_Session
                 @ini_set('session.serialize_handler', 'php_serialize');
             }
 
-            $config = array(
-                'name'           => Common::prefixTable(DbTable::TABLE_NAME),
-                'primary'        => 'id',
-                'modifiedColumn' => 'modified',
-                'dataColumn'     => 'data',
-                'lifetimeColumn' => 'lifetime',
-            );
+            $config = self::getDbTableConfig();
 
             $saveHandler = new DbTable($config);
             if ($saveHandler) {
@@ -176,10 +171,11 @@ class Session extends Zend_Session
 
         $module = Piwik::getModule();
         $action = Piwik::getAction();
+        $method = Common::getRequestVar('method', '', 'string');
+        $referer = Url::getReferrer();
 
         $isOptOutRequest = $module == 'CoreAdminHome' && $action == 'optOut';
-        $isOverlay = $module == 'Overlay';
-        $shouldUseNone = !empty($general['enable_framed_pages']) || $isOptOutRequest || $isOverlay;
+        $shouldUseNone = !empty($general['enable_framed_pages']) || $isOptOutRequest || Overlay::isOverlayRequest($module, $action, $method, $referer);
 
         if ($shouldUseNone && ProxyHttp::isHttps()) {
             return 'None';
@@ -225,5 +221,16 @@ class Session extends Zend_Session
 
         Common::sendHeader($headerStr);
         return $headerStr;
+    }
+
+    public static function getDbTableConfig()
+    {
+        return array(
+            'name'           => Common::prefixTable(DbTable::TABLE_NAME),
+            'primary'        => 'id',
+            'modifiedColumn' => 'modified',
+            'dataColumn'     => 'data',
+            'lifetimeColumn' => 'lifetime',
+        );
     }
 }

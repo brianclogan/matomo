@@ -1,4 +1,4 @@
-<?php declare(strict_types=1);
+<?php
 
 /**
  * Device Detector - The Universal Device Detection library for parsing User Agents
@@ -7,6 +7,8 @@
  *
  * @license http://www.gnu.org/licenses/lgpl.html LGPL v3 or later
  */
+
+declare(strict_types=1);
 
 namespace DeviceDetector;
 
@@ -29,6 +31,7 @@ use DeviceDetector\Parser\Device\HbbTv;
 use DeviceDetector\Parser\Device\Mobile;
 use DeviceDetector\Parser\Device\Notebook;
 use DeviceDetector\Parser\Device\PortableMediaPlayer;
+use DeviceDetector\Parser\Device\ShellTv;
 use DeviceDetector\Parser\OperatingSystem;
 use DeviceDetector\Parser\VendorFragment;
 use DeviceDetector\Yaml\ParserInterface as YamlParser;
@@ -47,7 +50,10 @@ use DeviceDetector\Yaml\Spyc;
  * @method bool isCarBrowser()
  * @method bool isTV()
  * @method bool isSmartDisplay()
+ * @method bool isSmartSpeaker()
  * @method bool isCamera()
+ * @method bool isWearable()
+ * @method bool isPeripheral()
  *
  * Magic Client Type Methods:
  * @method bool isBrowser()
@@ -62,7 +68,7 @@ class DeviceDetector
     /**
      * Current version number of DeviceDetector
      */
-    public const VERSION = '4.0.2';
+    public const VERSION = '5.0.4';
 
     /**
      * Constant used as value for unknown browser / os
@@ -73,20 +79,13 @@ class DeviceDetector
      * Holds all registered client types
      * @var array
      */
-    public static $clientTypes = [];
-
-    /**
-     * Operating system families that are known as desktop only
-     *
-     * @var array
-     */
-    protected static $desktopOsArray = ['AmigaOS', 'IBM', 'GNU/Linux', 'Mac', 'Unix', 'Windows', 'BeOS', 'Chrome OS'];
+    protected $clientTypes = [];
 
     /**
      * Holds the useragent that should be parsed
      * @var string
      */
-    protected $userAgent;
+    protected $userAgent = '';
 
     /**
      * Holds the operating system data after parsing the UA
@@ -193,6 +192,7 @@ class DeviceDetector
         $this->addClientParser(new Library());
 
         $this->addDeviceParser(new HbbTv());
+        $this->addDeviceParser(new ShellTv());
         $this->addDeviceParser(new Notebook());
         $this->addDeviceParser(new Console());
         $this->addDeviceParser(new CarBrowser());
@@ -217,7 +217,7 @@ class DeviceDetector
             }
         }
 
-        foreach (self::$clientTypes as $client) {
+        foreach ($this->clientTypes as $client) {
             if (\strtolower($methodName) === 'is' . \strtolower(\str_replace(' ', '', $client))) {
                 return $this->getClient('type') === $client;
             }
@@ -248,7 +248,7 @@ class DeviceDetector
     public function addClientParser(AbstractClientParser $parser): void
     {
         $this->clientParsers[] = $parser;
-        self::$clientTypes[]   = $parser->getName();
+        $this->clientTypes[]   = $parser->getName();
     }
 
     /**
@@ -391,7 +391,7 @@ class DeviceDetector
      * Returns if the parsed UA was identified as desktop device
      * Desktop devices are all devices with an unknown type that are running a desktop os
      *
-     * @see self::$desktopOsArray
+     * @see OperatingSystem::$desktopOsArray
      *
      * @return bool
      */
@@ -408,9 +408,7 @@ class DeviceDetector
             return false;
         }
 
-        $decodedFamily = OperatingSystem::getOsFamily($osName);
-
-        return \in_array($decodedFamily, self::$desktopOsArray);
+        return OperatingSystem::isDesktopOs($osName);
     }
 
     /**
@@ -611,14 +609,25 @@ class DeviceDetector
             ];
         }
 
-        $osFamily      = OperatingSystem::getOsFamily($deviceDetector->getOsAttribute('name'));
-        $browserFamily = Browser::getBrowserFamily($deviceDetector->getClientAttribute('name'));
+        /** @var array $client */
+        $client        = $deviceDetector->getClient();
+        $browserFamily = 'Unknown';
 
-        $os = $deviceDetector->getOs();
-        unset($os['short_name']);
+        if ($deviceDetector->isBrowser()
+            && true === \is_array($client)
+            && true === \array_key_exists('family', $client)
+            && null !== $client['family']
+        ) {
+            $browserFamily = $client['family'];
+        }
 
-        $client = $deviceDetector->getClient();
-        unset($client['short_name']);
+        unset($client['short_name'], $client['family']);
+
+        /** @var array $os */
+        $os       = $deviceDetector->getOs();
+        $osFamily = $os['family'] ?? 'Unknown';
+
+        unset($os['short_name'], $os['family']);
 
         $processed = [
             'user_agent'     => $deviceDetector->getUserAgent(),
@@ -629,8 +638,8 @@ class DeviceDetector
                 'brand' => $deviceDetector->getBrandName(),
                 'model' => $deviceDetector->getModel(),
             ],
-            'os_family'      => $osFamily ?? 'Unknown',
-            'browser_family' => $browserFamily ?? 'Unknown',
+            'os_family'      => $osFamily,
+            'browser_family' => $browserFamily,
         ];
 
         return $processed;
@@ -737,6 +746,18 @@ class DeviceDetector
     }
 
     /**
+     * Returns if the parsed UA contains the 'Desktop x64;' or 'Desktop x32;' or 'Desktop WOW64' fragment
+     *
+     * @return bool
+     */
+    protected function hasDesktopFragment(): bool
+    {
+        $regex = 'Desktop (x(?:32|64)|WOW64);';
+
+        return !!$this->matchUserAgent($regex);
+    }
+
+    /**
      * Returns if the parsed UA contains usage of a mobile only browser
      *
      * @return bool
@@ -832,14 +853,14 @@ class DeviceDetector
         }
 
         $osName     = $this->getOsAttribute('name');
-        $osFamily   = OperatingSystem::getOsFamily($osName);
+        $osFamily   = $this->getOsAttribute('family');
         $osVersion  = $this->getOsAttribute('version');
         $clientName = $this->getClientAttribute('name');
 
         /**
          * Assume all devices running iOS / Mac OS are from Apple
          */
-        if (empty($this->brand) && \in_array($osName, ['Apple TV', 'iOS', 'Mac'])) {
+        if (empty($this->brand) && \in_array($osName, ['iPadOS', 'tvOS', 'watchOS', 'iOS', 'Mac'])) {
             $this->brand = 'Apple';
         }
 
@@ -853,9 +874,9 @@ class DeviceDetector
         if (null === $this->device && 'Android' === $osFamily
             && $this->matchUserAgent('Chrome/[\.0-9]*')
         ) {
-            if ($this->matchUserAgent('Chrome/[\.0-9]* (?:Mobile|eliboM)')) {
+            if ($this->matchUserAgent('(?:Mobile|eliboM) Safari/')) {
                 $this->device = AbstractDeviceParser::DEVICE_TYPE_SMARTPHONE;
-            } elseif ($this->matchUserAgent('Chrome/[\.0-9]* (?!Mobile)')) {
+            } elseif ($this->matchUserAgent('(?!Mobile )Safari/')) {
                 $this->device = AbstractDeviceParser::DEVICE_TYPE_TABLET;
             }
         }
@@ -902,6 +923,13 @@ class DeviceDetector
         }
 
         /**
+         * All unknown devices under running Java ME are more likely a features phones
+         */
+        if ('Java ME' === $osName && null === $this->device) {
+            $this->device = AbstractDeviceParser::DEVICE_TYPE_FEATURE_PHONE;
+        }
+
+        /**
          * According to http://msdn.microsoft.com/en-us/library/ie/hh920767(v=vs.85).aspx
          * Internet Explorer 10 introduces the "Touch" UA string token. If this token is present at the end of the
          * UA string, the computer has touch capability, and is running Windows 8 (or later).
@@ -920,7 +948,14 @@ class DeviceDetector
         /**
          * All devices running Opera TV Store are assumed to be a tv
          */
-        if ($this->matchUserAgent('Opera TV Store')) {
+        if ($this->matchUserAgent('Opera TV Store| OMI/')) {
+            $this->device = AbstractDeviceParser::DEVICE_TYPE_TV;
+        }
+
+        /**
+         * All devices running Tizen TV or SmartTV are assumed to be a tv
+         */
+        if (null === $this->device && $this->matchUserAgent('SmartTV|Tizen.+ TV .+$')) {
             $this->device = AbstractDeviceParser::DEVICE_TYPE_TV;
         }
 
@@ -929,6 +964,17 @@ class DeviceDetector
          */
         if (null === $this->device && \in_array($clientName, ['Kylo', 'Espial TV Browser'])) {
             $this->device = AbstractDeviceParser::DEVICE_TYPE_TV;
+        }
+
+        /**
+         * Set device type desktop if string ua contains desktop
+         */
+        $hasDesktop = AbstractDeviceParser::DEVICE_TYPE_DESKTOP !== $this->device
+            && false !== \strpos($this->userAgent, 'Desktop')
+            && $this->hasDesktopFragment();
+
+        if ($hasDesktop) {
+            $this->device = AbstractDeviceParser::DEVICE_TYPE_DESKTOP;
         }
 
         // set device type to desktop for all devices running a desktop os that were not detected as another device type

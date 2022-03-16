@@ -52,6 +52,7 @@ import socket
 import textwrap
 import collections
 import glob
+import io
 
 # Avoid "got more than 100 headers" error
 http.client._MAXHEADERS = 1000
@@ -73,7 +74,8 @@ DOWNLOAD_EXTENSIONS = set((
     'ibooks jar json mpg mp2 mp3 mp4 mpeg mov movie msi msp odb odf odg odp '
     'ods odt ogg ogv pdf phps ppt pptx qt qtm ra ram rar rpm rtf sea sit tar tbz '
     'bz2 tbz tgz torrent txt wav webm wma wmv wpd xls xlsx xml xsd z zip '
-    'azw3 epub mobi apk'
+    'azw3 epub mobi apk '
+    'md5 sig'
 ).split())
 
 # If you want to add more bots, take a look at the Matomo Device Detector botlist:
@@ -430,7 +432,7 @@ class AmazonCloudFrontFormat(W3cExtendedFormat):
         'x-edge-location': r'(?P<x_edge_location>".*?"|\S+)',
         'x-edge-result-type': r'(?P<x_edge_result_type>".*?"|\S+)',
         'x-edge-request-id': r'(?P<x_edge_request_id>".*?"|\S+)',
-        'x-host-header': r'(?P<x_host_header>".*?"|\S+)'
+        'x-host-header': r'(?P<host>".*?"|\S+)'
     })
 
     def __init__(self):
@@ -458,6 +460,8 @@ _COMMON_LOG_FORMAT = (
 _NCSA_EXTENDED_LOG_FORMAT = (_COMMON_LOG_FORMAT +
     r'\s+"(?P<referrer>.*?)"\s+"(?P<user_agent>.*?)"'
 )
+
+
 _S3_LOG_FORMAT = (
     r'\S+\s+(?P<host>\S+)\s+\[(?P<date>.*?)\s+(?P<timezone>.*?)\]\s+(?P<ip>[\w*.:-]+)\s+'
     r'(?P<userid>\S+)\s+\S+\s+\S+\s+\S+\s+"(?P<method>\S+)\s+(?P<path>.*?)\s+\S+"\s+(?P<status>\d+)\s+\S+\s+(?P<length>\S+)\s+'
@@ -482,6 +486,10 @@ _HAPROXY_FORMAT = (
     r'.*:\ (?P<ip>[\w*.]+).*\[(?P<date>.*)\].*\ (?P<status>\b\d{3}\b)\ (?P<length>\d+)\ -.*\"(?P<method>\S+)\ (?P<path>\S+).*'
 )
 
+_GANDI_SIMPLE_HOSTING_FORMAT = (
+    r'(?P<host>[0-9a-zA-Z-_.]+)\s+(?P<ip>[a-zA-Z0-9.]+)\s+\S+\s+(?P<userid>\S+)\s+\[(?P<date>.+?)\s+(?P<timezone>.+?)\]\s+\((?P<generation_time_secs>[0-9a-zA-Z\s]*)\)\s+"(?P<method>[A-Z]+)\s+(?P<path>\S+)\s+(\S+)"\s+(?P<status>[0-9]+)\s+(?P<length>\S+)\s+"(?P<referrer>\S+)"\s+"(?P<user_agent>[^"]+)"'
+)
+
 FORMATS = {
     'common': RegexFormat('common', _COMMON_LOG_FORMAT),
     'common_vhost': RegexFormat('common_vhost', _HOST_PREFIX + _COMMON_LOG_FORMAT),
@@ -497,7 +505,8 @@ FORMATS = {
     'elb': RegexFormat('elb', _ELB_LOG_FORMAT, '%Y-%m-%dT%H:%M:%S'),
     'nginx_json': JsonFormat('nginx_json'),
     'ovh': RegexFormat('ovh', _OVH_FORMAT),
-    'haproxy': RegexFormat('haproxy', _HAPROXY_FORMAT, '%d/%b/%Y:%H:%M:%S.%f')
+    'haproxy': RegexFormat('haproxy', _HAPROXY_FORMAT, '%d/%b/%Y:%H:%M:%S.%f'),
+    'gandi': RegexFormat('gandi', _GANDI_SIMPLE_HOSTING_FORMAT, '%d/%b/%Y:%H:%M:%S')
 }
 
 ##
@@ -904,6 +913,10 @@ class Configuration:
             default=False,
             help="Do not verify the SSL / TLS certificate when contacting the Matomo server."
         )
+        parser.add_argument(
+            '--php-binary', dest='php_binary', type=str, default='php',
+            help="Specify the PHP binary to use.",
+        )
         return parser
 
     def _valid_date(self, value):
@@ -931,7 +944,7 @@ class Configuration:
         self.filenames = self.options.file
 
         if self.options.output:
-            sys.stdout = sys.stderr = open(self.options.output, 'a+', 0)
+            sys.stdout = sys.stderr = open(self.options.output, 'a')
 
         all_filenames = []
         for self.filename in self.filenames:
@@ -1075,10 +1088,11 @@ class Configuration:
                     '../../misc/cron/updatetoken.php'),
             )
 
-            phpBinary = 'php'
+            phpBinary = config.options.php_binary
 
+            # Special handling for windows (only if given php binary does not differ from default)
             is_windows = sys.platform.startswith('win')
-            if is_windows:
+            if phpBinary == 'php' and is_windows:
                 try:
                     processWin = subprocess.Popen('where php.exe', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     [stdout, stderr] = processWin.communicate()
@@ -1276,7 +1290,7 @@ Processing your log data
 ------------------------
 
     In order for your logs to be processed by Matomo, you may need to run the following command:
-     ./console core:archive --force-all-websites --force-all-periods=315576000 --force-date-last-n=1000 --url='%(url)s'
+     ./console core:archive --force-all-websites --url='%(url)s'
 ''' % {
 
     'count_lines_recorded': self.count_lines_recorded.value,
@@ -1521,9 +1535,10 @@ class MatomoHttpUrllib(MatomoHttpBase):
             self.RedirectHandlerWithLogging(),
             urllib.request.HTTPSHandler(**https_handler_args))
         response = opener.open(request, timeout = timeout)
+        encoding = response.info().get_content_charset('utf-8')
         result = response.read()
         response.close()
-        return result
+        return result.decode(encoding)
 
     def _call_api(self, method, **kwargs):
         """
@@ -1994,7 +2009,9 @@ class Recorder:
                 'requests': [self._get_hit_args(hit) for hit in hits]
             }
             try:
-                args = {}
+                args = {
+                    'queuedtracking': '0'
+                }
 
                 if config.options.debug_tracker:
                     args['debug'] = '1'
@@ -2554,7 +2571,7 @@ class Parser:
 
             # Parse timezone and subtract its value from the date
             try:
-                timezone = format.get('timezone')
+                timezone = format.get('timezone').replace(':', '')
                 if timezone:
                     hit.date -= TimeHelper.timedelta_from_timezone(timezone)
             except BaseFormatException:

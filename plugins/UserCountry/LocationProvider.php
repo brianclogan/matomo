@@ -16,7 +16,9 @@ use Piwik\Piwik;
 use Piwik\Plugin;
 use Piwik\Plugins\UserCountry\LocationProvider\DefaultProvider;
 use Piwik\Plugin\Manager as PluginManager;
+use Piwik\Plugins\UserCountry\LocationProvider\DisabledProvider;
 use Piwik\Tracker\Cache;
+use Piwik\Tracker\TrackerConfig;
 
 /**
  * @see plugins/UserCountry/functions.php
@@ -179,6 +181,16 @@ abstract class LocationProvider
     }
 
     /**
+     * Returns a message that should be shown as diagnostics warning if provider is used
+     *
+     * @return null|string
+     */
+    public function getUsageWarning(): ?string
+    {
+        return null;
+    }
+
+    /**
      * Returns every available provider instance.
      *
      * @return LocationProvider[]
@@ -299,17 +311,19 @@ abstract class LocationProvider
             $info['statusMessage'] = $statusMessage;
             $info['location'] = $location;
             $info['isVisible'] = $provider->isVisible();
+            $info['usageWarning'] = $provider->getUsageWarning();
 
-            $allInfo[$info['order']] = $info;
+            $allInfo[$info['id']] = $info;
         }
 
-        ksort($allInfo);
+        uasort($allInfo, function($a, $b) {
+            if ($a['order'] == $b['order']) {
+                return strcmp($a['id'], $b['id']);
+            }
+            return $a['order'] - $b['order'];
+        });
 
-        $result = array();
-        foreach ($allInfo as $info) {
-            $result[$info['id']] = $info;
-        }
-        return $result;
+        return $allInfo;
     }
 
     /**
@@ -328,7 +342,7 @@ abstract class LocationProvider
         } catch (\Exception $e) {
             $optionValue = false;
         }
-        return $optionValue === false ? DefaultProvider::ID : $optionValue;
+        return $optionValue === false ? self::getDefaultProviderId() : $optionValue;
     }
 
     /**
@@ -363,6 +377,20 @@ abstract class LocationProvider
         Option::set(self::CURRENT_PROVIDER_OPTION_NAME, $providerId);
         Cache::clearCacheGeneral();
         return $provider;
+    }
+
+    /**
+     * Returns the default provider id to use
+     *
+     * @return string
+     */
+    public static function getDefaultProviderId()
+    {
+        if (!!TrackerConfig::getConfigValue('enable_default_location_provider')) {
+            return DefaultProvider::ID;
+        }
+
+        return DisabledProvider::ID;
     }
 
     /**

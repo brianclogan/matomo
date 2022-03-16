@@ -8,9 +8,11 @@
  */
 namespace Piwik\Plugins\PagePerformance\Reports;
 
+use Piwik\EventDispatcher;
 use Piwik\Piwik;
 use Piwik\Plugin\ViewDataTable;
 use Piwik\Plugins\CoreVisualizations\Visualizations\Sparklines;
+use Piwik\Plugins\Installation\View;
 use Piwik\Plugins\PagePerformance\Metrics;
 use Piwik\Plugins\PagePerformance\Visualizations\JqplotGraph\StackedBarEvolution;
 use Piwik\Plugins\PagePerformance\Visualizations\PerformanceColumns;
@@ -29,7 +31,7 @@ class Get extends \Piwik\Plugin\Report
         $this->order = 5;
 
         $this->name = Piwik::translate('PagePerformance_Overview');
-        $this->documentation = '';
+        $this->documentation = Piwik::translate('PagePerformance_OverviewDocumentation');
         $this->onlineGuideUrl = 'https://matomo.org/faq/how-to/how-do-i-see-page-performance-reports/';
         $this->processedMetrics = Metrics::getAllPagePerformanceMetrics();
         $this->metrics = Metrics::getAllPagePerformanceMetrics();
@@ -85,6 +87,7 @@ class Get extends \Piwik\Plugin\Report
 
             $view->config->columns_to_display = array_keys(Metrics::getAllPagePerformanceMetrics());
             $view->config->setNotLinkableWithAnyEvolutionGraph();
+            $this->configureFooterMessage($view);
         }
     }
 
@@ -94,5 +97,12 @@ class Get extends \Piwik\Plugin\Report
         foreach ($this->getMetrics() as $metric => $translation) {
             $view->config->addSparklineMetric([$metric], $count++);
         }
+    }
+
+    private function configureFooterMessage(ViewDataTable $view)
+    {
+        $out = '';
+        EventDispatcher::getInstance()->postEvent('Template.afterPagePerformanceReport', array(&$out));
+        $view->config->show_footer_message = $out;
     }
 }

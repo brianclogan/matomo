@@ -161,7 +161,7 @@ class Access
         $forceApiSessionGet = Common::getRequestVar('force_api_session', 0, 'int', $_GET);
         $isApiRequest = Piwik::getModule() === 'API' && (Piwik::getAction() === 'index' || !Piwik::getAction());
         $apiMethod = Request::getMethodIfApiRequest(null);
-        $isGetApiRequest = 1 === substr_count($apiMethod, '.') && strpos($apiMethod, '.get') > 0;
+        $isGetApiRequest = !empty($apiMethod) && 1 === substr_count($apiMethod, '.') && strpos($apiMethod, '.get') > 0;
 
         if (($forceApiSessionPost && $isApiRequest) || ($forceApiSessionGet && $isApiRequest && $isGetApiRequest)) {
             $request = ($forceApiSessionGet && $isApiRequest && $isGetApiRequest) ? $_GET : $_POST;
@@ -170,14 +170,11 @@ class Access
             $auth = StaticContainer::get(SessionAuth::class);
             $auth->setTokenAuth($tokenAuth);
             $result = $auth->authenticate();
-            if (!$result->wasAuthenticationSuccessful()) {
-                /**
-                 * Ensures brute force logic to be executed
-                 * @ignore
-                 * @internal
-                 */
-                Piwik::postEvent('API.Request.authenticate.failed');
-            }
+            // Note: We do not post a failed login event at this point on purpose
+            // If using the SessionAuth doesn't work, the FrontController will try to reload the Auth using
+            // the token_auth only. If that works everything is "fine" and the `force_api_session` parameter was
+            // unneeded. If that fails as well it will trigger the failed login event
+            // See FrontController::init() or Request::reloadAuthUsingTokenAuth()
             Session::close();
             // if not successful, we will fallback to regular auth
         }
@@ -619,7 +616,7 @@ class Access
 
         foreach ($idSites as $idsite) {
             if (!in_array($idsite, $idSitesAccessible)) {
-                $this->throwNoAccessException(Piwik::translate('ExceptionCapabilityAccessWebsite', array("'" . $capability ."'", $idsite)));
+                $this->throwNoAccessException(Piwik::translate('General_ExceptionCapabilityAccessWebsite', array("'" . $capability ."'", $idsite)));
             }
         }
 
@@ -745,14 +742,15 @@ class Access
     {
         if (Piwik::isUserIsAnonymous() && !Request::isRootRequestApiRequest()) {
             $message = Piwik::translate('General_YouMustBeLoggedIn');
-        }
-        // Try to detect whether user was previously logged in so that we can display a different message
-        $referrer = Url::getReferrer();
-        $matomoUrl = SettingsPiwik::getPiwikUrl();
-        if ($referrer && $matomoUrl && Url::isValidHost(Url::getHostFromUrl($referrer)) &&
-            strpos($referrer, $matomoUrl) === 0
-        ) {
-            $message = Piwik::translate('General_YourSessionHasExpired');
+
+            // Try to detect whether user was previously logged in so that we can display a different message
+            $referrer = Url::getReferrer();
+            $matomoUrl = SettingsPiwik::getPiwikUrl();
+            if ($referrer && $matomoUrl && Url::isValidHost(Url::getHostFromUrl($referrer)) &&
+                strpos($referrer, $matomoUrl) === 0
+            ) {
+                $message = Piwik::translate('General_YourSessionHasExpired');
+            }
         }
 
         throw new NoAccessException($message);

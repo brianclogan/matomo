@@ -93,6 +93,7 @@ class Advertising
     }
 
     /**
+     * @deprecated
      * Generates campaign URL parameters that can be used with promoting Professional Support service.
      *
      * @param string $campaignName
@@ -117,7 +118,10 @@ class Advertising
      */
     public static function isAdsEnabledInConfig($configGeneralSection)
     {
-        $oldSettingValue = @$configGeneralSection['piwik_pro_ads_enabled'];
+        $oldSettingValue = false;
+        if (isset($configGeneralSection['piwik_pro_ads_enabled'])) {
+            $oldSettingValue = @$configGeneralSection['piwik_pro_ads_enabled'];
+        }
         $newSettingValue = @$configGeneralSection['piwik_professional_support_ads_enabled'];
         return (bool) ($newSettingValue || $oldSettingValue);
     }

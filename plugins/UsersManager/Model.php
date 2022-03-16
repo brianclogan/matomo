@@ -19,6 +19,7 @@ use Piwik\Plugins\SitesManager\SitesManager;
 use Piwik\Plugins\UsersManager\Sql\SiteAccessFilter;
 use Piwik\Plugins\UsersManager\Sql\UserTableFilter;
 use Piwik\SettingsPiwik;
+use Piwik\SettingsServer;
 use Piwik\Validators\BaseValidator;
 use Piwik\Validators\CharacterLength;
 use Piwik\Validators\NotEmpty;
@@ -315,6 +316,15 @@ class Model
         return $db->fetchRow("SELECT * FROM " . $this->tokenTable . " WHERE `password` = ?", $tokenAuth);
     }
 
+    public function getUserTokenDescriptionByIdTokenAuth($idTokenAuth, $login)
+    {
+        $db = $this->getDb();
+
+        $token = $db->fetchRow("SELECT description FROM " . $this->tokenTable . " WHERE `idusertokenauth` = ? and login = ? LIMIT 1", array($idTokenAuth, $login));
+
+        return $token ? $token['description'] : '';
+    }
+
     private function getQueryNotExpiredToken()
     {
         return array(
@@ -388,6 +398,16 @@ class Model
     {
         $token = $this->getTokenByTokenAuth($tokenAuth);
         if (!empty($token)) {
+
+            $lastUsage = !empty($token['last_used']) ? strtotime($token['last_used']) : 0;
+            $newUsage = strtotime($dateLastUsed);
+
+            // update token usage only every 10 minutes to avoid table locks when multiple requests with the same token are made
+            // see https://github.com/matomo-org/matomo/issues/16924
+            if ($lastUsage > $newUsage - 600) {
+                return;
+            }
+
             $this->updateTokenAuthTable($token['idusertokenauth'], array(
                 'last_used' => $dateLastUsed
             ));
@@ -416,6 +436,10 @@ class Model
 
     public function getUserByTokenAuth($tokenAuth)
     {
+        if ($tokenAuth === 'anonymous') {
+            return $this->getUser('anonymous');
+        }
+
         $token = $this->getTokenByTokenAuthIfNotExpired($tokenAuth);
         if (!empty($token)) {
             $db = $this->getDb();
@@ -432,6 +456,7 @@ class Model
             'date_registered'  => $dateRegistered,
             'superuser_access' => 0,
             'ts_password_modified' => Date::now()->getDatetime(),
+            'idchange_last_viewed' => null
         );
 
         $db = $this->getDb();

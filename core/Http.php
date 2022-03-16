@@ -8,7 +8,9 @@
  */
 namespace Piwik;
 
+use Composer\CaBundle\CaBundle;
 use Exception;
+use Piwik\Container\StaticContainer;
 
 /**
  * Contains HTTP client related helper methods that can retrieve content from remote servers
@@ -66,6 +68,8 @@ class Http
      * @param string $httpMethod The HTTP method to use. Defaults to `'GET'`.
      * @param string $httpUsername HTTP Auth username
      * @param string $httpPassword HTTP Auth password
+     * @param bool $checkHostIsAllowed whether we should check if the target host is allowed or not. This should only
+     *                                 be set to false when using a hardcoded URL.
      *
      * @throws Exception if the response cannot be saved to `$destinationPath`, if the HTTP response cannot be sent,
      *                   if there are more than 5 redirects or if the request times out.
@@ -91,13 +95,16 @@ class Http
                                            $getExtendedInfo = false,
                                            $httpMethod = 'GET',
                                            $httpUsername = null,
-                                           $httpPassword = null)
+                                           $httpPassword = null,
+                                           $checkHostIsAllowed = true)
     {
         // create output file
         $file = self::ensureDestinationDirectoryExists($destinationPath);
 
         $acceptLanguage = $acceptLanguage ? 'Accept-Language: ' . $acceptLanguage : '';
-        return self::sendHttpRequestBy(self::getTransportMethod(), $aUrl, $timeout, $userAgent, $destinationPath, $file, $followDepth, $acceptLanguage, $acceptInvalidSslCertificate = false, $byteRange, $getExtendedInfo, $httpMethod, $httpUsername, $httpPassword);
+        return self::sendHttpRequestBy(self::getTransportMethod(), $aUrl, $timeout, $userAgent, $destinationPath, $file,
+            $followDepth, $acceptLanguage, $acceptInvalidSslCertificate = false, $byteRange, $getExtendedInfo, $httpMethod,
+            $httpUsername, $httpPassword, null, [], null, $checkHostIsAllowed);
     }
 
     public static function ensureDestinationDirectoryExists($destinationPath)
@@ -112,6 +119,30 @@ class Http
         }
 
         return null;
+    }
+
+    private static function convertWildcardToPattern($wildcardHost)
+    {
+        $flexibleStart = $flexibleEnd = false;
+        if (strpos($wildcardHost, '*.') === 0) {
+            $flexibleStart = true;
+            $wildcardHost = substr($wildcardHost, 2);
+        }
+        if (Common::stringEndsWith($wildcardHost, '.*')) {
+            $flexibleEnd = true;
+            $wildcardHost = substr($wildcardHost, 0, -2);
+        }
+        $pattern = preg_quote($wildcardHost);
+
+        if ($flexibleStart) {
+            $pattern = '.*\.' . $pattern;
+        }
+
+        if ($flexibleEnd) {
+            $pattern .= '\..*';
+        }
+
+        return '/^' . $pattern . '$/i';
     }
 
     /**
@@ -134,6 +165,8 @@ class Http
      * @param string $httpPassword HTTP Auth password
      * @param array|string $requestBody If $httpMethod is 'POST' this may accept an array of variables or a string that needs to be posted
      * @param array $additionalHeaders List of additional headers to set for the request
+     * @param bool $checkHostIsAllowed whether we should check if the target host is allowed or not. This should only
+     *                                 be set to false when using a hardcoded URL.
      *
      * @return string|array  true (or string/array) on success; false on HTTP response error code (1xx or 4xx)
      *@throws Exception
@@ -155,10 +188,56 @@ class Http
         $httpPassword = null,
         $requestBody = null,
         $additionalHeaders = array(),
-        $forcePost = null
+        $forcePost = null,
+        $checkHostIsAllowed = true
     ) {
         if ($followDepth > 5) {
             throw new Exception('Too many redirects (' . $followDepth . ')');
+        }
+
+        $aUrl = preg_replace('/[\x00-\x1F\x7F]/', '', trim($aUrl));
+        $parsedUrl = @parse_url($aUrl);
+
+        if (empty($parsedUrl['scheme'])) {
+            throw new Exception('Missing scheme in given url');
+        }
+
+        $allowedProtocols = Config::getInstance()->General['allowed_outgoing_protocols'];
+        $isAllowed = false;
+
+        foreach (explode(',', $allowedProtocols) as $protocol) {
+            if (strtolower($parsedUrl['scheme']) === strtolower(trim($protocol))) {
+                $isAllowed = true;
+                break;
+            }
+        }
+
+        if (!$isAllowed) {
+            throw new Exception(sprintf(
+                'Protocol %s not in list of allowed protocols: %s',
+                $parsedUrl['scheme'],
+                $allowedProtocols
+            ));
+        }
+
+        if ($checkHostIsAllowed) {
+            $disallowedHosts = StaticContainer::get('http.blocklist.hosts');
+
+            $isBlocked = false;
+
+            foreach ($disallowedHosts as $host) {
+                if (!empty($parsedUrl['host']) && preg_match(self::convertWildcardToPattern($host), $parsedUrl['host']) === 1) {
+                    $isBlocked = true;
+                    break;
+                }
+            }
+
+            if ($isBlocked) {
+                throw new Exception(sprintf(
+                    'Hostname %s is in list of disallowed hosts',
+                    $parsedUrl['host']
+                ));
+            }
         }
 
         $contentLength = 0;
@@ -192,9 +271,7 @@ class Http
             $rangeHeader = 'Range: bytes=' . $rangeBytes . "\r\n";
         }
 
-        list($proxyHost, $proxyPort, $proxyUser, $proxyPassword) = self::getProxyConfiguration($aUrl);
-
-        $aUrl = trim($aUrl);
+        [$proxyHost, $proxyPort, $proxyUser, $proxyPassword] = self::getProxyConfiguration($aUrl);
 
         // other result data
         $status  = null;
@@ -246,7 +323,7 @@ class Http
 		     * @ignore
 		     */
                     Piwik::postEvent('Http.sendHttpRequest.end', array($aUrl, $httpEventParams, &$response, &$status, &$headers));
- 
+
                     if ($destinationPath && file_exists($destinationPath)) {
                         return true;
                     }
@@ -533,10 +610,10 @@ class Http
                 if (isset($http_response_header) && preg_match('~^HTTP/(\d\.\d)\s+(\d+)(\s*.*)?~', implode("\n", $http_response_header), $m)) {
                     $status = (int)$m[2];
                 }
-		    
+
                 if (!$status && $response === false) {
-                    $error = error_get_last();
-                    throw new \Exception($error['message']);
+                    $error = ErrorHandler::getLastError();
+                    throw new \Exception($error);
                 }
                 $fileLength = strlen($response);
             }
@@ -584,6 +661,11 @@ class Http
 
             if ($rangeBytes) {
                 curl_setopt($ch, CURLOPT_RANGE, $rangeBytes);
+            } else {
+                // see https://github.com/matomo-org/matomo/pull/17009 for more info
+                // NOTE: we only do this when CURLOPT_RANGE is not being used, because when using both the
+                // response is empty.
+                $curl_options[CURLOPT_ENCODING] = "";
             }
 
             // Case core:archive command is triggering archiving on https:// and the certificate is not valid
@@ -617,10 +699,19 @@ class Http
              * in safe_mode or open_basedir is set
              */
             if ((string)ini_get('safe_mode') == '' && ini_get('open_basedir') == '') {
+                $protocols = 0;
+
+                foreach (explode(',', $allowedProtocols) as $protocol) {
+                    if (defined('CURLPROTO_' . strtoupper(trim($protocol)))) {
+                        $protocols |= constant('CURLPROTO_' . strtoupper(trim($protocol)));
+                    }
+                }
+
                 $curl_options = array(
                     // curl options (sorted oldest to newest)
-                    CURLOPT_FOLLOWLOCATION => true,
-                    CURLOPT_MAXREDIRS      => 5,
+                    CURLOPT_FOLLOWLOCATION  => true,
+                    CURLOPT_REDIR_PROTOCOLS => $protocols,
+                    CURLOPT_MAXREDIRS       => 5,
                 );
                 if ($forcePost) {
                     $curl_options[CURLOPT_POSTREDIR] = CURL_REDIR_POST_ALL;
@@ -657,7 +748,7 @@ class Http
                     $split = explode("\r\n\r\n", $response, 2);
 
                     if(count($split) == 2) {
-                        list($header, $response) = $split;
+                        [$header, $response] = $split;
                     } else {
                         $response = '';
                         $header = $split;
@@ -684,8 +775,8 @@ class Http
             @fclose($file);
 
             $fileSize = filesize($destinationPath);
-            if ((($contentLength > 0) && ($fileLength != $contentLength))
-                || ($fileSize != $fileLength)
+            if ($contentLength > 0
+                && $fileSize != $contentLength
             ) {
                 throw new Exception('File size error: ' . $destinationPath . '; expected ' . $contentLength . ' bytes; received ' . $fileLength . ' bytes; saved ' . $fileSize . ' bytes to file');
             }
@@ -889,7 +980,7 @@ class Http
         if (!empty($general['custom_cacert_pem'])) {
             $cacertPath = $general['custom_cacert_pem'];
         } else {
-            $cacertPath = PIWIK_INCLUDE_PATH . '/core/DataFiles/cacert.pem';
+            $cacertPath = CaBundle::getBundledCaBundlePath();
         }
         @curl_setopt($ch, CURLOPT_CAINFO, $cacertPath);
     }
@@ -934,7 +1025,7 @@ class Http
             return;
         }
 
-        list($name, $value) = $parts;
+        [$name, $value] = $parts;
         $name = trim($name);
         $headers[$name] = trim($value);
 

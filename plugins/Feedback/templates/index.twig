@@ -8,22 +8,6 @@
 {% block content %}
 
     <div id="feedback-faq" class="admin">
-        <div piwik-content-block
-             content-title="{{ headline|e('html_attr') }}"
-             feature="{{ 'General_Help'|translate|e('html_attr') }}">
-            <p>{{ 'General_MatomoIsACollaborativeProjectYouCanContributeAndDonateNextRelease'|translate(
-                    "<a target='_blank' rel='noreferrer noopener' href='https://matomo.org'>",
-                    "</a>",
-                    "<a target='_blank' rel='noreferrer noopener' href='https://matomo.org/get-involved/'>",
-                    "</a>",
-                    "<a href='" ~ linkTo({'module':'CoreAdminHome', 'action': 'home'})~"'>",
-                    "</a>",
-                    "<a target='_blank' rel='noreferrer noopener' href='https://matomo.org/team/'>",
-                    "</a>"
-                )|raw }}
-            </p>
-        </div>
-
         <div piwik-content-block content-title="{{ "Feedback_HowCanWeHelp"|translate|e('html_attr') }}" class="feedback-help-resources">
             <form target="_blank" method="GET" action="https://matomo.org/">
                 <div class="search-matomo-form z-depth-1">
@@ -67,6 +51,22 @@
             </form>
         </div>
 
+        <div piwik-content-block
+             content-title="{{ headline|e('html_attr') }}"
+             feature="{{ 'General_Help'|translate|e('html_attr') }}">
+            <p>{{ 'General_MatomoIsACollaborativeProjectYouCanContributeAndDonateNextRelease'|translate(
+                    "<a target='_blank' rel='noreferrer noopener' href='https://matomo.org'>",
+                    "</a>",
+                    "<a target='_blank' rel='noreferrer noopener' href='https://matomo.org/get-involved/'>",
+                    "</a>",
+                    "<a href='" ~ linkTo({'module':'CoreAdminHome', 'action': 'home'})~"'>",
+                    "</a>",
+                    "<a target='_blank' rel='noreferrer noopener' href='https://matomo.org/team/'>",
+                    "</a>"
+                )|raw }}
+            </p>
+        </div>
+
         <div piwik-content-block content-title="Premium products">
             <p>Grow your business, understand your audience better and increase your sales and conversions with a premium plugin:
             <p> &bull;  <a rel='noreferrer noopener' target='_blank' href='https://matomo.org/recommends/users-flow/'>Users Flow</a>: a visual representation of the most popular paths your users take through your website or app.</p>
@@ -92,10 +92,6 @@
             "<a target='_blank' rel='noreferrer noopener' href='https://github.com/matomo-org/matomo/issues/new'>",
             "</a>"
             )|raw }}</p>
-        </div>
-
-        <div piwik-content-block content-title="{{'Feedback_ReviewMatomoTitle'|translate|e('html_attr') }}">
-            <div ng-include="'plugins/Feedback/angularjs/feedback-popup/review-links.directive.html'"></div>
         </div>
 
         <div class="footer">

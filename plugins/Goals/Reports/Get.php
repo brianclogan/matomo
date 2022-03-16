@@ -35,7 +35,7 @@ class Get extends Base
 
         $this->name = Piwik::translate('Goals_Goals');
         $this->processedMetrics = array('conversion_rate');
-        $this->documentation = ''; // TODO
+        $this->documentation = Piwik::translate('Goals_OverviewReportDocumentation');
         $this->order = 1;
         $this->orderGoal = 50;
         $this->metrics = array('nb_conversions', 'nb_visits_converted', 'revenue');
@@ -66,7 +66,7 @@ class Get extends Base
         if (empty($idSite)) {
             return;
         }
-        
+
         $goals   = $this->getGoals();
         $reports = Goals::getReportsWithGoalMetrics();
 
@@ -193,7 +193,7 @@ class Get extends Base
             } else {
                 $view->config->title = Piwik::translate('General_EvolutionOverPeriod');
             }
-            
+
             if (empty($view->config->columns_to_display)) {
                 $view->config->columns_to_display = array('nb_conversions');
             }

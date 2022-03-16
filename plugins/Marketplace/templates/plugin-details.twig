@@ -65,17 +65,17 @@
                                     <div class="alert alert-warning">{{ 'Marketplace_PluginLicenseExceededDescription'|translate }}</div>
                                 {% endif %}
 
-                                {{ latestVersion.readmeHtml.description|raw }}
+                                <div ng-non-bindable>{{ latestVersion.readmeHtml.description|raw }}</div>
                             </div>
 
                             {% if latestVersion.readmeHtml.faq %}
-                                <div id="tabs-faq" class="tab-content col s12">
+                                <div id="tabs-faq" class="tab-content col s12" ng-non-bindable>
                                     {{ latestVersion.readmeHtml.faq|raw }}
                                 </div>
                             {% endif %}
 
                             {% if latestVersion.readmeHtml.documentation %}
-                                <div id="tabs-documentation" class="tab-content col s12">
+                                <div id="tabs-documentation" class="tab-content col s12" ng-non-bindable>
                                     {{ latestVersion.readmeHtml.documentation|raw }}
                                 </div>
                             {% endif %}
@@ -123,6 +123,7 @@
 
                                     {% if plugin.shop.variations|length %}
 
+                                        <h4 style="color:#5bb75b;font-weight: bold;font-size: 1.2em;">{{ 'Marketplace_TryFreeTrialTitle'|translate }}</h4>
                                         <div class="input-field variationPicker">
                                             <select title="{{ 'Marketplace_ShownPriceIsExclTax'|translate|e('html_attr') }} {{ 'Marketplace_CurrentNumPiwikUsers'|translate(numUsers)|e('html_attr') }}">
                                                 {% for variation in plugin.shop.variations %}

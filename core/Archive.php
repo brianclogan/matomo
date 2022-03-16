@@ -10,6 +10,7 @@ namespace Piwik;
 
 use Piwik\Archive\ArchiveQuery;
 use Piwik\Archive\ArchiveQueryFactory;
+use Piwik\Archive\DataCollection;
 use Piwik\Archive\Parameters;
 use Piwik\ArchiveProcessor\Rules;
 use Piwik\Container\StaticContainer;
@@ -168,12 +169,20 @@ class Archive implements ArchiveQuery
     private static $cache;
 
     /**
+     * If true, this Archive instance will not launch the archiving process, even if the current request
+     * is authorized to.
+     *
+     * @var bool
+     */
+    private $forceFetchingWithoutLaunchingArchiving;
+
+    /**
      * @param Parameters $params
      * @param bool $forceIndexedBySite Whether to force index the result of a query by site ID.
      * @param bool $forceIndexedByDate Whether to force index the result of a query by period.
      */
     public function __construct(Parameters $params, $forceIndexedBySite = false,
-                                   $forceIndexedByDate = false)
+                                $forceIndexedByDate = false)
     {
         $this->params = $params;
         $this->forceIndexedBySite = $forceIndexedBySite;
@@ -279,6 +288,21 @@ class Archive implements ArchiveQuery
     }
 
     /**
+     * Queries and returns blob records without turning them into DataTables.
+     *
+     * Unlike other methods, this returns a DataCollection instance directly. Use it to directly access
+     * and process blob data.
+     *
+     * @param string|string[] $names One or more archive names, eg, `'nb_visits'`, `'Referrers_distinctKeywords'`,
+     *                            etc.
+     * @return DataCollection the queried data.
+     */
+    public function getBlob($names, $idSubtable = null)
+    {
+        return $this->get($names, 'blob', $idSubtable);
+    }
+
+    /**
      * Queries and returns metric data in a DataTable instance.
      *
      * If multiple sites were requested in {@link build()} or {@link factory()} the result will
@@ -318,7 +342,7 @@ class Archive implements ArchiveQuery
      */
     public function getDataTableFromNumericAndMergeChildren($names)
     {
-        $data  = $this->get($names, 'numeric');
+        $data = $this->get($names, 'numeric');
         $resultIndexes = $this->getResultIndices();
         return $data->getMergedDataTable($resultIndexes);
     }
@@ -430,7 +454,7 @@ class Archive implements ArchiveQuery
         }
 
         $archive = Archive::build($idSite, $period, $date, $segment, $_restrictSitesToLogin = false);
-        if ($idSubtable === false) {
+        if ($idSubtable === false || $idSubtable === '') {
             $idSubtable = null;
         }
 
@@ -468,6 +492,8 @@ class Archive implements ArchiveQuery
             $archiveNames = array($archiveNames);
         }
 
+        $archiveNames = array_filter($archiveNames);
+
         // apply idSubtable
         if ($idSubtable !== null
             && $idSubtable !== self::ID_SUBTABLE_LOAD_ALL_SUBTABLES
@@ -485,6 +511,9 @@ class Archive implements ArchiveQuery
 
         $result = new Archive\DataCollection(
             $dataNames, $archiveDataType, $this->params->getIdSites(), $this->params->getPeriods(), $this->params->getSegment(), $defaultRow = null);
+        if (empty($dataNames)) {
+            return $result; // NOTE: note posting Archive.noArchivedData here, because there might be archive data, someone just requested nothing
+        }
 
         $archiveIds = $this->getArchiveIds($archiveNames);
         if (empty($archiveIds)) {
@@ -510,7 +539,7 @@ class Archive implements ArchiveQuery
                 $result->addMetadata($row['idsite'], $periodStr, DataTable::ARCHIVED_DATE_METADATA_NAME, $row['ts_archived']);
             }
 
-            $result->set($row['idsite'], $periodStr, $row['name'], $row['value']);
+            $result->set($row['idsite'], $periodStr, $row['name'], $row['value'], [DataTable::ARCHIVED_DATE_METADATA_NAME => $row['ts_archived']]);
         }
 
         return $result;
@@ -557,7 +586,9 @@ class Archive implements ArchiveQuery
 
         // cache id archives for plugins we haven't processed yet
         if (!empty($archiveGroups)) {
-            if (!Rules::isArchivingDisabledFor($this->params->getIdSites(), $this->params->getSegment(), $this->getPeriodLabel())) {
+            if (Rules::isArchivingEnabledFor($this->params->getIdSites(), $this->params->getSegment(), $this->getPeriodLabel())
+                && !$this->forceFetchingWithoutLaunchingArchiving
+            ) {
                 $this->cacheArchiveIdsAfterLaunching($archiveGroups, $plugins);
             } else {
                 $this->cacheArchiveIdsWithoutLaunching($plugins);
@@ -746,7 +777,7 @@ class Archive implements ArchiveQuery
     {
         $periods = $this->params->getPeriods();
         $periodLabel = reset($periods)->getLabel();
-        
+
         if (Rules::shouldProcessReportsAllPlugins($this->params->getIdSites(), $this->params->getSegment(), $periodLabel)) {
             return self::ARCHIVE_ALL_PLUGINS_FLAG;
         }
@@ -812,7 +843,7 @@ class Archive implements ArchiveQuery
             $this->initializeArchiveIdCache($doneFlag);
 
             $prepareResult = $coreAdminHomeApi->archiveReports(
-                $site->getId(), $period->getLabel(), $periodDateStr, $this->params->getSegment()->getString(),
+                $site->getId(), $period->getLabel(), $periodDateStr, $this->params->getSegment()->getOriginalString(),
                 $plugin, $requestedReport);
 
             if (!empty($prepareResult)
@@ -851,5 +882,10 @@ class Archive implements ArchiveQuery
     public static function clearStaticCache()
     {
         self::$cache = null;
+    }
+
+    public function forceFetchingWithoutLaunchingArchiving()
+    {
+        $this->forceFetchingWithoutLaunchingArchiving = true;
     }
 }

@@ -9,13 +9,21 @@
 namespace Piwik\Plugins\SegmentEditor;
 
 use Exception;
+use Piwik\Access;
+use Piwik\Archive\ArchiveInvalidator;
 use Piwik\ArchiveProcessor\Rules;
 use Piwik\Common;
+use Piwik\Container\StaticContainer;
+use Piwik\CronArchive\SegmentArchiving;
 use Piwik\Date;
 use Piwik\Db;
+use Piwik\Period\Range;
 use Piwik\Piwik;
 use Piwik\Config;
 use Piwik\Segment;
+use Piwik\Site;
+use Psr\Log\LoggerInterface;
+use Piwik\Cache;
 
 /**
  * The SegmentEditor API lets you add, update, delete custom Segments, and list saved segments.
@@ -29,9 +37,18 @@ class API extends \Piwik\Plugin\API
      */
     private $model;
 
-    public function __construct(Model $model)
+    /**
+     * @var SegmentArchiving
+     */
+    private $segmentArchiving;
+
+    private $processNewSegmentsFrom;
+
+    public function __construct(Model $model, SegmentArchiving $segmentArchiving)
     {
         $this->model = $model;
+        $this->segmentArchiving = $segmentArchiving;
+        $this->processNewSegmentsFrom = StaticContainer::get('ini.General.process_new_segments_from');
     }
 
     protected function checkSegmentValue($definition, $idSite)
@@ -100,7 +117,7 @@ class API extends \Piwik\Plugin\API
         }
 
         // if real-time segments are disabled, then allow user to create pre-processed report
-        $realTimeSegmentsEnabled = Config::getInstance()->General['enable_create_realtime_segments'];
+        $realTimeSegmentsEnabled = SegmentEditor::isCreateRealtimeSegmentsEnabled();
         if (!$realTimeSegmentsEnabled && !$autoArchive) {
             throw new Exception(
                 "Real time segments are disabled. You need to enable auto archiving."
@@ -164,6 +181,7 @@ class API extends \Piwik\Plugin\API
         $authorized =
             ($requiredAccess == 'view' && Piwik::isUserHasViewAccess($idSite)) ||
             ($requiredAccess == 'admin' && Piwik::isUserHasAdminAccess($idSite)) ||
+            ($requiredAccess == 'write' && Piwik::isUserHasWriteAccess($idSite)) ||
             ($requiredAccess == 'superuser' && Piwik::hasUserSuperUserAccess())
         ;
 
@@ -205,6 +223,8 @@ class API extends \Piwik\Plugin\API
         Piwik::postEvent('SegmentEditor.deactivate', array($idSegment));
 
         $this->getModel()->deleteSegment($idSegment);
+
+        Cache::getEagerCache()->flushAll();
 
         return true;
     }
@@ -258,6 +278,15 @@ class API extends \Piwik\Plugin\API
 
         $this->getModel()->updateSegment($idSegment, $bind);
 
+        $segmentDefinitionChanged = $segment['definition'] !== $definition;
+
+        if ($segmentDefinitionChanged && $autoArchive && !Rules::isBrowserTriggerEnabled()) {
+            $updatedSegment = $this->getModel()->getSegment($idSegment);
+            $this->segmentArchiving->reArchiveSegment($updatedSegment);
+        }
+
+        Cache::getEagerCache()->flushAll();
+
         return true;
     }
 
@@ -293,6 +322,16 @@ class API extends \Piwik\Plugin\API
         );
 
         $id = $this->getModel()->createSegment($bind);
+
+        Cache::getEagerCache()->flushAll();
+
+        if ($autoArchive
+            && !Rules::isBrowserTriggerEnabled()
+            && $this->processNewSegmentsFrom != SegmentArchiving::CREATION_TIME
+        ) {
+            $addedSegment = $this->getModel()->getSegment($id);
+            $this->segmentArchiving->reArchiveSegment($addedSegment);
+        }
 
         return $id;
     }

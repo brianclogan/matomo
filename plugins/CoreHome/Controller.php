@@ -11,11 +11,14 @@ namespace Piwik\Plugins\CoreHome;
 use Exception;
 use Piwik\API\Request;
 use Piwik\Common;
+use Piwik\DataTable\Renderer\Json;
 use Piwik\Date;
 use Piwik\FrontController;
 use Piwik\Notification\Manager as NotificationManager;
 use Piwik\Piwik;
 use Piwik\Plugin\Report;
+use Piwik\Plugins\Marketplace\Marketplace;
+use Piwik\SettingsPiwik;
 use Piwik\Widget\Widget;
 use Piwik\Plugins\CoreHome\DataTableRowAction\MultiRowEvolution;
 use Piwik\Plugins\CoreHome\DataTableRowAction\RowEvolution;
@@ -42,7 +45,7 @@ class Controller extends \Piwik\Plugin\Controller
 
         parent::__construct();
     }
-    
+
     public function getDefaultAction()
     {
         return 'redirectToCoreHomeIndex';
@@ -156,12 +159,23 @@ class Controller extends \Piwik\Plugin\Controller
 
     public function markNotificationAsRead()
     {
+        Piwik::checkUserHasSomeViewAccess();
+        $this->checkTokenInUrl();
+
         $notificationId = Common::getRequestVar('notificationId');
         NotificationManager::cancel($notificationId);
+
+        Json::sendHeaderJSON();
+        return json_encode(true);
     }
 
     protected function getDefaultIndexView()
     {
+        if (SettingsPiwik::isInternetEnabled() && Marketplace::isMarketplaceEnabled()) {
+            $this->securityPolicy->addPolicy('img-src', '*.matomo.org');
+            $this->securityPolicy->addPolicy('default-src', '*.matomo.org');
+        }
+
         $view = new View('@CoreHome/getDefaultIndexView');
         $this->setGeneralVariablesView($view);
         $view->showMenu = true;
@@ -312,4 +326,5 @@ class Controller extends \Piwik\Plugin\Controller
 
         ViewDataTableManager::saveViewDataTableParameters($login, $reportId, $parameters, $containerId);
     }
+
 }

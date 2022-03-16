@@ -23,6 +23,11 @@ class CoreArchiver extends ConsoleCommand
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        if($input->getOption('force-date-last-n')) {
+            $message = '"force-date-last-n" is deprecated. Please use the "process_new_segments_from" INI configuration option instead.';
+            $output->writeln('<comment>' . $message .'</comment>');
+        }
+
         $archiver = self::makeArchiver($input->getOption('url'), $input);
         $archiver->main();
     }
@@ -38,10 +43,11 @@ class CoreArchiver extends ConsoleCommand
         $archiver->shouldArchiveSpecifiedSites = self::getSitesListOption($input, "force-idsites");
         $archiver->shouldSkipSpecifiedSites = self::getSitesListOption($input, "skip-idsites");
         $archiver->phpCliConfigurationOptions = $input->getOption("php-cli-options");
-        $archiver->dateLastForced = $input->getOption('force-date-last-n');
         $archiver->concurrentRequestsPerWebsite = $input->getOption('concurrent-requests-per-website');
         $archiver->maxConcurrentArchivers = $input->getOption('concurrent-archivers');
         $archiver->shouldArchiveAllSites = $input->getOption('force-all-websites');
+        $archiver->maxSitesToProcess = $input->getOption('max-websites-to-process');
+        $archiver->maxArchivesToProcess = $input->getOption('max-archives-to-process');
         $archiver->setUrlToPiwik($url);
 
         $archiveFilter = new CronArchive\ArchiveFilter();
@@ -49,10 +55,15 @@ class CoreArchiver extends ConsoleCommand
         $archiveFilter->setRestrictToDateRange($input->getOption("force-date-range"));
         $archiveFilter->setRestrictToPeriods($input->getOption("force-periods"));
         $archiveFilter->setSkipSegmentsForToday($input->getOption('skip-segments-today'));
+        $archiveFilter->setForceReport($input->getOption('force-report'));
 
         $segmentIds = $input->getOption('force-idsegments');
-        $segmentIds = explode(',', $segmentIds);
-        $segmentIds = array_map('trim', $segmentIds);
+        if (!empty($segmentIds)) {
+            $segmentIds = explode(',', $segmentIds);
+            $segmentIds = array_map('trim', $segmentIds);
+        } else {
+            $segmentIds = [];
+        }
         $archiveFilter->setSegmentsToForceFromSegmentIds($segmentIds);
 
         $archiver->setArchiveFilter($archiveFilter);
@@ -90,8 +101,8 @@ class CoreArchiver extends ConsoleCommand
             'If specified, segments will be only archived for yesterday, but not today. If the segment was created or changed recently, then it will still be archived for today and the setting will be ignored for this segment.');
         $command->addOption('force-periods', null, InputOption::VALUE_OPTIONAL,
             "If specified, archiving will be processed only for these Periods (comma separated eg. day,week,month,year,range)");
-        $command->addOption('force-date-last-n', null, InputOption::VALUE_REQUIRED,
-            "This last N number of years of data to invalidate when a recently created or updated segment is found.", 7);
+        $command->addOption('force-date-last-n', null, InputOption::VALUE_OPTIONAL,
+            "Deprecated. Please use the \"process_new_segments_from\" INI configuration option instead.");
         $command->addOption('force-date-range', null, InputOption::VALUE_OPTIONAL,
             "If specified, archiving will be processed only for periods included in this date range. Format: YYYY-MM-DD,YYYY-MM-DD");
         $command->addOption('force-idsegments', null, InputOption::VALUE_REQUIRED,
@@ -102,6 +113,10 @@ class CoreArchiver extends ConsoleCommand
             "When processing a website and its segments, number of requests to process in parallel", CronArchive::MAX_CONCURRENT_API_REQUESTS);
         $command->addOption('concurrent-archivers', null, InputOption::VALUE_OPTIONAL,
             "The number of max archivers to run in parallel. Depending on how you start the archiver as a cronjob, you may need to double the amount of archivers allowed if the same process appears twice in the `ps ex` output.", false);
+        $command->addOption('max-websites-to-process', null, InputOption::VALUE_REQUIRED,
+            "Maximum number of websites to process during a single execution of the archiver. Can be used to limit the process lifetime e.g. to avoid increasing memory usage.");
+        $command->addOption('max-archives-to-process', null, InputOption::VALUE_REQUIRED,
+            "Maximum number of archives to process during a single execution of the archiver. Can be used to limit the process lifetime e.g. to avoid increasing memory usage.");
         $command->addOption('disable-scheduled-tasks', null, InputOption::VALUE_NONE,
             "Skips executing Scheduled tasks (sending scheduled reports, db optimization, etc.).");
         $command->addOption('accept-invalid-ssl-certificate', null, InputOption::VALUE_NONE,
@@ -109,5 +124,6 @@ class CoreArchiver extends ConsoleCommand
             . "useful if you specified --url=https://... or if you are using Piwik with force_ssl=1");
         $command->addOption('php-cli-options', null, InputOption::VALUE_OPTIONAL, 'Forwards the PHP configuration options to the PHP CLI command. For example "-d memory_limit=8G". Note: These options are only applied if the archiver actually uses CLI and not HTTP.', $default = '');
         $command->addOption('force-all-websites', null, InputOption::VALUE_NONE, 'Force archiving all websites.');
+        $command->addOption('force-report', null, InputOption::VALUE_OPTIONAL, 'If specified, only processes invalidations for a specific report in a specific plugin. Value must be in the format of "MyPlugin.myReport".');
     }
 }

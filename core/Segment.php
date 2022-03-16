@@ -11,10 +11,12 @@ namespace Piwik;
 use Exception;
 use Piwik\API\Request;
 use Piwik\ArchiveProcessor\Rules;
+use Piwik\Cache as PiwikCache;
 use Piwik\Container\StaticContainer;
 use Piwik\DataAccess\LogQueryBuilder;
 use Piwik\Plugins\SegmentEditor\SegmentEditor;
 use Piwik\Segment\SegmentExpression;
+use Piwik\Plugins\SegmentEditor\Model as SegmentEditorModel;
 
 /**
  * Limits the set of visits Piwik uses when aggregating analytics data.
@@ -100,6 +102,9 @@ class Segment
      */
     const SEGMENT_TRUNCATE_LIMIT = 8192;
 
+    const CACHE_KEY = 'segmenthashes';
+    const SEGMENT_HAS_BUILT_CACHE_KEY ='segmenthashbuilt';
+
     /**
      * Constructor.
      *
@@ -175,17 +180,30 @@ class Segment
         return $this->segmentExpression;
     }
 
+    /**
+     * @throws Exception
+     */
     private function getAvailableSegments()
     {
+        // start cache
+        $cache = PiwikCache::getTransientCache();
+
+        //covert cache id
+        $cacheId = 'API.getSegmentsMetadata.'.SettingsPiwik::getPiwikInstanceId() . '.' . implode(",", $this->idSites);
+
+        //fetch cache lockId
+        $this->availableSegments = $cache->fetch($cacheId);
         // segment metadata
         if (empty($this->availableSegments)) {
+
             $this->availableSegments = Request::processRequest('API.getSegmentsMetadata', array(
-                'idSites' => $this->idSites,
-                '_hideImplementationData' => 0,
-                'filter_limit' => -1,
-                'filter_offset' => 0,
-                '_showAllSegments' => 1,
+              'idSites'                 => $this->idSites,
+              '_hideImplementationData' => 0,
+              'filter_limit'            => -1,
+              'filter_offset'           => 0,
+              '_showAllSegments'        => 1,
             ), []);
+            $cache->save($cacheId, $this->availableSegments);
         }
 
         return $this->availableSegments;
@@ -460,8 +478,46 @@ class Segment
 
     public static function getSegmentHash($definition)
     {
-        // urldecode to normalize the string, as browsers may send slightly different payloads for the same archive
-        return md5(urldecode($definition));
+        $cache = Cache::getEagerCache();
+        $cacheKey = self::CACHE_KEY . md5($definition);
+
+        if ($cache->contains($cacheKey)) {
+            return $cache->fetch($cacheKey);
+        }
+
+        $defaultHash = md5(urldecode($definition));
+
+        // if the cache for segments already built, but this segment was not found,
+        // we return the default segment, this can be a segment from url or
+        // something like "visitorType==new"
+        if ($cache->contains(self::SEGMENT_HAS_BUILT_CACHE_KEY)) {
+            return $defaultHash;
+        }
+
+        // the segment hash is not built yet, let's do it
+        $model = new SegmentEditorModel();
+        $segments = $model->getAllSegmentsAndIgnoreVisibility();
+
+        foreach ($segments as $segment) {
+            $cacheKeyTemp = self::CACHE_KEY . md5($segment['definition']);
+            $cache->save($cacheKeyTemp, $segment['hash']);
+
+            $cacheKeyTemp = self::CACHE_KEY . md5(urldecode($segment['definition']));
+            $cache->save($cacheKeyTemp, $segment['hash']);
+
+            $cacheKeyTemp = self::CACHE_KEY . md5(urlencode($segment['definition']));
+            $cache->save($cacheKeyTemp, $segment['hash']);
+        }
+
+        $cache->save(self::SEGMENT_HAS_BUILT_CACHE_KEY, true);
+
+        // if we found the segment, return it's hash, but maybe this
+        // segment is not stored in the db, return the default
+        if ($cache->contains($cacheKey)) {
+            return $cache->fetch($cacheKey);
+        }
+
+        return $defaultHash;
     }
 
     /**
@@ -477,7 +533,7 @@ class Segment
      * @param int $limit Limit number of result to $limit
      * @param int $offset Specified the offset of the first row to return
      * @param bool $forceGroupBy Force the group by and not using a subquery. Note: This may make the query slower see https://github.com/matomo-org/matomo/issues/9200#issuecomment-183641293
-     *                           A $groupBy value needs to be set for this to work. 
+     *                           A $groupBy value needs to be set for this to work.
      * @param int If set to value >= 1 then the Select query (and All inner queries) will be LIMIT'ed by this value.
      *              Use only when you're not aggregating or it will sample the data.
      * @return string The entire select query.
@@ -599,5 +655,10 @@ class Segment
         }
 
         return $this->isSegmentEncoded ? urldecode($segment) : $segment;
+    }
+
+    public function getOriginalString()
+    {
+        return $this->originalString;
     }
 }

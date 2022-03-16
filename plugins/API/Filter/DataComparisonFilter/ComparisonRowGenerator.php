@@ -51,7 +51,7 @@ class ComparisonRowGenerator
             $isDatePeriod = $tables->getKeyName() == 'date';
 
             foreach ($childTablesArray as $index => $childTable) {
-                $compareChildTable = isset($compareTablesArray[$index]) ? $compareTablesArray[$index] : null;
+                $compareChildTable = !empty($compareTablesArray[$index]) ? $compareTablesArray[$index] : null;
                 $this->compareTables($compareMetadata, $childTable, $compareChildTable);
             }
 
@@ -82,7 +82,7 @@ class ComparisonRowGenerator
                     $tables->addTable($newTable, $periodLabel);
 
                     // compare with the empty table
-                    $compareTable = $compareTablesArray[$i];
+                    $compareTable = !empty($compareTablesArray[$i]) ? $compareTablesArray[$i] : null;
                     $this->compareTables($compareMetadata, $newTable, $compareTable);
                 }
             }
@@ -125,7 +125,7 @@ class ComparisonRowGenerator
                     'totals' => $totals,
                 ]);
 
-                $allTotalsTables = $table->getMetadata('comparisonTotals');
+                $allTotalsTables = $table->getMetadata('comparisonTotals') ?: [];
                 $allTotalsTables[] = $comparisonTotalsEntry;
                 $table->setMetadata('comparisonTotals', $allTotalsTables);
             }
@@ -199,10 +199,10 @@ class ComparisonRowGenerator
 
         // recurse on subtable if there
         $subtable = $row->getSubtable();
-        if ($subtable
-            && $compareRow
-        ) {
-            $this->compareTable($compareMetadata, $subtable, $rootTable, $compareRow->getSubtable());
+        $compareSubTable = $compareRow ? $compareRow->getSubtable() : null;
+
+        if ($subtable && $compareSubTable) {
+            $this->compareTable($compareMetadata, $subtable, $rootTable, $compareSubTable);
         }
     }
 

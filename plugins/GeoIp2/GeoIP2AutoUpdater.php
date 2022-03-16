@@ -11,8 +11,10 @@ namespace Piwik\Plugins\GeoIp2;
 use Exception;
 use GeoIp2\Database\Reader;
 use Piwik\Common;
+use Piwik\Config;
 use Piwik\Container\StaticContainer;
 use Piwik\Date;
+use Piwik\Filesystem;
 use Piwik\Http;
 use Piwik\Log;
 use Piwik\Option;
@@ -158,7 +160,7 @@ class GeoIP2AutoUpdater extends Task
         // NOTE: using the first item in $dbNames[$dbType] makes sure GeoLiteCity will be renamed to GeoIPCity
         $zippedFilename = $this->getZippedFilenameToDownloadTo($url, $dbType, $ext);
 
-        $zippedOutputPath = self::getTemporaryFolder($zippedFilename);
+        $zippedOutputPath = self::getTemporaryFolder($zippedFilename, true);
 
         $url = self::removeDateFromUrl($url);
 
@@ -192,9 +194,16 @@ class GeoIP2AutoUpdater extends Task
         Log::info("GeoIP2AutoUpdater: successfully updated GeoIP 2 database '%s'", $url);
     }
 
-    public static function getTemporaryFolder($file)
+    public static function getTemporaryFolder($file, $isDownload = false)
     {
-        return \Piwik\Container\StaticContainer::get('path.tmp') . '/latest/' . $file;
+        $folder = \Piwik\Container\StaticContainer::get('path.tmp') . '/latest/';
+        if (!is_dir($folder)) {
+            Filesystem::mkdir($folder);
+        }
+        if (!is_writable($folder)) {
+            throw new \Exception("GeoIP2AutoUpdater: Can't create temporary file for download.");
+        }
+        return $folder . $file . ($isDownload ? '.download' : '');
     }
 
     /**
@@ -207,10 +216,17 @@ class GeoIP2AutoUpdater extends Task
     public static function unzipDownloadedFile($path, $dbType, $url, $unlink = false)
     {
         $isDbIp = self::isDbIpUrl($url);
-        $isDbIpUnknownDbType = $isDbIp && substr($path, -5, 5) == '.mmdb';
+
+        $filename = $path;
+
+        if (substr($filename, -9, 9) === '.download') {
+            $filename = substr($filename, 0, -9);
+        }
+
+        $isDbIpUnknownDbType = $isDbIp && substr($filename, -5, 5) == '.mmdb';
 
         // extract file
-        if (substr($path, -7, 7) == '.tar.gz') {
+        if (substr($filename, -7, 7) == '.tar.gz') {
             // find the .dat file in the tar archive
             $unzip = Unzip::factory('tar.gz', $path);
             $content = $unzip->listContent();
@@ -253,7 +269,7 @@ class GeoIP2AutoUpdater extends Task
             $fd = fopen($outputPath, 'wb');
             fwrite($fd, $unzipped);
             fclose($fd);
-        } else if (substr($path, -3, 3) == '.gz'
+        } else if (substr($filename, -3, 3) == '.gz'
             || $isDbIpUnknownDbType
         ) {
             $unzip = Unzip::factory('gz', $path);
@@ -261,7 +277,7 @@ class GeoIP2AutoUpdater extends Task
             if ($isDbIpUnknownDbType) {
                 $tempFilename = 'unzipped-temp-dbip-file.mmdb';
             } else {
-                $dbFilename = substr(basename($path), 0, -3);
+                $dbFilename = substr(basename($filename), 0, -3);
                 $tempFilename = $dbFilename . '.new';
             }
 
@@ -276,9 +292,10 @@ class GeoIP2AutoUpdater extends Task
             if ($isDbIpUnknownDbType) {
                 $php = new Php([$dbType => [$outputPath]]);
                 $dbFilename = $php->detectDatabaseType($dbType) . '.mmdb';
+                unset($php);
             }
         } else {
-            $parts = explode(basename($path), '.', 2);
+            $parts = explode(basename($filename), '.', 2);
             $ext = end($parts);
             throw new Exception(Piwik::translate('GeoIp2_UnsupportedArchiveType', "'$ext'"));
         }
@@ -299,6 +316,7 @@ class GeoIP2AutoUpdater extends Task
 
             try {
                 $location = $phpProvider->getLocation(array('ip' => LocationProviderGeoIp2::TEST_IP));
+                unset($phpProvider);
             } catch (\Exception $e) {
                 Log::info("GeoIP2AutoUpdater: Encountered exception when testing newly downloaded" .
                     " GeoIP 2 database: %s", $e->getMessage());
@@ -308,6 +326,13 @@ class GeoIP2AutoUpdater extends Task
 
             if (empty($location)) {
                 throw new Exception(Piwik::translate('GeoIp2_ThisUrlIsNotAValidGeoIPDB'));
+            }
+
+            // ensure the cached location providers do no longer block any files on windows
+            foreach (LocationProvider::getAllProviders() as $provider) {
+                if ($provider instanceof Php) {
+                    $provider->clearCachedInstances();
+                }
             }
 
             // delete the existing GeoIP database (if any) and rename the downloaded file
@@ -408,9 +433,9 @@ class GeoIP2AutoUpdater extends Task
 
             $url = $options[$optionKey];
             $url = self::removeDateFromUrl($url);
-            if (!empty($url) && strpos(Common::mb_strtolower($url), 'https://') !== 0 && strpos(Common::mb_strtolower($url), 'http://') !== 0) {
-                throw new Exception('Invalid download URL for geoip ' . $optionKey . ': ' . $url);
-            }
+
+            self::checkGeoIPUpdateUrl($url);
+
             Option::set($optionName, $url);
         }
 
@@ -433,6 +458,37 @@ class GeoIP2AutoUpdater extends Task
             $scheduler = StaticContainer::getContainer()->get('Piwik\Scheduler\Scheduler');
 
             $scheduler->rescheduleTaskAndRunTomorrow(new GeoIP2AutoUpdater());
+        }
+    }
+
+    protected static function checkGeoIPUpdateUrl($url)
+    {
+        if (empty($url)) {
+            return;
+        }
+
+        $parsedUrl = @parse_url($url);
+        $schema = $parsedUrl['scheme'] ?? '';
+        $host = $parsedUrl['host'] ?? '';
+
+        if (empty($schema) || empty($host) || !in_array(mb_strtolower($schema), ['http', 'https'])) {
+            throw new Exception(Piwik::translate('GeoIp2_MalFormedUpdateUrl', '<i>'.Common::sanitizeInputValue($url).'</i>'));
+        }
+
+        $validHosts = Config::getInstance()->General['geolocation_download_from_trusted_hosts'];
+        $isValidHost = false;
+
+        foreach ($validHosts as $validHost) {
+            if (preg_match('/(^|\.)' . preg_quote($validHost) . '$/i', $host)) {
+                $isValidHost = true;
+                break;
+            }
+        }
+
+        if (true !== $isValidHost) {
+            throw new Exception(Piwik::translate('GeoIp2_InvalidGeoIPUpdateHost', [
+                '<i>'.$url.'</i>', '<i>'.implode(', ', $validHosts).'</i>', '<i>geolocation_download_from_trusted_hosts</i>'
+            ]));
         }
     }
 
@@ -618,6 +674,7 @@ class GeoIP2AutoUpdater extends Task
                 $reader = new Reader($pathToDb);
 
                 $location = $provider->getLocation(array('ip' => LocationProviderGeoIp2::TEST_IP));
+                unset($provider, $reader);
             } catch (\Exception $e) {
                 if ($logErrors) {
                     Log::error("GeoIP2AutoUpdater: Encountered exception when performing redundant tests on GeoIP2 "
@@ -625,7 +682,7 @@ class GeoIP2AutoUpdater extends Task
                 }
 
                 // get the current filename for the DB and an available new one to rename it to
-                list($oldPath, $newPath) = $this->getOldAndNewPathsForBrokenDb($customNames[$type]);
+                [$oldPath, $newPath] = $this->getOldAndNewPathsForBrokenDb($customNames[$type]);
 
                 // rename the DB so tracking will not fail
                 if ($oldPath !== false
@@ -767,12 +824,12 @@ class GeoIP2AutoUpdater extends Task
 
     public static function isDbIpUrl($url)
     {
-        return !! preg_match('/db-ip\.com/', $url);
+        return !! preg_match('/^http[s]?:\/\/([a-z0-9-]+\.)?db-ip\.com/', $url);
     }
 
     protected static function isPaidDbIpUrl($url)
     {
-        return !! preg_match('/db-ip\.com\/account\/[0-9a-z]+\/db/', $url);
+        return !! preg_match('/^http[s]?:\/\/([a-z0-9-]+\.)?db-ip\.com\/account\/[0-9a-z]+\/db/', $url);
     }
 
     protected function fetchPaidDbIpUrl($url)
