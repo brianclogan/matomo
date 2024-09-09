@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -41,6 +42,7 @@ import {
   ContentBlock,
   translate,
   NotificationsStore,
+  externalLink,
 } from 'CoreHome';
 import { SaveButton, Field } from 'CorePluginsAdmin';
 
@@ -69,7 +71,7 @@ export default defineComponent({
     signupTitleText() {
       return translate(
         'UsersManager_NewsletterSignupMessage',
-        '<a href="https://matomo.org/privacy-policy/" target="_blank">',
+        externalLink('https://matomo.org/privacy-policy/'),
         '</a>',
       );
     },

@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -20,7 +21,7 @@
       <div class="comparison-type">{{ translate('General_Segment') }}</div>
       <div
         class="title"
-        :title="comparison.title + '<br/>' + decodeURIComponent(comparison.params.segment)"
+        :title="getTitleTooltip(comparison)"
       >
         <a
           target="_blank"
@@ -76,7 +77,7 @@ import ComparisonsStoreInstance from './Comparisons.store.instance';
 import Matomo from '../Matomo/Matomo';
 import MatomoUrl from '../MatomoUrl/MatomoUrl';
 import AjaxHelper from '../AjaxHelper/AjaxHelper';
-import translate from '../translate';
+import { translate } from '../translate';
 import Tooltips from '../Tooltips/Tooltips';
 
 interface ProcessedReportComparison {
@@ -112,7 +113,9 @@ export default defineComponent({
   setup() {
     // accessing has to be done through a computed property so we can use the computed
     // instance directly in the template. unfortunately, vue won't register to changes.
-    const isComparing = computed(() => ComparisonsStoreInstance.isComparing());
+    const isComparing = computed(
+      () => ComparisonsStoreInstance.isComparing() && !window.broadcast.isNoDataPage(),
+    );
     const segmentComparisons = computed(() => ComparisonsStoreInstance.getSegmentComparisons());
     const periodComparisons = computed(() => ComparisonsStoreInstance.getPeriodComparisons());
     const getSeriesColor = ComparisonsStoreInstance.getSeriesColor.bind(ComparisonsStoreInstance);
@@ -163,6 +166,10 @@ export default defineComponent({
       }
 
       return (this.comparisonTooltips[periodComparison.index] || {})[segmentComparison.index];
+    },
+    getTitleTooltip(comparison: AnyComparison): string {
+      return `${this.htmlentities(comparison.title)}<br/>`
+        + `${this.htmlentities(decodeURIComponent(comparison.params.segment))}`;
     },
     getUrlToSegment(segment: string) {
       const hash = { ...MatomoUrl.hashParsed.value };
@@ -250,6 +257,9 @@ export default defineComponent({
 
       tooltip += '</div>';
       return tooltip;
+    },
+    htmlentities(str: string): string {
+      return Matomo.helper.htmlEntities(str);
     },
   },
   mounted() {

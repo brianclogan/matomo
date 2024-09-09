@@ -1,19 +1,18 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Ecommerce\Columns;
 
 use Piwik\Columns\DimensionSegmentFactory;
 use Piwik\Columns\Discriminator;
 use Piwik\Columns\Join\ActionNameJoin;
 use Piwik\Common;
-use Piwik\Db;
-use Piwik\Log;
 use Piwik\Piwik;
 use Piwik\Plugin\Dimension\ActionDimension;
 use Piwik\Plugin\Manager;
@@ -22,7 +21,7 @@ use Piwik\Plugins\CustomVariables\Tracker\CustomVariablesRequestProcessor;
 use Piwik\Segment\SegmentsList;
 use Piwik\Tracker\Action;
 use Piwik\Tracker\Request;
-use Piwik\Tracker\Visitor;
+use Piwik\Tracker\TableLogAction;
 
 class ProductViewCategory extends ActionDimension
 {
@@ -55,7 +54,7 @@ class ProductViewCategory extends ActionDimension
             $segment->setType('dimension');
             $segment->setName(Piwik::translate('Ecommerce_ViewedProductCategory') . ' ' . ($i + 1));
             $segment->setSegment($productCategoryName);
-            $segment->setSqlFilter('\\Piwik\\Tracker\\TableLogAction::getIdActionFromSegment');
+            $segment->setSqlFilter([TableLogAction::class, 'getOptimizedIdActionSqlMatch']);
             $segment->setSqlSegment('log_link_visit_action.' . $productCategoryColumnName);
             $segment->setIsInternal(true);
             $segment->setSuggestedValuesCallback(function ($idSite, $maxValuesToReturn, $table) {

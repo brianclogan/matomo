@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik;
@@ -15,7 +15,6 @@ use Piwik\Plugins\CustomJsTracker\TrackerUpdater;
 
 class FileIntegrity
 {
-
     /**
      * Get file integrity information
      *
@@ -25,11 +24,7 @@ class FileIntegrity
     {
         $messages = array();
 
-        $manifest = PIWIK_INCLUDE_PATH . '/config/manifest.inc.php';
-
-        if (file_exists($manifest)) {
-            require_once $manifest;
-        }
+        self::loadManifest();
 
         if (!class_exists('Piwik\\Manifest')) {
             $messages[] = Piwik::translate('General_WarningFileIntegrityNoManifest')
@@ -55,6 +50,32 @@ class FileIntegrity
         );
     }
 
+    /**
+     * Return just a list of the unexpected files
+     *
+     * @return array
+     */
+    public static function getUnexpectedFilesList(): array
+    {
+        self::loadManifest();
+        $files = self::getFilesFoundButNotExpected();
+        return $files;
+    }
+
+    /**
+     * Include the manifest
+     *
+     * @return void
+     */
+    private static function loadManifest(): void
+    {
+        $manifest = PIWIK_INCLUDE_PATH . '/config/manifest.inc.php';
+
+        if (file_exists($manifest)) {
+            require_once $manifest;
+        }
+    }
+
     protected static function getFilesNotInManifestButExpectedAnyway()
     {
         return StaticContainer::get('fileintegrity.ignore');
@@ -64,7 +85,6 @@ class FileIntegrity
     {
         $directoriesFoundButNotExpected = self::getDirectoriesFoundButNotExpected();
         if (count($directoriesFoundButNotExpected) > 0) {
-
             $messageDirectoriesToDelete = '';
             foreach ($directoriesFoundButNotExpected as $directoryFoundNotExpected) {
                 $messageDirectoriesToDelete .= Piwik::translate('General_ExceptionDirectoryToDelete', htmlspecialchars($directoryFoundNotExpected)) . '<br/>';
@@ -98,7 +118,6 @@ class FileIntegrity
                 . '<br/>'
                 . implode('<br />', $deleteAllAtOnce)
                 . '<br/><br/>';
-
         }
 
         return $messages;
@@ -112,7 +131,6 @@ class FileIntegrity
     {
         $filesFoundButNotExpected = self::getFilesFoundButNotExpected();
         if (count($filesFoundButNotExpected) > 0) {
-
             $messageFilesToDelete = '';
             foreach ($filesFoundButNotExpected as $fileFoundNotExpected) {
                 $messageFilesToDelete .= Piwik::translate('General_ExceptionFileToDelete', htmlspecialchars($fileFoundNotExpected)) . '<br/>';
@@ -148,7 +166,6 @@ class FileIntegrity
                 . '<br/><br/>';
 
             return $messages;
-
         }
         return $messages;
     }
@@ -161,7 +178,7 @@ class FileIntegrity
     protected static function getDirectoriesFoundButNotExpected()
     {
         static $cache = null;
-        if(!is_null($cache)) {
+        if (!is_null($cache)) {
             return $cache;
         }
 
@@ -174,7 +191,7 @@ class FileIntegrity
             $file = ltrim($file, "\\/");
             $directory = dirname($file);
 
-            if(in_array($directory, $directoriesInManifest)) {
+            if (in_array($directory, $directoriesInManifest)) {
                 continue;
             }
 
@@ -235,8 +252,8 @@ class FileIntegrity
     protected static function isFileFromDirectoryThatShouldBeDeleted($file)
     {
         $directoriesWillBeDeleted = self::getDirectoriesFoundButNotExpected();
-        foreach($directoriesWillBeDeleted as $directoryWillBeDeleted) {
-            if(strpos($file, $directoryWillBeDeleted) === 0) {
+        foreach ($directoriesWillBeDeleted as $directoryWillBeDeleted) {
+            if (strpos($file, $directoryWillBeDeleted) === 0) {
                 return true;
             }
         }
@@ -248,11 +265,11 @@ class FileIntegrity
         $files = \Piwik\Manifest::$files;
 
         $directories = array();
-        foreach($files as $file => $manifestIntegrityInfo) {
+        foreach ($files as $file => $manifestIntegrityInfo) {
             $directory = $file;
 
             // add this directory and each parent directory
-            while( ($directory = dirname($directory)) && $directory != '.' && $directory != '/') {
+            while (($directory = dirname($directory)) && $directory != '.' && $directory != '/') {
                 $directories[] = $directory;
             }
         }
@@ -265,8 +282,8 @@ class FileIntegrity
         $files = \Piwik\Manifest::$files;
 
         $pluginsInManifest = array();
-        foreach($files as $file => $manifestIntegrityInfo) {
-            if(strpos($file, 'plugins/') === 0) {
+        foreach ($files as $file => $manifestIntegrityInfo) {
+            if (strpos($file, 'plugins/') === 0) {
                 $pluginName = self::getPluginNameFromFilepath($file);
                 $pluginsInManifest[] = $pluginName;
             }
@@ -294,7 +311,7 @@ class FileIntegrity
         }
 
         $pluginName = self::getPluginNameFromFilepath($file);
-        if(in_array($pluginName, $pluginsInManifest)) {
+        if (in_array($pluginName, $pluginsInManifest)) {
             return false;
         }
 
@@ -324,7 +341,6 @@ class FileIntegrity
             if (!file_exists($file) || !is_readable($file)) {
                 $messagesMismatch[] = Piwik::translate('General_ExceptionMissingFile', $file);
             } elseif (filesize($file) != $props[0]) {
-
                 if (self::isModifiedPathValid($path)) {
                     continue;
                 }
@@ -336,7 +352,8 @@ class FileIntegrity
                     // convert end-of-line characters and re-test text files
                     $content = @file_get_contents($file);
                     $content = str_replace("\r\n", "\n", $content);
-                    if ((strlen($content) != $props[0])
+                    if (
+                        (strlen($content) != $props[0])
                         || (@md5($content) !== $props[1])
                     ) {
                         $messagesMismatch[] = Piwik::translate('General_ExceptionFilesizeMismatch', array($file, $props[0], filesize($file)));
@@ -391,7 +408,6 @@ class FileIntegrity
                 } catch (AccessDeniedException $e) {
                     return false;
                 }
-
             }
         }
 
@@ -430,7 +446,7 @@ class FileIntegrity
         $parentDirectoriesOnly = array();
         foreach ($directoriesFoundButNotExpected as $directory) {
             $directoryParent = self::getDirectoryParentFromList($directory, $directoriesFoundButNotExpected);
-            if($directoryParent) {
+            if ($directoryParent) {
                 $parentDirectoriesOnly[] = $directoryParent;
             }
         }
@@ -448,7 +464,7 @@ class FileIntegrity
      */
     protected static function getDirectoryParentFromList($directory, $directories)
     {
-        foreach($directories as $directoryMaybeParent) {
+        foreach ($directories as $directoryMaybeParent) {
             if ($directory == $directoryMaybeParent) {
                 continue;
             }
@@ -460,5 +476,4 @@ class FileIntegrity
         }
         return null;
     }
-
 }

@@ -1,10 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Diagnostics\Diagnostic;
 
 use Piwik\Translation\Translator;
@@ -29,7 +31,7 @@ class PhpSettingsCheck implements Diagnostic
         $label = $this->translator->translate('Installation_SystemCheckSettings');
 
         $result = new DiagnosticResult($label);
-        
+
         foreach ($this->getRequiredSettings() as $setting) {
             if (!$setting->check()) {
                 $status = $setting->getErrorResult();
@@ -56,7 +58,7 @@ class PhpSettingsCheck implements Diagnostic
     private function getRequiredSettings()
     {
         $requiredSettings[] = new RequiredPhpSetting('session.auto_start', 0);
-    
+
         $maxExecutionTime = new RequiredPhpSetting('max_execution_time', 0);
         $maxExecutionTime->addRequiredValue(-1, '=');
         $maxExecutionTime->addRequiredValue(30, '>=');

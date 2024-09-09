@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\CoreAdminHome;
 
 use Piwik\Menu\MenuAdmin;
@@ -19,29 +20,36 @@ class Menu extends \Piwik\Plugin\Menu
 {
     public function configureAdminMenu(MenuAdmin $menu)
     {
-        $menu->addPersonalItem(null, array(), 1, false);
-        $menu->addSystemItem(null, array(), 2, false);
-        $menu->addMeasurableItem(null, array(), $order = 3);
-        $menu->addPlatformItem(null, array(), 4, false);
-        $menu->addDiagnosticItem(null, array(), $order = 5);
-        $menu->addDevelopmentItem(null, array(), $order = 40);
+        $menu->addPersonalItem('', [], 1);
+        $menu->addSystemItem('', [], 2);
+        $menu->addPluginItem('', [], 3);
+        $menu->addMeasurableItem('', [], 4);
+        $menu->addPlatformItem('', [], 5);
+        $menu->addDiagnosticItem('', [], 6);
+        $menu->addDevelopmentItem('', [], 40);
 
         if (Piwik::hasUserSuperUserAccess()) {
-            $menu->addSystemItem('General_GeneralSettings',
+            $menu->addSystemItem(
+                'General_GeneralSettings',
                 $this->urlForAction('generalSettings'),
-                $order = 5);
+                $order = 5
+            );
         }
 
         if (!Piwik::isUserIsAnonymous()) {
-            $menu->addMeasurableItem('CoreAdminHome_TrackingCode',
+            $menu->addMeasurableItem(
+                'CoreAdminHome_TrackingCode',
                 $this->urlForAction('trackingCodeGenerator'),
-                $order = 12);
+                $order = 12
+            );
         }
 
         if (Piwik::isUserHasSomeAdminAccess()) {
-            $menu->addDiagnosticItem('CoreAdminHome_TrackingFailures',
+            $menu->addDiagnosticItem(
+                'CoreAdminHome_TrackingFailures',
                 $this->urlForAction('trackingFailures'),
-                $order = 2);
+                $order = 2
+            );
         }
     }
 
@@ -56,20 +64,27 @@ class Menu extends \Piwik\Plugin\Menu
             $user = $model->getUser(Piwik::getCurrentUserLogin());
             if ($user) {
                 $userChanges = new UserChanges($user);
-
                 $newChangesStatus = $userChanges->getNewChangesStatus();
-                if ($newChangesStatus !== ChangesModel::NO_CHANGES_EXIST) {
 
+                if ($newChangesStatus !== ChangesModel::NO_CHANGES_EXIST) {
                     $icon = ($newChangesStatus === ChangesModel::NEW_CHANGES_EXIST ? 'icon-notifications_on' : 'icon-reporting-actions');
 
                     $menu->registerMenuIcon('CoreAdminHome_WhatIsNew', $icon);
-                    $menu->addItem('CoreAdminHome_WhatIsNew', null, null, 990,
+                    $menu->addItem(
+                        'CoreAdminHome_WhatIsNew',
+                        null,
+                        'javascript:',
+                        990,
                         Piwik::translate('CoreAdminHome_WhatIsNewTooltip'),
-                        $icon, "Piwik_Popover.createPopupAndLoadUrl('module=CoreAdminHome&action=whatIsNew', '".
-                        addslashes(Piwik::translate('CoreAdminHome_WhatIsNewTooltip'))."','what-is-new-popup')");
+                        $icon,
+                        "Piwik_Popover.createPopupAndLoadUrl('module=CoreAdminHome&action=whatIsNew', '" .
+                        addslashes(Piwik::translate('CoreAdminHome_WhatIsNewTooltip')) . "','what-is-new-popup')",
+                        null,
+                        null,
+                        $userChanges->getNewChangesCount()
+                    );
                 }
             }
         }
     }
-
 }

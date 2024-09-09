@@ -1,17 +1,14 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\ArchiveProcessor;
 
-use Piwik\Cache;
-use Piwik\DataAccess\Model;
-use Piwik\DataAccess\RawLogDao;
 use Piwik\Date;
 use Piwik\Log;
 use Piwik\Period;
@@ -49,11 +46,6 @@ class Parameters
     private $onlyArchiveRequestedPlugin = false;
 
     /**
-     * @var bool
-     */
-    private $isRootArchiveRequest = true;
-
-    /**
      * @var string
      */
     private $archiveOnlyReport = null;
@@ -62,6 +54,11 @@ class Parameters
      * @var bool
      */
     private $isArchiveOnlyReportHandled;
+
+    /**
+     * @var string[]|null
+     */
+    private $foundRequestedReports;
 
     /**
      * Constructor.
@@ -79,7 +76,7 @@ class Parameters
      * If we want to archive only a single report, we can request that via this method.
      * It is up to each plugin's archiver to respect the setting.
      *
-     * @param string $archiveOnlyReport
+     * @param string|string[] $archiveOnlyReport
      * @api
      */
     public function setArchiveOnlyReport($archiveOnlyReport)
@@ -273,32 +270,13 @@ class Parameters
         );
     }
 
-    /**
-     * Returns `true` if these parameters are part of an initial archiving request.
-     * Returns `false` if these parameters are for an archiving request that was initiated
-     * during archiving.
-     *
-     * @return bool
-     */
-    public function isRootArchiveRequest()
-    {
-        return $this->isRootArchiveRequest;
-    }
-
-    /**
-     * Sets whether these parameters are part of the initial archiving request or if they are
-     * for a request that was initiated during archiving.
-     *
-     * @param $isRootArchiveRequest
-     */
-    public function setIsRootArchiveRequest($isRootArchiveRequest)
-    {
-        $this->isRootArchiveRequest = $isRootArchiveRequest;
-    }
-
     public function __toString()
     {
-        return "[idSite = {$this->getSite()->getId()}, period = {$this->getPeriod()->getLabel()} {$this->getPeriod()->getRangeString()}, segment = {$this->getSegment()->getString()}, plugin = {$this->getRequestedPlugin()}, report = {$this->getArchiveOnlyReport()}]";
+        $requestedReports = $this->getArchiveOnlyReport();
+        if (is_array($requestedReports)) {
+            $requestedReports = implode(', ', $requestedReports);
+        }
+        return "[idSite = {$this->getSite()->getId()}, period = {$this->getPeriod()->getLabel()} {$this->getPeriod()->getRangeString()}, segment = {$this->getSegment()->getString()}, plugin = {$this->getRequestedPlugin()}, report = {$requestedReports}]";
     }
 
     /**
@@ -325,5 +303,24 @@ class Parameters
     public function setIsPartialArchive($isArchiveOnlyReportHandled)
     {
         $this->isArchiveOnlyReportHandled = $isArchiveOnlyReportHandled;
+    }
+
+    public function getArchiveOnlyReportAsArray()
+    {
+        $requestedReport = $this->getArchiveOnlyReport();
+        if (empty($requestedReport)) {
+            return [];
+        }
+        return is_array($requestedReport) ? $requestedReport : [$requestedReport];
+    }
+
+    public function setFoundRequestedReports(array $foundRecords)
+    {
+        $this->foundRequestedReports = $foundRecords;
+    }
+
+    public function getFoundRequestedReports()
+    {
+        return $this->foundRequestedReports ?: [];
     }
 }

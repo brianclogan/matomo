@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\AssetManager\UIAssetMerger;
 
 use Exception;
@@ -46,7 +47,7 @@ class StylesheetUIAssetMerger extends UIAssetMerger
         $this->lessCompiler->setFormatter('classic');
         try {
             $compiled = $this->lessCompiler->compile($concatenatedAssets);
-        } catch(\Exception $e) {
+        } catch (\Exception $e) {
             // save the concated less files so we can debug the issue
             $this->saveConcatenatedAssets($concatenatedAssets);
 
@@ -65,7 +66,7 @@ class StylesheetUIAssetMerger extends UIAssetMerger
 
         return $compiled;
     }
-    
+
     private function getCssStatementForReplacement($path)
     {
         return ".nonExistingSelectorOnlyForReplacementOfCssFiles {\n  display: \"" . $path . "\";\n}";
@@ -106,7 +107,7 @@ class StylesheetUIAssetMerger extends UIAssetMerger
 
         $this->mergedContent = $concatenatedContent;
     }
-    
+
     /**
      * @return lessc
      * @throws Exception
@@ -254,8 +255,10 @@ class StylesheetUIAssetMerger extends UIAssetMerger
     {
         $rootDirectory = realpath($uiAsset->getBaseDirectory());
 
-        if ($rootDirectory != PATH_SEPARATOR
-            && substr($rootDirectory, -strlen(PATH_SEPARATOR)) !== PATH_SEPARATOR) {
+        if (
+            $rootDirectory != PATH_SEPARATOR
+            && substr($rootDirectory, -strlen(PATH_SEPARATOR)) !== PATH_SEPARATOR
+        ) {
             $rootDirectory .= PATH_SEPARATOR;
         }
         $rootDirectoryLen = strlen($rootDirectory);

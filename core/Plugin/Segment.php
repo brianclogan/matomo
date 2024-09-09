@@ -1,13 +1,16 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugin;
+
 use Exception;
+use Piwik\Columns\Dimension;
 use Piwik\Development;
 
 /**
@@ -35,13 +38,13 @@ class Segment
      * Segment type 'dimension'. Can be used along with {@link setType()}.
      * @api
      */
-    const TYPE_DIMENSION = 'dimension';
+    public const TYPE_DIMENSION = 'dimension';
 
     /**
      * Segment type 'metric'. Can be used along with {@link setType()}.
      * @api
      */
-    const TYPE_METRIC = 'metric';
+    public const TYPE_METRIC = 'metric';
 
     private $type;
     private $category;
@@ -72,6 +75,11 @@ class Segment
     {
         $this->init();
     }
+
+    /**
+     * @var Dimension
+     */
+    public $dimension;
 
     /**
      * Here you can initialize this segment and set any default values. It is called directly after the object is
@@ -140,7 +148,7 @@ class Segment
      *
      * If the closure returns NULL, then Piwik assumes the segment sub-string will not match any visitor.
      *
-     * @param string|\Closure $sqlFilter
+     * @param callable $sqlFilter
      * @api
      */
     public function setSqlFilter($sqlFilter)
@@ -234,7 +242,7 @@ class Segment
 
     /**
      * Set (overwrite) the type of this segment which is usually either a 'dimension' or a 'metric'.
-     * @param string $type See constansts TYPE_*
+     * @param string $type See constants TYPE_*
      * @api
      */
     public function setType($type)

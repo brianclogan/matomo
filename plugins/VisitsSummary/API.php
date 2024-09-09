@@ -1,19 +1,20 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\VisitsSummary;
 
 use Piwik\Archive;
 use Piwik\Metrics\Formatter;
 use Piwik\Piwik;
-use Piwik\Plugin\Report;
 use Piwik\Plugin\ReportsProvider;
 use Piwik\SettingsPiwik;
+use Piwik\Url;
 
 /**
  * VisitsSummary API lets you access the core web analytics metrics (visits, unique visitors,
@@ -118,8 +119,10 @@ class API extends \Piwik\Plugin\API
 
         $table = $this->getSumVisitsLength($idSite, $period, $date, $segment);
         if (is_object($table)) {
-            $table->filter('ColumnCallbackReplace',
-                array('sum_visit_length', array($formatter, 'getPrettyTimeFromSeconds'), array(true)));
+            $table->filter(
+                'ColumnCallbackReplace',
+                array('sum_visit_length', array($formatter, 'getPrettyTimeFromSeconds'), array(true))
+            );
         } else {
             $table = $formatter->getPrettyTimeFromSeconds($table, true);
         }
@@ -136,7 +139,7 @@ class API extends \Piwik\Plugin\API
         if (!SettingsPiwik::isUniqueVisitorsEnabled($period)) {
             throw new \Exception(
                 "The metric " . $metric . " is not enabled for the requested period. " .
-                "Please see this FAQ: https://matomo.org/faq/how-to/faq_113/"
+                "Please see this FAQ: " . Url::addCampaignParametersToMatomoLink('https://matomo.org/faq/how-to/faq_113/')
             );
         }
     }

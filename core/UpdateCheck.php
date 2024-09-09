@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 use Piwik\Container\StaticContainer;
@@ -15,11 +16,12 @@ use Piwik\Container\StaticContainer;
  */
 class UpdateCheck
 {
-    const CHECK_INTERVAL = 28800; // every 8 hours
-    const UI_CLICK_CHECK_INTERVAL = 10; // every 10s when user clicks UI link
-    const LAST_TIME_CHECKED = 'UpdateCheck_LastTimeChecked';
-    const LATEST_VERSION = 'UpdateCheck_LatestVersion';
-    const SOCKET_TIMEOUT = 2;
+    public const CHECK_INTERVAL = 28800; // every 8 hours
+    public const UI_CLICK_CHECK_INTERVAL = 10; // every 10s when user clicks UI link
+    public const LAST_CHECK_FAILED = 'UpdateCheck_LastCheckFailed';
+    public const LAST_TIME_CHECKED = 'UpdateCheck_LastTimeChecked';
+    public const LATEST_VERSION = 'UpdateCheck_LatestVersion';
+    public const SOCKET_TIMEOUT = 5;
 
     /**
      * Check for a newer version
@@ -38,7 +40,8 @@ class UpdateCheck
         }
 
         $lastTimeChecked = Option::get(self::LAST_TIME_CHECKED);
-        if ($force
+        if (
+            $force
             || $lastTimeChecked === false
             || time() - $interval > $lastTimeChecked
         ) {
@@ -51,7 +54,16 @@ class UpdateCheck
                 $latestVersion = '';
             }
 
-            Option::set(self::LATEST_VERSION, $latestVersion);
+            $hasLastCheckFailed = '' === $latestVersion;
+
+            Option::set(self::LAST_CHECK_FAILED, $hasLastCheckFailed);
+
+            if ($hasLastCheckFailed) {
+                // retry check on next request if previous attempt failed
+                Option::set(self::LAST_TIME_CHECKED, $lastTimeChecked, $autoLoad = 1);
+            } else {
+                Option::set(self::LATEST_VERSION, $latestVersion);
+            }
         }
     }
 
@@ -88,6 +100,16 @@ class UpdateCheck
     }
 
     /**
+     * Returns whether the last update check was flagged as having failed or not.
+     *
+     * @return bool
+     */
+    public static function hasLastCheckFailed(): bool
+    {
+        return (bool) Option::get(self::LAST_CHECK_FAILED);
+    }
+
+    /**
      * Returns version number of a newer Piwik release.
      *
      * @return string|bool  false if current version is the latest available,
@@ -96,7 +118,8 @@ class UpdateCheck
     public static function isNewestVersionAvailable()
     {
         $latestVersion = self::getLatestVersion();
-        if (!empty($latestVersion)
+        if (
+            !empty($latestVersion)
             && version_compare(Version::VERSION, $latestVersion) == -1
         ) {
             return $latestVersion;

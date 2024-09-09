@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -26,6 +27,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { debounce } from 'CoreHome';
+import AbortableModifiers from './AbortableModifiers';
 
 export default defineComponent({
   props: {
@@ -33,6 +35,7 @@ export default defineComponent({
     title: String,
     uiControl: String,
     modelValue: Array,
+    modelModifiers: Object,
     uiControlAttributes: Object,
   },
   inheritAttrs: false,
@@ -54,7 +57,21 @@ export default defineComponent({
     onKeydown(event: Event) {
       const values = (event.target as HTMLInputElement).value.split(',').map((v) => v.trim());
       if (values.join(', ') !== this.concattedValues) {
-        this.$emit('update:modelValue', values);
+        if (!(this.modelModifiers as AbortableModifiers)?.abortable) {
+          this.$emit('update:modelValue', values);
+          return;
+        }
+
+        const emitEventData = {
+          value: values,
+          abort: () => {
+            if ((event.target as HTMLInputElement).value !== this.concattedValues) {
+              (event.target as HTMLInputElement).value = this.concattedValues;
+            }
+          },
+        };
+
+        this.$emit('update:modelValue', emitEventData);
       }
     },
   },

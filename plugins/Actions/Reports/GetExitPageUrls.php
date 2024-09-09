@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Actions\Reports;
 
 use Piwik\Piwik;
@@ -17,8 +18,6 @@ use Piwik\Plugins\Actions\Columns\Metrics\AverageTimeOnPage;
 use Piwik\Plugins\Actions\Columns\Metrics\BounceRate;
 use Piwik\Plugins\Actions\Columns\Metrics\ExitRate;
 use Piwik\Plugin\ReportsProvider;
-use Piwik\Report\ReportWidgetFactory;
-use Piwik\Widget\WidgetsList;
 
 class GetExitPageUrls extends Base
 {
@@ -83,8 +82,6 @@ class GetExitPageUrls extends Base
             'action' => 'getExitPageUrls',
         ));
 
-        $view->config->addTranslations(array('label' => $this->dimension->getName()));
-
         $view->config->title = $this->name;
 
         $view->config->columns_to_display        = array('label', 'exit_nb_visits', 'nb_visits', 'exit_rate');
@@ -101,5 +98,4 @@ class GetExitPageUrls extends Base
             ReportsProvider::factory('Actions', 'getExitPageTitles'),
         );
     }
-
 }

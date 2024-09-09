@@ -1,21 +1,21 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\DataTable;
 
 use Exception;
 use Piwik\Container\StaticContainer;
 use Piwik\DataTable;
 use Piwik\Date;
-use Piwik\Log;
 use Piwik\Metrics;
 use Piwik\Period;
-use Psr\Log\LoggerInterface;
+use Piwik\Log\LoggerInterface;
 
 /**
  * This is what a {@link Piwik\DataTable} is composed of.
@@ -27,7 +27,7 @@ use Psr\Log\LoggerInterface;
  */
 class Row extends \ArrayObject
 {
-    const COMPARISONS_METADATA_NAME = 'comparisons';
+    public const COMPARISONS_METADATA_NAME = 'comparisons';
 
     /**
      * List of columns that cannot be summed. An associative array for speed.
@@ -37,7 +37,8 @@ class Row extends \ArrayObject
     private static $unsummableColumns = array(
         'label' => true,
         'full_url' => true, // column used w/ old Piwik versions,
-        'ts_archived' => true // date column used in metadata for proportional tooltips
+        DataTable::ARCHIVED_DATE_METADATA_NAME => true, // date column used in metadata for proportional tooltips
+        DataTable::ARCHIVE_STATE_METADATA_NAME => true,
     );
 
     // @see sumRow - implementation detail
@@ -53,9 +54,9 @@ class Row extends \ArrayObject
 
     private $isSummaryRow = false;
 
-    const COLUMNS = 0;
-    const METADATA = 1;
-    const DATATABLE_ASSOCIATED = 3;
+    public const COLUMNS = 0;
+    public const METADATA = 1;
+    public const DATATABLE_ASSOCIATED = 3;
 
     /**
      * Constructor.
@@ -565,7 +566,8 @@ class Row extends \ArrayObject
      */
     public function sumRowMetadata($rowToSum, $aggregationOperations = array())
     {
-        if (!empty($rowToSum->metadata)
+        if (
+            !empty($rowToSum->metadata)
             && !$this->isSummaryRow()
         ) {
             $aggregatedMetadata = array();
@@ -585,10 +587,13 @@ class Row extends \ArrayObject
             }
 
             // We shall update metadata, and keep the metadata with the _most visits or pageviews_, rather than first or last seen
-            $visits = max($rowToSum->getColumn(Metrics::INDEX_PAGE_NB_HITS) || $rowToSum->getColumn(Metrics::INDEX_NB_VISITS),
+            $visits = max(
+                $rowToSum->getColumn(Metrics::INDEX_PAGE_NB_HITS) || $rowToSum->getColumn(Metrics::INDEX_NB_VISITS),
                 // Old format pre-1.2, @see also method doSumVisitsMetrics()
-                $rowToSum->getColumn('nb_actions') || $rowToSum->getColumn('nb_visits'));
-            if (($visits && $visits > $this->maxVisitsSummed)
+                $rowToSum->getColumn('nb_actions') || $rowToSum->getColumn('nb_visits')
+            );
+            if (
+                ($visits && $visits > $this->maxVisitsSummed)
                 || empty($this->metadata)
             ) {
                 $this->maxVisitsSummed = $visits;
@@ -660,12 +665,17 @@ class Row extends \ArrayObject
         if (is_numeric($columnToSumValue)) {
             if ($thisColumnValue === false) {
                 $thisColumnValue = 0;
-            } else if (!is_numeric($thisColumnValue)) {
+            } elseif (!is_numeric($thisColumnValue)) {
                 $label = $this->getColumn('label');
                 $thisColumnDescription = $this->getColumnValueDescriptionForError($thisColumnValue);
                 $columnToSumValueDescription = $this->getColumnValueDescriptionForError($columnToSumValue);
-                throw new \Exception(sprintf('Trying to sum unsupported operands for column %s in row with label = %s: %s + %s',
-                    $columnName, $label, $thisColumnDescription, $columnToSumValueDescription));
+                throw new \Exception(sprintf(
+                    'Trying to sum unsupported operands for column %s in row with label = %s: %s + %s',
+                    $columnName,
+                    $label,
+                    $thisColumnDescription,
+                    $columnToSumValueDescription
+                ));
             }
 
             return $thisColumnValue + $columnToSumValue;
@@ -760,9 +770,10 @@ class Row extends \ArrayObject
 
         // either both are null
         // or both have a value
-        if (!(is_null($row1->getIdSubDataTable())
+        if (
+            !(is_null($row1->getIdSubDataTable())
             && is_null($row2->getIdSubDataTable())
-        )
+            )
         ) {
             $subtable1 = $row1->getSubtable();
             $subtable2 = $row2->getSubtable();
@@ -789,7 +800,8 @@ class Row extends \ArrayObject
             // since the bugs were fixed, we don't expect to see the issue. So if the warning gets triggered in this case,
             // we log the warning in order to be notified.
             $period = $subTable->getMetadata('period');
-            if (!$this->isSummaryRow()
+            if (
+                !$this->isSummaryRow()
                 || $this->isStartDateLaterThanCloud441DeployDate($period)
             ) {
                 $ex = new \Exception(sprintf(
@@ -828,7 +840,8 @@ class Row extends \ArrayObject
 
     private function isStartDateLaterThanCloud441DeployDate($period)
     {
-        if (empty($period)
+        if (
+            empty($period)
             || !($period instanceof Period)
         ) {
             return true; // sanity check
@@ -838,5 +851,17 @@ class Row extends \ArrayObject
 
         $cloudDeployDate = Date::factory('2021-08-11 12:00:00'); // 2021-08-12 00:00:00 NZST
         return $periodStartDate->isLater($cloudDeployDate);
+    }
+
+    public function sumRowWithLabelToSubtable(string $label, array $columns, ?array $aggregationOps = null): Row
+    {
+        $subtable = $this->getSubtable();
+        if (empty($subtable)) {
+            $subtable = new DataTable();
+            $subtable->setMetadata(DataTable::COLUMN_AGGREGATION_OPS_METADATA_NAME, $aggregationOps);
+            $this->setSubtable($subtable);
+        }
+
+        return $subtable->sumRowWithLabel($label, $columns, $aggregationOps);
     }
 }

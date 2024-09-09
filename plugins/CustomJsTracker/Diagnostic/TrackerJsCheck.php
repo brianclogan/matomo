@@ -1,10 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\CustomJsTracker\Diagnostic;
 
 use Piwik\Filechecks;
@@ -66,7 +68,7 @@ class TrackerJsCheck implements Diagnostic
             $command = '';
             foreach ($notWritableFiles as $notWritableFile) {
                 $realpath = Filesystem::realpath(PIWIK_INCLUDE_PATH . '/' . $notWritableFile);
-                $command .= "<br/><code> chmod +w $realpath<br/> chown ". Filechecks::getUserAndGroup() ." " . $realpath . "</code><br />";
+                $command .= "<br/><code> chmod +w $realpath<br/> chown " . Filechecks::getUserAndGroup() . " " . $realpath . "</code><br />";
             }
             $comment .= $this->translator->translate('CustomJsTracker_DiagnosticPiwikJsMakeWritable', array($this->makeFilesTitles($notWritableFiles), $command));
         }
@@ -76,7 +78,6 @@ class TrackerJsCheck implements Diagnostic
 
     private function makeFilesTitles($files)
     {
-        return '"/'. implode('" & "/', $files) .'"';
+        return '"/' . implode('" & "/', $files) . '"';
     }
-
 }

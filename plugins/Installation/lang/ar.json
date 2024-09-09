@@ -85,7 +85,7 @@
         "SystemCheckExtensions": "الإضافات الأخرى المطلوبة",
         "SystemCheckFileIntegrity": "سلامة الملفات",
         "SystemCheckFunctions": "الدوال المطلوبة",
-        "SystemCheckGDFreeType": "GD > 2.x + Freetype (رسوم)",
+        "SystemCheckGDFreeType": "GD &gt; 2.x + Freetype (رسوم)",
         "SystemCheckGDHelp": "لن تعمل خاصية sparklines (الرسومات المصغرة).",
         "SystemCheckGlobHelp": "تم تعطيل هذه الدالة المبنية ضمنياً، وسيحاول Matomo تقليدها ولكنه قد يواجه اعتبارات أمنية أخرى. قد يتأثر عدد من الوظائف أيضاً.",
         "SystemCheckGzcompressHelp": "تحتاج إلى تفعيل إضافة zlib ودالة gzcompress.",
@@ -133,7 +133,7 @@
         "TablesWithSameNamesFound": "بعض %1$s الجداول في قاعدة بياناتك %2$s تحمل نفس الأسماء التي يحاول Matomo إنشائها.",
         "Timezone": "المنطقة الزمنية لموقع الوب",
         "WeHopeYouWillEnjoyPiwik": "نتمنى أن تستمتع باستخدام Matomo كما استمتعنا بصُنعِه.",
-        "Welcome": "مرحباً بك!",
+        "Welcome": "مرحباً بك",
         "WelcomeHelp": "<p>Matomo عبارة عن برمجيات تحليلات ويب مفتوحة المصدر تجعل من السهل أن تحصل على المعلومات التي ترغب فيها عن زوارك.<\\/p><p>هذه العملية تنقسم إلى %s خطوات سهلة وستستغرق حوالي 5 دقائق فقط.<\\/p>",
         "WelcomeToCommunity": "مرحباً بك في مجتمع Matomo !",
         "YouMayInstallPiwikNow": "تستطيع %1$sتثبيت Matomo الآن%2$s"

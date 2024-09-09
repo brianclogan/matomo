@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\MultiSites;
 
 use Piwik\Piwik;
@@ -19,7 +20,6 @@ class MultiSites extends \Piwik\Plugin
     {
         return array(
             'AssetManager.getStylesheetFiles' => 'getStylesheetFiles',
-            'AssetManager.getJavaScriptFiles' => 'getJsFiles',
             'Translate.getClientSideTranslationKeys' => 'getClientSideTranslationKeys',
             'Metrics.getDefaultMetricTranslations'  => 'addMetricTranslations',
             'API.getPagesComparisonsDisabledFor'     => 'getPagesComparisonsDisabledFor',
@@ -80,17 +80,8 @@ class MultiSites extends \Piwik\Plugin
         $translations[] = 'MultiSites_EvolutionComparisonYear';
     }
 
-    public function getJsFiles(&$jsFiles)
-    {
-        $jsFiles[] = "plugins/MultiSites/angularjs/dashboard/dashboard-model.service.js";
-        $jsFiles[] = "plugins/MultiSites/angularjs/dashboard/dashboard.controller.js";
-        $jsFiles[] = "plugins/MultiSites/angularjs/dashboard/dashboard.directive.js";
-        $jsFiles[] = "plugins/MultiSites/angularjs/site/site.controller.js";
-        $jsFiles[] = "plugins/MultiSites/angularjs/site/site.directive.js";
-    }
-
     public function getStylesheetFiles(&$stylesheets)
     {
-        $stylesheets[] = "plugins/MultiSites/angularjs/dashboard/dashboard.directive.less";
+        $stylesheets[] = "plugins/MultiSites/vue/src/Dashboard/Dashboard.less";
     }
 }

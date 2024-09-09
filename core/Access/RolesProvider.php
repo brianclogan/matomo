@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Access;
 
 use Piwik\Access\Role\Admin;
@@ -62,5 +63,4 @@ class RolesProvider
             throw new Exception(Piwik::translate("UsersManager_ExceptionAccessValues", [implode(", ", $roles), $roleId]));
         }
     }
-
 }

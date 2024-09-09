@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\PagePerformance\Visualizations;
@@ -20,9 +20,9 @@ use Piwik\Plugins\PagePerformance\PagePerformance;
  */
 class PerformanceColumns extends HtmlTable
 {
-    const ID                = 'tablePerformanceColumns';
-    const FOOTER_ICON       = 'icon-page-performance';
-    const FOOTER_ICON_TITLE = 'PagePerformance_PerformanceTable';
+    public const ID                = 'tablePerformanceColumns';
+    public const FOOTER_ICON       = 'icon-page-performance';
+    public const FOOTER_ICON_TITLE = 'PagePerformance_PerformanceTable';
 
     public function beforeRender()
     {
@@ -55,7 +55,7 @@ class PerformanceColumns extends HtmlTable
     public function beforeGenericFiltersAreAppliedToLoadedDataTable()
     {
         $this->config->datatable_css_class = 'dataTableVizAllColumns';
-        
+
         $properties = $this->config;
 
         $this->dataTable->filter(function (DataTable $dataTable) use ($properties) {
@@ -64,7 +64,7 @@ class PerformanceColumns extends HtmlTable
                 'nb_visits',
             ], array_keys(Metrics::getAllPagePerformanceMetrics()));
 
-            if (version_compare(DbHelper::getInstallVersion(),'4.0.0-b1', '<')) {
+            if (version_compare(DbHelper::getInstallVersion(), '4.0.0-b1', '<')) {
                 $properties->columns_to_display[] = 'avg_time_generation';
             }
         });

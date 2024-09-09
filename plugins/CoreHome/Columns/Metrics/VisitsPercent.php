@@ -1,19 +1,20 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\CoreHome\Columns\Metrics;
 
+use Piwik\Columns\Dimension;
 use Piwik\DataTable;
 use Piwik\DataTable\Row;
 use Piwik\Metrics\Formatter;
 use Piwik\Piwik;
 use Piwik\Plugin\ProcessedMetric;
-use Piwik\Plugin\Report;
 
 /**
  * Percent of visits in the whole table. Calculated as:
@@ -73,5 +74,10 @@ class VisitsPercent extends ProcessedMetric
         }
 
         return true; // always compute
+    }
+
+    public function getSemanticType(): ?string
+    {
+        return Dimension::TYPE_PERCENT;
     }
 }

@@ -1,21 +1,18 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Feedback;
 
 use Piwik\Date;
-use Piwik\Plugins\UsersManager\API as APIUsersManager;
-use Piwik\Plugins\UsersManager\UsersManager;
-use Piwik\Site;
 use Piwik\View;
 use Piwik\Piwik;
 use Piwik\Common;
-use Piwik\Plugin\Manager as PluginManager;
 use Piwik\Plugins\Feedback\FeedbackReminder;
 
 /**
@@ -23,7 +20,7 @@ use Piwik\Plugins\Feedback\FeedbackReminder;
  */
 class Feedback extends \Piwik\Plugin
 {
-    const NEVER_REMIND_ME_AGAIN = "-1";
+    public const NEVER_REMIND_ME_AGAIN = "-1";
 
     /**
      * @see \Piwik\Plugin::registerEvents
@@ -95,7 +92,6 @@ class Feedback extends \Piwik\Plugin
         $translationKeys[] = 'Feedback_Question4';
         $translationKeys[] = 'Feedback_FeedbackTitle';
         $translationKeys[] = 'Feedback_FeedbackSubtitle';
-        $translationKeys[] = 'Feedback_Policy';
         $translationKeys[] = 'Feedback_ThankYourForFeedback';
         $translationKeys[] = 'Feedback_ThankYou';
         $translationKeys[] = 'Feedback_MessageBodyValidationError';
@@ -147,7 +143,6 @@ class Feedback extends \Piwik\Plugin
 
         // If there isn't any reminder date set, or never remind me was selected previously (-1) we determine a new date
         if ($nextReminderDate === false || $nextReminderDate <= 0) {
-
             // if user was created within the last 6 months, we set the date to 6 months after his creation date
             $userCreatedDate = Piwik::getCurrentUserCreationDate();
             if (!empty($userCreatedDate) && Date::factory($userCreatedDate)->addMonth(6)->getTimestamp() > $now) {
@@ -157,7 +152,7 @@ class Feedback extends \Piwik\Plugin
             }
 
             // Otherwise we set the date to somewhen within the next 6 months
-            $nextReminder = Date::now()->getStartOfDay()->addDay(Common::getRandomInt(1, 6*30))->toString('Y-m-d');
+            $nextReminder = Date::now()->getStartOfDay()->addDay(Common::getRandomInt(1, 6 * 30))->toString('Y-m-d');
             $feedbackReminder->setUserOption($nextReminder);
             return false;
         }
@@ -167,7 +162,6 @@ class Feedback extends \Piwik\Plugin
             return false;
         }
         return true;
-
     }
 
     // needs to be protected not private for testing purpose
@@ -175,5 +169,4 @@ class Feedback extends \Piwik\Plugin
     {
         return defined('PIWIK_TEST_MODE') && PIWIK_TEST_MODE && !Common::getRequestVar('forceFeedbackTest', false);
     }
-
 }

@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -19,9 +20,10 @@
       >
         <Field
           :full-width="true"
-          v-model="item[field1.key]"
+          :model-value="item[field1.key]"
           :options="field1.availableValues"
           @update:modelValue="onEntryChange(index, field1.key, $event)"
+          :model-modifiers="field1.modelModifiers"
           :placeholder="' '"
           :uicontrol="field1.uiControl"
           :name="`${name}-p1-${index}`"
@@ -39,7 +41,8 @@
           :full-width="true"
           :options="field2.availableValues"
           @update:modelValue="onEntryChange(index, field2.key, $event)"
-          v-model="item[field2.key]"
+          :model-value="item[field2.key]"
+          :model-modifiers="field2.modelModifiers"
           :placeholder="' '"
           :uicontrol="field2.uiControl"
           :name="`${name}-p2-${index}`"
@@ -57,7 +60,8 @@
           :full-width="true"
           :options="field3.availableValues"
           @update:modelValue="onEntryChange(index, field3.key, $event)"
-          v-model="item[field3.key]"
+          :model-value="item[field3.key]"
+          :model-modifiers="field3.modelModifiers"
           :placeholder="' '"
           :uicontrol="field3.uiControl"
           :title="field3.title"
@@ -74,7 +78,8 @@
           :full-width="true"
           :options="field4.availableValues"
           @update:modelValue="onEntryChange(index, field4.key, $event)"
-          v-model="item[field4.key]"
+          :model-value="item[field4.key]"
+          :model-modifiers="field4.modelModifiers"
           :placeholder="' '"
           :uicontrol="field4.uiControl"
           :title="field4.title"
@@ -97,7 +102,7 @@
 import { defineComponent } from 'vue';
 import useExternalPluginComponent from '../useExternalPluginComponent';
 
-// async since this is a a recursive component
+// async since this is a recursive component
 const Field = useExternalPluginComponent('CorePluginsAdmin', 'Field');
 
 export default defineComponent({
@@ -108,6 +113,7 @@ export default defineComponent({
     field2: Object,
     field3: Object,
     field4: Object,
+    rows: Number,
   },
   components: {
     Field,
@@ -145,9 +151,11 @@ export default defineComponent({
   methods: {
     checkEmptyModelValue(newValue?: Record<string, unknown>[]) {
       // make sure there is always an empty new value
-      if (!newValue
+      if ((!newValue
         || !newValue.length
-        || this.isEmptyValue(newValue.slice(-1)[0])
+        || this.isEmptyValue(newValue.slice(-1)[0]))
+        && (!this.rows
+          || (this.modelValue as Record<string, unknown>[]).length < this.rows)
       ) {
         this.$emit('update:modelValue', [...(newValue || []), this.makeEmptyValue()]);
       }

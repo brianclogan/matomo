@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -40,10 +41,8 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import WidgetLoader from '../WidgetLoader/WidgetLoader.vue';
-import { Widget } from '../Widget/Widgets.store';
+import { Widget } from '../Widget/types';
 import { sortOrderables } from '../Orderable';
-
-// TODO: is there a widget category ID or widget ID
 
 interface WidgetByDimensionContainerState {
   selectedWidget: Widget|null;

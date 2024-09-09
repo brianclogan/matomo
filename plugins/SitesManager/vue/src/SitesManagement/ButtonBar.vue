@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -26,11 +27,10 @@
         type="text"
         :disabled="siteIsBeingEdited"
       />
-      <img
+      <div
         @click="searchSite()"
         :title="translate('General_ClickToSearch')"
-        class="search_ico"
-        src="plugins/Morpheus/images/search_ico.png"
+        class="search_ico icon-search"
       />
     </div>
 
@@ -103,6 +103,8 @@ export default defineComponent({
   },
   emits: ['add', 'search', 'prev', 'next', 'update:searchTerm'],
   created() {
+    SiteTypesStore.init();
+
     this.onKeydown = debounce(this.onKeydown, 50);
   },
   computed: {

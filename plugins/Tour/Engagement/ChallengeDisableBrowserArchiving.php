@@ -1,15 +1,17 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Tour\Engagement;
 
 use Piwik\ArchiveProcessor\Rules;
 use Piwik\Piwik;
+use Piwik\Url;
 
 class ChallengeDisableBrowserArchiving extends Challenge
 {
@@ -23,15 +25,13 @@ class ChallengeDisableBrowserArchiving extends Challenge
         return 'disable_browser_archiving';
     }
 
-    public function isCompleted()
+    public function isCompleted(string $login)
     {
         return !Rules::isBrowserTriggerEnabled();
     }
 
     public function getUrl()
     {
-        return 'https://matomo.org/docs/setup-auto-archiving/';
+        return Url::addCampaignParametersToMatomoLink('https://matomo.org/docs/setup-auto-archiving/');
     }
-
-
 }

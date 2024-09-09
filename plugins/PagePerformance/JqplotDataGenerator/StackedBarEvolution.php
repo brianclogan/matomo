@@ -1,22 +1,17 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\PagePerformance\JqplotDataGenerator;
 
-use Piwik\Archive\DataTableFactory;
-use Piwik\Common;
 use Piwik\DataTable;
-use Piwik\Date;
-use Piwik\Metrics;
 use Piwik\Period;
-use Piwik\Period\Factory;
 use Piwik\Plugins\CoreVisualizations\JqplotDataGenerator;
-use Piwik\Url;
 
 /**
  * Generates JQPlot JSON data/config for evolution graphs.
@@ -64,28 +59,31 @@ class StackedBarEvolution extends JqplotDataGenerator\Evolution
         // collect series data to show. each row-to-display/column-to-display permutation creates a series.
         $allSeriesData = array();
         foreach ($columnsToDisplay as $column) {
-            $allSeriesData[] = $this->getSeriesData($column, $dataTable);
+            $allSeriesData[$column] = $this->getSeriesData($column, $dataTable);
         }
 
-        $visualization->dataTable = $dataTable;
         $visualization->properties = $this->properties;
 
-        $seriesLabels = [];
+        $seriesMetadata = [];
         foreach ($columnsToDisplay as $columnName) {
-            $seriesLabels[] = [
+            $seriesMetadata[$columnName] = [
                 'internalLabel' => $columnName,
                 'label' => @$this->properties['translations'][$columnName] ?: $columnName
             ];
         }
 
-        $visualization->setAxisYValues($allSeriesData, $seriesLabels);
+        $visualization->setAxisYValues($allSeriesData, $seriesMetadata);
         $visualization->setAxisYUnits($this->getUnitsForColumnsToDisplay());
 
         $xLabelStrs = [];
         $xAxisTicks = [];
         foreach ($xLabels as $index => $seriesXLabels) {
-            $xLabelStrs[$index] = array_map(function (Period $p) { return $p->getLocalizedLongString(); }, $seriesXLabels);
-            $xAxisTicks[$index] = array_map(function (Period $p) { return $p->getLocalizedShortString(); }, $seriesXLabels);
+            $xLabelStrs[$index] = array_map(function (Period $p) {
+                return $p->getLocalizedLongString();
+            }, $seriesXLabels);
+            $xAxisTicks[$index] = array_map(function (Period $p) {
+                return $p->getLocalizedShortString();
+            }, $seriesXLabels);
         }
 
         $visualization->setAxisXLabelsMultiple($xLabelStrs, [], $xAxisTicks);

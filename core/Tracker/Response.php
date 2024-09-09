@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Tracker;
 
 use Exception;
@@ -15,6 +16,7 @@ use Piwik\Profiler;
 use Piwik\Timer;
 use Piwik\Tracker;
 use Piwik\Tracker\Db as TrackerDb;
+use Piwik\Url;
 
 class Response
 {
@@ -57,13 +59,7 @@ class Response
         $this->logExceptionToErrorLog($e);
 
         if ($tracker->isDebugModeEnabled()) {
-            Common::sendHeader('Content-Type: text/html; charset=utf-8');
-            $trailer = '<span style="color: #888888">Backtrace:<br /><pre>' . $e->getTraceAsString() . '</pre></span>';
-            $headerPage = file_get_contents(PIWIK_INCLUDE_PATH . '/plugins/Morpheus/templates/simpleLayoutHeader.tpl');
-            $footerPage = file_get_contents(PIWIK_INCLUDE_PATH . '/plugins/Morpheus/templates/simpleLayoutFooter.tpl');
-            $headerPage = str_replace('{$HTML_TITLE}', 'Matomo &rsaquo; Error', $headerPage);
-
-            echo $headerPage . '<p>' . $this->getMessageFromException($e) . '</p>' . $trailer . $footerPage;
+            echo "\nAn exception occurred: " . $this->getMessageFromException($e) . "\n\n";
         } else {
             $this->outputApiResponse($tracker);
         }
@@ -81,7 +77,7 @@ class Response
             }
             Common::printDebug("Empty request => Matomo page");
             echo "This resource is part of Matomo. Keep full control of your data with the leading free and open source <a href='https://matomo.org' target='_blank' rel='noopener noreferrer nofollow'>web analytics & conversion optimisation platform</a>.<br>\n";
-            echo "This file is the endpoint for the Matomo tracking API. If you want to access the Matomo UI or use the Reporting API, please use <a href='index.php'>index.php</a> instead.";
+            echo "This file is the endpoint for the Matomo tracking API. If you want to access the Matomo UI or use the Reporting API, please use <a href='index.php'>index.php</a> instead.\n";
         } else {
             $this->outputApiResponse($tracker);
             Common::printDebug("Nothing to notice => default behaviour");
@@ -89,7 +85,8 @@ class Response
 
         Common::printDebug("End of the page.");
 
-        if ($tracker->isDebugModeEnabled()
+        if (
+            $tracker->isDebugModeEnabled()
             && $tracker->isDatabaseConnected()
             && TrackerDb::isProfilingEnabled()
         ) {
@@ -190,7 +187,7 @@ class Response
             // Base64 image string
             $img = base64_decode($customImage);
             $size = getimagesizefromstring($img);
-        } else if (is_file($customImage) && is_readable($customImage)) {
+        } elseif (is_file($customImage) && is_readable($customImage)) {
             // Image file
             $img = file_get_contents($customImage);
             $size = getimagesize($customImage); // imagesize is used to get the mime type
@@ -198,7 +195,7 @@ class Response
 
         // Must have valid image data and a valid mime type to proceed
         if ($img && $size && isset($size['mime'])  && in_array($size['mime'], $supportedMimeTypes)) {
-            Common::sendHeader('Content-Type: '.$size['mime']);
+            Common::sendHeader('Content-Type: ' . $size['mime']);
             echo $img;
             return true;
         }
@@ -229,6 +226,8 @@ class Response
 
     protected function logExceptionToErrorLog($e)
     {
-        error_log(sprintf("Error in Matomo (tracker): %s", str_replace("\n", " ", $this->getMessageFromException($e))));
+        $hostname = Url::getRFCValidHostname();
+        $hostStr = $hostname ? "[$hostname]" : '-';
+        error_log(sprintf("$hostStr Error in Matomo (tracker): %s", str_replace("\n", " ", $this->getMessageFromException($e))));
     }
 }

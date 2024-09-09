@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\CustomDimensions;
 
 use Piwik\API\Request;
@@ -20,9 +21,9 @@ use Piwik\Plugin;
 
 class CustomDimensions extends Plugin
 {
-    const SCOPE_ACTION = 'action';
-    const SCOPE_VISIT = 'visit';
-    const SCOPE_CONVERSION = 'conversion';
+    public const SCOPE_ACTION = 'action';
+    public const SCOPE_VISIT = 'visit';
+    public const SCOPE_CONVERSION = 'conversion';
 
     /**
      * @var Configuration
@@ -87,8 +88,27 @@ class CustomDimensions extends Plugin
             'Dimension.addDimensions' => 'addDimensions',
             'Report.addReports' => 'addReports',
             'Actions.getCustomActionDimensionFieldsAndJoins' => 'provideActionDimensionFields',
-            'Db.getTablesInstalled' => 'getTablesInstalled'
+            'Db.getTablesInstalled' => 'getTablesInstalled',
+            'Archiver.addRecordBuilders' => 'addRecordBuilders',
         );
+    }
+
+    public function addRecordBuilders(&$recordBuilders)
+    {
+        $idSite = $this->getIdSite();
+        if (!$idSite) {
+            return;
+        }
+
+        $dimensions = $this->getCustomDimensions($idSite);
+        foreach ($dimensions as $dimension) {
+            if (!$dimension['active']) {
+                continue;
+            }
+
+            $recordBuilder = new \Piwik\Plugins\CustomDimensions\RecordBuilders\CustomDimension($dimension);
+            $recordBuilders[] = $recordBuilder;
+        }
     }
 
     public function addDimensions(&$instances)
@@ -191,20 +211,13 @@ class CustomDimensions extends Plugin
 
     public function getJsFiles(&$jsFiles)
     {
-        $jsFiles[] = "plugins/CustomDimensions/angularjs/manage/model.js";
-        $jsFiles[] = "plugins/CustomDimensions/angularjs/manage/list.controller.js";
-        $jsFiles[] = "plugins/CustomDimensions/angularjs/manage/list.directive.js";
-        $jsFiles[] = "plugins/CustomDimensions/angularjs/manage/edit.controller.js";
-        $jsFiles[] = "plugins/CustomDimensions/angularjs/manage/edit.directive.js";
-        $jsFiles[] = "plugins/CustomDimensions/angularjs/manage/manage.controller.js";
-        $jsFiles[] = "plugins/CustomDimensions/angularjs/manage/manage.directive.js";
         $jsFiles[] = "plugins/CustomDimensions/javascripts/rowactions.js";
     }
 
     public function getStylesheetFiles(&$stylesheets)
     {
-        $stylesheets[] = "plugins/CustomDimensions/angularjs/manage/edit.directive.less";
-        $stylesheets[] = "plugins/CustomDimensions/angularjs/manage/list.directive.less";
+        $stylesheets[] = "plugins/CustomDimensions/vue/src/Edit/Edit.less";
+        $stylesheets[] = "plugins/CustomDimensions/vue/src/List/List.less";
         $stylesheets[] = "plugins/CustomDimensions/stylesheets/reports.less";
     }
 
@@ -243,7 +256,7 @@ class CustomDimensions extends Plugin
         $key = 'ConfiguredCustomDimensions_' . (int) $idSite;
         if ($cache->contains($key)) {
             $dimensions = $cache->fetch($key);
-        } else if ($idSite) {
+        } elseif ($idSite) {
             $dimensions = Request::processRequest('CustomDimensions.getConfiguredCustomDimensions', ['idSite' => $idSite], []);
             $cache->save($key, $dimensions);
         } else {
@@ -288,8 +301,10 @@ class CustomDimensions extends Plugin
         $translationKeys[] = 'CustomDimensions_CustomDimensions';
         $translationKeys[] = 'CustomDimensions_CustomDimensionsIntro';
         $translationKeys[] = 'CustomDimensions_CustomDimensionsIntroNext';
+        $translationKeys[] = 'CustomDimensions_ScopeTitleVisit';
         $translationKeys[] = 'CustomDimensions_ScopeDescriptionVisit';
         $translationKeys[] = 'CustomDimensions_ScopeDescriptionVisitMoreInfo';
+        $translationKeys[] = 'CustomDimensions_ScopeTitleAction';
         $translationKeys[] = 'CustomDimensions_ScopeDescriptionAction';
         $translationKeys[] = 'CustomDimensions_ScopeDescriptionActionMoreInfo';
         $translationKeys[] = 'CustomDimensions_IncreaseAvailableCustomDimensionsTitle';
@@ -322,6 +337,9 @@ class CustomDimensions extends Plugin
         $translationKeys[] = 'CustomDimensions_ColumnUniqueActions';
         $translationKeys[] = 'CustomDimensions_ColumnAvgTimeOnDimension';
         $translationKeys[] = 'CustomDimensions_CustomDimensionId';
+        $translationKeys[] = 'General_Update';
+        $translationKeys[] = 'General_Create';
+        $translationKeys[] = 'CustomDimensions_UrlQueryStringParameter';
     }
 
     public function addConversionInformation(&$conversion, $visitInformation, Tracker\Request $request)

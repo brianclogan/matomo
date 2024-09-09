@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Referrers\Categories;
 
 use Piwik\Category\Subcategory;
@@ -20,6 +21,6 @@ class AllReferrersSubcategory extends Subcategory
     public function getHelp()
     {
         return '<p>' . Piwik::translate('Referrers_AllReferrersSubcategory1') . '</p>'
-            . '<p>' . Piwik::translate('Referrers_AllReferrersSubcategory2') . '</p>';;
+            . '<p>' . Piwik::translate('Referrers_AllReferrersSubcategory2') . '</p>';
     }
 }

@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\API\DataTable;
 
 use Piwik\DataTable\Row;
@@ -13,6 +14,16 @@ use Piwik\DataTable;
 
 class MergeDataTables
 {
+    /**
+     * @var bool
+     */
+    private $copyExtraProcessedMetrics;
+
+    public function __construct(bool $copyExtraProcessedMetrics = false)
+    {
+        $this->copyExtraProcessedMetrics = $copyExtraProcessedMetrics;
+    }
+
     /**
      * Merge the columns of two data tables. Only takes into consideration the first row of each table.
      * Manipulates the first table.
@@ -37,6 +48,15 @@ class MergeDataTables
             return;
         }
 
+        if ($this->copyExtraProcessedMetrics) {
+            $extraProcessedMetricsTable1 = $table1->getMetadata(DataTable::EXTRA_PROCESSED_METRICS_METADATA_NAME) ?: [];
+            $extraProcessedMetricsTable2 = $table2->getMetadata(DataTable::EXTRA_PROCESSED_METRICS_METADATA_NAME) ?: [];
+            $table1->setMetadata(
+                DataTable::EXTRA_PROCESSED_METRICS_METADATA_NAME,
+                array_merge($extraProcessedMetricsTable1, $extraProcessedMetricsTable2)
+            );
+        }
+
         $firstRow2 = $table2->getFirstRow();
         if (!($firstRow2 instanceof Row)) {
             return;
@@ -58,11 +78,11 @@ class MergeDataTables
             $result = new DataTable\Map();
             $result->setKeyName($subTable2->getKeyName());
             return $result;
-        } else if ($subTable2 instanceof DataTable\Simple) {
+        } elseif ($subTable2 instanceof DataTable\Simple) {
             $result = new DataTable\Simple();
             $result->setAllTableMetadata($subTable2->getAllTableMetadata());
             return $result;
-        } else if ($subTable2 instanceof DataTable) {
+        } elseif ($subTable2 instanceof DataTable) {
             $result = new DataTable();
             $result->setAllTableMetadata($subTable2->getAllTableMetadata());
             return $result;
@@ -70,5 +90,4 @@ class MergeDataTables
             throw new \Exception("Unknown datatable type: " . get_class($subTable2));
         }
     }
-
 }

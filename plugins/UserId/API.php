@@ -1,18 +1,17 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\UserId;
 
 use Piwik\Archive;
-use Piwik\Metrics;
 use Piwik\Piwik;
 use Piwik\DataTable;
-use Piwik\DataTable\Row;
 
 /**
  * API for plugin UserId. Allows to get User IDs table.

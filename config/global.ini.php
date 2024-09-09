@@ -45,6 +45,17 @@ ssl_no_verify =
 ; Matomo should work correctly without this setting but we recommend to have a charset set.
 charset = utf8
 
+; Database error codes to ignore during updates
+;
+;ignore_error_codes[] = 1105
+
+; Add a query hint for the order of joined tables when building segment queries in MySQL. This can be used to override
+; sub-optimal choices by the MySQL optimizer and always ensure the query plan starts with the first table in the query.
+enable_segment_first_table_join_prefix = 0
+
+; Add a query hint for the order of joined tables for all log table queries in MySQL.
+enable_first_table_join_prefix = 0
+
 ; If configured, the following queries will be executed on the reader instead of the writer.
 ; * archiving queries that hit a log table
 ; * live queries that hit a log table
@@ -123,6 +134,10 @@ logger_syslog_ident = 'matomo'
 ; 'redis' will cache on a Redis server, use this if you are running Matomo with multiple servers. Further configuration in [RedisCache] is needed
 ; 'chained' will chain multiple cache backends. Further configuration in [ChainedCache] is needed
 backend = chained
+
+; Configuration to switch on/off opcache_reset when general caches are cleared. This may be useful for multi-tenant installations that would rather
+; manage opcache resets by themselves. This could also be used by scripts to temporarily switch off opcache resets.
+enable_opcache_reset = 1
 
 [ChainedCache]
 ; The chained cache will always try to read from the fastest backend first (the first listed one) to avoid requesting
@@ -224,14 +239,6 @@ enabled_periods_API = "day,week,month,year,range"
 ; * use a reader database for archiving in case you have configured a database reader
 enable_segments_cache = 1
 
-; whether to enable subquery cache for Custom Segment archiving queries
-enable_segments_subquery_cache = 0
-; Any segment subquery that matches more than segments_subquery_cache_limit IDs will not be cached,
-; and the original subquery executed instead.
-segments_subquery_cache_limit  = 100000
-; TTL: Time to live for cache files, in seconds. Default to 60 minutes
-segments_subquery_cache_ttl  = 3600
-
 ; when set to 1, all requests to Matomo will return a maintenance message without connecting to the DB
 ; this is useful when upgrading using the shell command, to prevent other users from accessing the UI while Upgrade is in progress
 maintenance_mode = 0
@@ -276,6 +283,9 @@ browser_archiving_disabled_enforce = 0
 
 ; Add custom currencies to Sites Manager.
 currencies[BTC] = Bitcoin
+
+; default expiry time in days for invite user tokens
+default_invite_user_token_expiry_days = 7
 
 ; By default, users can create Segments which are to be processed in Real-time.
 ; Setting this to 0 will force all newly created Custom Segments to be "Pre-processed (faster, requires archive.php cron)"
@@ -385,10 +395,14 @@ archiving_custom_ranges[] =
 ; This feature will not work with the MYSQLI extension.
 archiving_query_max_execution_time = 7200
 
-
 ; Allows you to disable archiving segments for selected plugins. For more details please see https://matomo.org/faq/how-to-disable-archiving-the-segment-reports-for-specific-plugins
 ; Here you can specify the comma separated list eg: "plugin1,plugin2"
 disable_archiving_segment_for_plugins = ""
+
+; By default Matomo will archive data showing the contribution of each action to goal conversions, for sites tracking millions
+; of visits with a large number of goals this may negatively impact archiving performance. You can disable archiving of action
+; goal contribution here:
+disable_archive_actions_goals = 0
 
 ; By default Matomo runs OPTIMIZE TABLE SQL queries to free spaces after deleting some data.
 ; If your Matomo tracks millions of pages, the OPTIMIZE TABLE queries might run for hours (seen in "SHOW FULL PROCESSLIST \g")
@@ -528,6 +542,12 @@ enable_framed_settings = 0
 ; information view the FAQ: https://matomo.org/faq/troubleshooting/faq_147/
 enable_framed_allow_write_admin_token_auth = 0
 
+; Set to 1 to only allow tokens to be used in a secure way (e.g. via POST requests). This will completely prevent using
+; token_auth as URL parameter in GET requests. When enabled all new authentication tokens
+; will be created for Secure use only, and previously created tokens will only be accepted in a secure way (POST requests).
+; Recommended for best security.
+only_allow_secure_auth_tokens = 0
+
 ; language cookie name for session
 language_cookie_name = matomo_lang
 
@@ -607,7 +627,7 @@ live_widget_refresh_after_seconds = 5
 
 ; by default, the Live! real time visitor count widget will check to see how many visitors your
 ; website received in the last 3 minutes. changing this value will change the number of minutes
-; the widget looks in.
+; the widget looks in. Only values between 1 and 2880 are allowed.
 live_widget_visitor_count_last_minutes = 3
 
 ; by default visitor profile will show aggregated information for the last up to 100 visits of a visitor
@@ -639,6 +659,7 @@ assume_secure_protocol = 0
 ; By enabling this flag we will for example not allow the installation of a plugin via the UI as a plugin would be only
 ; installed on one server or a config one change would be only made on one server instead of all servers.
 ; This flag doesn't need to be enabled when the config file is on a shared filesystem such as NFS or EFS.
+; When enabled, Matomo will return the response code 200 instead of 503 in maintenance mode.
 multi_server_environment = 0
 
 ; List of proxy headers for client IP addresses
@@ -674,7 +695,7 @@ proxy_uri_header = 0
 ; If set to 1 we use the last IP in the list of proxy IPs when determining the client IP. Using the last IP can be more
 ; secure when using proxy headers in combination with a load balancer. By default the first IP is read according to RFC7239
 ; which is required when the client sends the IP through a proxy header as well as the load balancer.
-proxy_ip_read_last_in_list = 0
+proxy_ip_read_last_in_list = 1
 
 ; Whether to enable trusted host checking. This can be disabled if you're running Matomo
 ; on several URLs and do not wish to constantly edit the trusted host list.
@@ -697,15 +718,15 @@ enable_trusted_host_check = 1
 ; Or you may allow cross domain requests for all domains with:
 ;cors_domains[] = *
 
-; If you use this Matomo instance over multiple hostnames, Matomo will need to know
-; a unique instance_id for this instance, so that Matomo can serve the right custom logo and tmp/* assets,
-; independently of the hostname Matomo is currently running under.
+; If you use this Matomo instance over multiple hostnames, Matomo will need to know a unique instance_id for this
+; instance, so that Matomo can serve the right custom logo and tmp/* assets, independently of the hostname Matomo is
+; currently running under. Only the characters `a-z`, `0-9` and the special characters `._-` are supported.
 ; instance_id = stats.example.com
 
 ; The API server is an essential part of the Matomo infrastructure/ecosystem to
 ; provide services to Matomo installations, e.g., getLatestVersion and
 ; subscribeNewsletter.
-api_service_url = http://api.matomo.org
+api_service_url = https://api.matomo.org
 
 ; When the ImageGraph plugin is activated, report metadata have an additional entry : 'imageGraphUrl'.
 ; This entry can be used to request a static graph for the requested report.
@@ -756,6 +777,10 @@ enable_load_data_infile = 1
 ; - links to Uninstall themes will be disabled (but user can still enable/disable themes)
 enable_plugins_admin = 1
 
+; Defines when a plugin trial request expires and a new one can be requested
+; By settings this value to -1 plugin trial requests will be disabled
+plugin_trial_request_expiration_in_days = 28
+
 ; By setting this option to 0 the users management will be disabled
 enable_users_admin = 1
 
@@ -798,6 +823,10 @@ enable_update_communication = 1
 ; This option defines the protocols Matomo's Http class is allowed to open.
 ; If you may need to download GeoIP updates or other stuff using other protocols like ftp you may need to extend this list.
 allowed_outgoing_protocols = 'http,https'
+
+; This option forces matomo marketplace and matomo api requests to use HTTP, as default we use HTTPS to improve security
+; If you have a problem loading the marketplace, please enable this config option
+force_matomo_http_request = 0
 
 ; Comma separated list of plugin names for which console commands should be loaded (applies when Matomo is not installed yet)
 always_load_commands_from_plugin=
@@ -851,6 +880,13 @@ enable_required_directories_diagnostic = 1
 ; If set to 1, then social and search engine definitions files will be synchronised using the internet if "enable_internet_features" is enabled.
 ; When set to 0, the definitions will be loaded from the local definitions (updated with core).
 enable_referrer_definition_syncs = 1
+
+; If set to 1, then links to matomo.org shown in the Matomo app will not include campaign tracking parameters which
+; describe where in the application the link originated. This information is used to improve the quality and relevance
+; of inline help links on matomo.org and contains no identifying information. Presence of the campaign parameters in
+; the link url could be used by third parties monitoring network requests to identify that the Matomo app is being used,
+; so it can be disabled here if necessary.
+disable_tracking_matomo_app_links = 0
 
 [Tracker]
 
@@ -926,7 +962,7 @@ default_time_one_page_visit = 0
 
 ; Comma separated list of URL query string variable names that will be removed from your tracked URLs
 ; By default, Matomo will remove the most common parameters which are known to change often (eg. session ID parameters)
-url_query_parameter_to_exclude_from_url = "gclid,fbclid,fb_xd_fragment,fb_comment_id,phpsessid,jsessionid,sessionid,aspsessionid,doing_wp_cron,sid,pk_vid"
+url_query_parameter_to_exclude_from_url = "gclid,fbclid,msclkid,twclid,wbraid,gbraid,yclid,fb_xd_fragment,fb_comment_id,phpsessid,jsessionid,sessionid,aspsessionid,doing_wp_cron,sid,pk_vid"
 
 ; If set to 1, Matomo will use the default provider if no other provider is configured.
 ; In addition the default provider will be used as a fallback when the configure provider does not return any results.
@@ -1027,7 +1063,7 @@ innodb_lock_wait_timeout = 0
 ; For example "e_c==Media" means that all tracking requests will be excluded where the event category is Media.
 ; Multiple exclusions can be configured separated by a comma. The request will be excluded if any expressions matches (not all of them). For example: "e_c==Media,action_name=@privacy".
 ; This would also exclude any request from being tracked where the page title contains privacy.
-; All comparisons are performed case insensitve. The value to match on the right side should be URL encoded.
+; All comparisons are performed case insensitive. The value to match on the right side should be URL encoded.
 ; For example: "action_name=^foo%2Cbar" would exclude page titles that start with "foo,bar".
 ; For a list of tracking parameters you can use on the left side view https://developer.matomo.org/api-reference/tracking-api
 exclude_requests = ""
@@ -1089,11 +1125,15 @@ type = ; SMTP Auth type. By default: NONE. For example: LOGIN
 username = ; SMTP username
 password = ; SMTP password
 encryption = ; SMTP transport-layer encryption, either 'none', 'ssl', 'tls', or empty (i.e., auto).
+ssl_disallow_self_signed = 1 ; set to 0 to allow email server with self signed cert (not recommended)
+ssl_verify_peer = 1 ; set to 0 to disable verifying the authenticity of the peer's certificate (not recommended)
+ssl_verify_peer_name = 1 ; set to 0 to disable verifying the authenticity of the peer's name (not recommended)
 
 [proxy]
 type = BASIC ; proxy type for outbound/outgoing connections; currently, only BASIC is supported
 host = ; Proxy host: the host name of your proxy server (mandatory)
 port = ; Proxy port: the port that the proxy server listens to. There is no standard default, but 80, 1080, 3128, and 8080 are popular
+exclude = ; Comma separated list of hosts to exclude from proxy: optional; localhost is always excluded
 username = ; Proxy username: optional; if specified, password is mandatory
 password = ; Proxy password: optional; if specified, username is mandatory
 
@@ -1119,6 +1159,7 @@ Languages[] = eu
 Languages[] = fa
 Languages[] = fi
 Languages[] = fr
+Languages[] = gu
 Languages[] = gl
 Languages[] = he
 Languages[] = hi
@@ -1222,6 +1263,7 @@ Plugins[] = CustomJsTracker
 Plugins[] = Tour
 Plugins[] = PagePerformance
 Plugins[] = CustomDimensions
+Plugins[] = JsTrackerInstallCheck
 
 [PluginsInstalled]
 PluginsInstalled[] = Diagnostics
@@ -1232,6 +1274,34 @@ PluginsInstalled[] = SitesManager
 PluginsInstalled[] = Installation
 PluginsInstalled[] = Monolog
 PluginsInstalled[] = Intl
+PluginsInstalled[] = JsTrackerInstallCheck
+
+[PagePerformance]
+; The configuration below provides the possibility to enable capping of values used for generating 'sum/total' and 'average' metrics for page performance reports.
+; This allows to reduce the impact of single failed performance measurements.
+;
+; The recommended caps are at 100-fold an avg/high value. Thereby one wrong value in 10,000 values results in a 1% deviation:
+; (1x 100N + 9999x N) / 10000 ~= 101% N
+;
+; By default capping is disabled. To enable capping overwrite the configs below with a value higher than 0.
+
+; Cap for Network time: avg/high 100ms (recommended value: 10000)
+time_network_cap_duration_ms = 0
+
+; Cap for Server time: avg/high 500ms (recommended value: 50000)
+time_server_cap_duration_ms = 0
+
+; Cap for Transfer time: avg/high 250ms (recommended value: 25000)
+time_transfer_cap_duration_ms = 0
+
+; Cap for DOM processing time: avg/high 500ms (recommended value: 50000)
+time_dom_processing_cap_duration_ms = 0
+
+; Cap for DOM completion time: avg/high 1500ms (recommended value: 150000)
+time_dom_completion_cap_duration_ms = 0
+
+; Cap for On load time: avg/high 10ms (recommended value: 1000)
+time_on_load_cap_duration_ms = 0
 
 [APISettings]
 ; Any key/value pair can be added in this section, they will be available via the REST call

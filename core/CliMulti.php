@@ -1,10 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 use Piwik\Archiver\Request;
@@ -14,15 +16,15 @@ use Piwik\CliMulti\OutputInterface;
 use Piwik\CliMulti\Process;
 use Piwik\CliMulti\StaticOutput;
 use Piwik\Container\StaticContainer;
-use Psr\Log\LoggerInterface;
-use Psr\Log\NullLogger;
+use Piwik\Log\LoggerInterface;
+use Piwik\Log\NullLogger;
 
 /**
  * Class CliMulti.
  */
 class CliMulti
 {
-    const BASE_WAIT_TIME = 250000; // 250 * 1000 = 250ms
+    public const BASE_WAIT_TIME = 250000; // 250 * 1000 = 250ms
 
     /**
      * If set to true or false it will overwrite whether async is supported or not.
@@ -207,8 +209,16 @@ class CliMulti
             $query = escapeshellarg($query);
         }
 
-        return sprintf('%s %s %s/console climulti:request -q --matomo-domain=%s %s %s %s',
-                       $bin, $this->phpCliOptions, PIWIK_INCLUDE_PATH, $hostname, $superuserCommand, $query,$append);
+        return sprintf(
+            '%s %s %s/console climulti:request -q --matomo-domain=%s %s %s %s',
+            $bin,
+            $this->phpCliOptions,
+            PIWIK_INCLUDE_PATH,
+            $hostname,
+            $superuserCommand,
+            $query,
+            $append
+        );
     }
 
     private function getResponse()
@@ -220,9 +230,11 @@ class CliMulti
             // Remove output that can be ignored in climulti . works around some worpdress setups where the hash bang may
             // be printed
             $search = '#!/usr/bin/env php';
-            if (!empty($content)
+            if (
+                !empty($content)
                 && is_string($content)
-                && mb_substr(trim($content), 0, strlen($search)) === $search) {
+                && mb_substr(trim($content), 0, strlen($search)) === $search
+            ) {
                 $content = trim(mb_substr(trim($content), strlen($search)));
             }
             $response[] = $content;
@@ -359,7 +371,7 @@ class CliMulti
         $this->processes[] = new Process($cmdId);
 
         $url = $this->appendTestmodeParamToUrlIfNeeded($url);
-        $query = UrlHelper::getQueryFromUrl($url, array('pid' => $cmdId, 'runid' => getmypid()));
+        $query = UrlHelper::getQueryFromUrl($url, ['pid' => $cmdId, 'runid' => Common::getProcessId()]);
         $hostname = Url::getHost($checkIfTrusted = false);
         $command = $this->buildCommand($hostname, $query, $output->getPathToFile());
 

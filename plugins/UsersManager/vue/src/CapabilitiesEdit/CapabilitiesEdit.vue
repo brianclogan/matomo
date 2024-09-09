@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -41,6 +42,7 @@
         uicontrol="expandable-select"
         name="add_capability"
         :full-width="true"
+        v-if="userRole !== 'noaccess'"
         :options="availableCapabilitiesGrouped"
       >
       </Field>
@@ -135,6 +137,8 @@ export default defineComponent({
     },
   },
   created() {
+    CapabilitiesStore.init();
+
     if (!this.capabilities) {
       this.isBusy = true;
 

@@ -1,11 +1,13 @@
 /*!
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 import { DirectiveBinding } from 'vue';
+
+const { $ } = window;
 
 interface SelectOnFocusArgs {
   // state
@@ -21,7 +23,7 @@ interface SelectOnFocusArgs {
 function onFocusHandler(binding: DirectiveBinding<SelectOnFocusArgs>, event: Event) {
   if (binding.value.focusedElement !== event.target) {
     binding.value.focusedElement = event.target as HTMLElement;
-    window.angular.element(event.target!).select();
+    $(event.target!).select();
   }
 }
 

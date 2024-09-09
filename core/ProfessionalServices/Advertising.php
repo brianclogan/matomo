@@ -1,14 +1,17 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\ProfessionalServices;
 
 use Piwik\Plugin;
 use Piwik\Config;
+use Piwik\Url;
 
 /**
  * Advertising for providers of Professional Support for Piwik.
@@ -19,7 +22,7 @@ use Piwik\Config;
  */
 class Advertising
 {
-    const CAMPAIGN_NAME_PROFESSIONAL_SERVICES = 'App_ProfessionalServices';
+    public const CAMPAIGN_NAME_PROFESSIONAL_SERVICES = 'App_ProfessionalServices';
 
     /**
      * @var Plugin\Manager
@@ -55,15 +58,12 @@ class Advertising
      */
     public function getPromoUrlForProfessionalServices($campaignMedium, $campaignContent = '')
     {
-        $url = 'https://matomo.org/support-plans/?';
-
-        $campaign = $this->getCampaignParametersForPromoUrl(
-            $name = self::CAMPAIGN_NAME_PROFESSIONAL_SERVICES,
-            $campaignMedium,
-            $campaignContent
+        return Url::addCampaignParametersToMatomoLink(
+            'https://matomo.org/support-plans/',
+            self::CAMPAIGN_NAME_PROFESSIONAL_SERVICES,
+            null,
+            $campaignMedium
         );
-
-        return $url . $campaign;
     }
 
     /**
@@ -73,23 +73,17 @@ class Advertising
      * @param string $campaignName
      * @param string $campaignMedium
      * @param string $campaignContent
+     * @param string $campaignSource
      * @return string
      */
-    public function addPromoCampaignParametersToUrl($url, $campaignName, $campaignMedium, $campaignContent = '')
+    public function addPromoCampaignParametersToUrl($url, $campaignName, $campaignMedium, $campaignContent = '', $campaignSource = null)
     {
         if (empty($url)) {
             return '';
         }
 
-        if (strpos($url, '?') === false) {
-            $url .= '?';
-        } else {
-            $url .= '&';
-        }
-
-        $url .= $this->getCampaignParametersForPromoUrl($campaignName, $campaignMedium, $campaignContent);
-
-        return $url;
+        return Url::addCampaignParametersToMatomoLink($url, $campaignName, $campaignSource, $campaignMedium .
+            ($campaignContent !== '' ? '.' . $campaignContent : ''));
     }
 
     /**

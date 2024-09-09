@@ -1,21 +1,15 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Updates;
 
-use Piwik\Container\StaticContainer;
-use Piwik\CronArchive;
 use Piwik\DataAccess\ArchiveTableCreator;
-use Piwik\Date;
-use Piwik\Plugins\SegmentEditor\API;
-use Piwik\Archive\ArchiveInvalidator;
-use Piwik\ArchiveProcessor\Rules;
 use Piwik\Updater;
 use Piwik\Updates as PiwikUpdates;
 use Piwik\Updater\Migration\Factory as MigrationFactory;

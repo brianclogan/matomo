@@ -1,10 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\PagePerformance\Columns\Metrics;
 
 use Piwik\DataTable;
@@ -12,6 +14,7 @@ use Piwik\DataTable\Row;
 use Piwik\Metrics\Formatter;
 use Piwik\Piwik;
 use Piwik\Plugin\ProcessedMetric;
+use Piwik\Columns\Dimension;
 
 /**
  * The average amount for a certain performance metric. Calculated as
@@ -23,7 +26,7 @@ use Piwik\Plugin\ProcessedMetric;
  */
 abstract class AveragePerformanceMetric extends ProcessedMetric
 {
-    const ID = '';
+    public const ID = '';
 
     public function getName()
     {
@@ -50,7 +53,8 @@ abstract class AveragePerformanceMetric extends ProcessedMetric
 
     public function format($value, Formatter $formatter)
     {
-        if ($formatter instanceof Formatter\Html
+        if (
+            $formatter instanceof Formatter\Html
             && !$value
         ) {
             return '-';
@@ -63,7 +67,8 @@ abstract class AveragePerformanceMetric extends ProcessedMetric
     {
         $hasTimeGeneration = array_sum($this->getMetricValues($table, 'sum_' . static::ID)) > 0;
 
-        if (!$hasTimeGeneration
+        if (
+            !$hasTimeGeneration
             && $table->getRowsCount() != 0
             && !$this->hasAverageMetric($table)
         ) {
@@ -95,5 +100,10 @@ abstract class AveragePerformanceMetric extends ProcessedMetric
     private function hasAverageMetric(DataTable $table)
     {
         return $table->getFirstRow()->getColumn($this->getName()) !== false;
+    }
+
+    public function getSemanticType(): ?string
+    {
+        return Dimension::TYPE_DURATION_S;
     }
 }

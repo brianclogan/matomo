@@ -1,10 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Diagnostics\Diagnostic;
 
 use Piwik\DbHelper;
@@ -45,7 +47,8 @@ class MatomoInformational implements Diagnostic
         return $results;
     }
 
-    private function getInstallVersion() {
+    private function getInstallVersion()
+    {
         try {
             $version = DbHelper::getInstallVersion();
             if (empty($version)) {
@@ -56,5 +59,4 @@ class MatomoInformational implements Diagnostic
             return $e->getMessage();
         }
     }
-
 }

@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 use Piwik\Columns\Updater as ColumnUpdater;
@@ -23,9 +24,9 @@ use Zend_Db_Exception;
  */
 class Updater
 {
-    const INDEX_CURRENT_VERSION = 0;
-    const INDEX_NEW_VERSION = 1;
-    const OPTION_KEY_MATOMO_UPDATE_HISTORY = 'MatomoUpdateHistory';
+    public const INDEX_CURRENT_VERSION = 0;
+    public const INDEX_NEW_VERSION = 1;
+    public const OPTION_KEY_MATOMO_UPDATE_HISTORY = 'MatomoUpdateHistory';
 
     private $pathUpdateFileCore;
     private $pathUpdateFilePlugins;
@@ -253,7 +254,7 @@ class Updater
 
                 $classNames[] = $className;
 
-                $migrationsForComponent = Access::doAsSuperUser(function() use ($className) {
+                $migrationsForComponent = Access::doAsSuperUser(function () use ($className) {
                     /** @var Updates $update */
                     $update = StaticContainer::getContainer()->make($className);
                     return $update->getMigrations($this);
@@ -302,7 +303,8 @@ class Updater
                 require_once $file; // prefixed by PIWIK_INCLUDE_PATH
 
                 $className = $this->getUpdateClassName($componentName, $fileVersion);
-                if (!in_array($className, $this->updatedClasses)
+                if (
+                    !in_array($className, $this->updatedClasses)
                     && class_exists($className, false)
                 ) {
                     $this->executeListenerHook('onComponentUpdateFileStarting', array($componentName, $file, $className, $fileVersion));
@@ -320,7 +322,6 @@ class Updater
             } catch (UpdaterErrorException $e) {
                 $this->executeListenerHook('onError', array($componentName, $fileVersion, $e));
                 throw $e;
-
             } catch (\Exception $e) {
                 $warningMessages[] = $e->getMessage();
 
@@ -370,7 +371,8 @@ class Updater
 
                 foreach ($files as $file) {
                     $fileVersion = basename($file, '.php');
-                    if (// if the update is from a newer version
+                    if (
+// if the update is from a newer version
                         version_compare($currentVersion, $fileVersion) == -1
                         // but we don't execute updates from non existing future releases
                         && version_compare($fileVersion, $newVersion) <= 0
@@ -470,8 +472,8 @@ class Updater
             if (!empty($previousVersion) && !in_array($previousVersion, $history, true)) {
                 // this allows us to see which versions of matomo the user was using before this update so we better understand
                 // which version maybe regressed something
-                array_unshift( $history, $previousVersion );
-                $history = array_slice( $history, 0, 6 ); // lets keep only the last 6 versions
+                array_unshift($history, $previousVersion);
+                $history = array_slice($history, 0, 6); // lets keep only the last 6 versions
                 Option::set(self::OPTION_KEY_MATOMO_UPDATE_HISTORY, implode(',', $history));
             }
         } catch (\Exception $e) {
@@ -479,8 +481,7 @@ class Updater
         }
 
         if (!empty($componentsWithUpdateFile)) {
-
-            Access::doAsSuperUser(function() use ($componentsWithUpdateFile, &$coreError, &$deactivatedPlugins, &$errors, &$warnings) {
+            Access::doAsSuperUser(function () use ($componentsWithUpdateFile, &$coreError, &$deactivatedPlugins, &$errors, &$warnings) {
 
                 $pluginManager = \Piwik\Plugin\Manager::getInstance();
 
@@ -505,7 +506,6 @@ class Updater
                         }
                     }
                 }
-
             });
         }
 
@@ -590,11 +590,14 @@ class Updater
             $this->executeListenerHook('onStartExecutingMigration', array($file, $migration));
 
             $migration->exec();
-
         } catch (\Exception $e) {
             if (!$migration->shouldIgnoreError($e)) {
-                $message = sprintf("%s:\nError trying to execute the migration '%s'.\nThe error was: %s",
-                                   $file, $migration->__toString(), $e->getMessage());
+                $message = sprintf(
+                    "%s:\nError trying to execute the migration '%s'.\nThe error was: %s",
+                    $file,
+                    $migration->__toString(),
+                    $e->getMessage()
+                );
                 throw new UpdaterErrorException($message);
             }
         }
@@ -619,7 +622,7 @@ class Updater
             // make sure to check for them here
             if ($e instanceof Zend_Db_Exception) {
                 throw new UpdaterErrorException($e->getMessage(), $e->getCode(), $e);
-            } else if ($e instanceof MissingFilePermissionException) {
+            } elseif ($e instanceof MissingFilePermissionException) {
                 throw new UpdaterErrorException($e->getMessage(), $e->getCode(), $e);
             }{
                 throw $e;

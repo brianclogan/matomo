@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\API;
 
 use Exception;
@@ -120,9 +121,6 @@ abstract class ApiRenderer
      */
     public static function factory($format, $request)
     {
-        if (mb_strtolower($format) === 'json2') {
-            $format = 'json';
-        }
         $formatToCheck = '\\' . ucfirst(strtolower($format));
 
         $rendererClassnames = Plugin\Manager::getInstance()->findMultipleComponents('Renderer', 'Piwik\\API\\ApiRenderer');

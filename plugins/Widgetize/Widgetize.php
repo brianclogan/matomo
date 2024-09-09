@@ -3,9 +3,8 @@
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\Widgetize;
@@ -30,8 +29,6 @@ class Widgetize extends \Piwik\Plugin
         $jsFiles[] = "plugins/Morpheus/javascripts/piwikHelper.js";
         $jsFiles[] = "plugins/CoreHome/javascripts/dataTable.js";
         $jsFiles[] = "plugins/Dashboard/javascripts/widgetMenu.js";
-        $jsFiles[] = "plugins/Widgetize/angularjs/widget-preview/widget-preview.directive.js";
-        $jsFiles[] = "plugins/Widgetize/angularjs/export-widget/export-widget.controller.js";
     }
 
     public function getStylesheetFiles(&$stylesheets)
@@ -47,5 +44,14 @@ class Widgetize extends \Piwik\Plugin
     {
         $translations[] = 'Widgetize_OpenInNewWindow';
         $translations[] = 'Dashboard_LoadingWidget';
+        $translations[] = 'Widgetize_TooHighAccessLevel';
+        $translations[] = 'Widgetize_SelectAReport';
+        $translations[] = 'Widgetize_Reports';
+        $translations[] = 'Widgetize_Intro';
+        $translations[] = 'Widgetize_DisplayDashboardInIframe';
+        $translations[] = 'Widgetize_DisplayDashboardInIframeAllSites';
+        $translations[] = 'Widgetize_ViewableAnonymously';
+        $translations[] = 'Widgetize_EmbedIframe';
+        $translations[] = 'Widgetize_DirectLink';
     }
 }

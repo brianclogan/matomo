@@ -1,8 +1,8 @@
 /*!
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 /* eslint-disable @typescript-eslint/ban-ts-comment */
@@ -12,9 +12,10 @@ import DirectiveUtilities from '../directiveUtilities';
 
 interface SideNavArgs {
   activator: HTMLElement | string;
-}
 
-let initialized = false;
+  // directive state
+  initialized?: boolean;
+}
 
 /**
  * Will activate the materialize side nav feature once rendered. We use this directive as
@@ -32,8 +33,8 @@ export default {
     }
 
     setTimeout(() => {
-      if (!initialized) {
-        initialized = true;
+      if (!binding.value.initialized) {
+        binding.value.initialized = true;
 
         const sideNavActivator = DirectiveUtilities.getRef(binding.value.activator, binding);
         if (sideNavActivator) {

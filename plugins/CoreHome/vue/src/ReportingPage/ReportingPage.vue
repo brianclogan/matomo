@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -52,21 +53,25 @@ import ReportingPageStoreInstance from './ReportingPage.store';
 import MatomoUrl from '../MatomoUrl/MatomoUrl';
 import { Periods } from '../Periods';
 import { NotificationsStore } from '../Notification';
-import translate from '../translate';
+import { translate } from '../translate';
 import Matomo from '../Matomo/Matomo';
 import ReportingPagesStoreInstance from '../ReportingPages/ReportingPages.store';
 import AjaxHelper from '../AjaxHelper/AjaxHelper';
 
-const { $ } = window;
-
 function showOnlyRawDataNotification() {
   const params = 'category=General_Visitors&subcategory=Live_VisitorLog';
   const url = window.broadcast.buildReportingUrl(params);
+  let message = translate('CoreHome_PeriodHasOnlyRawData', `<a href="${url}">`, '</a>');
+
+  if (!Matomo.visitorLogEnabled) {
+    message = translate('CoreHome_PeriodHasOnlyRawDataNoVisitsLog');
+  }
+
   NotificationsStore.show({
     id: 'onlyRawData',
     animate: false,
     context: 'info',
-    message: translate('CoreHome_PeriodHasOnlyRawData', `<a href="${url}">`, '</a>'),
+    message,
     type: 'transient',
   });
 }
@@ -81,6 +86,12 @@ interface ReportingPageState {
   hasNoVisits: boolean;
   dateLastChecked: Date|null;
   hasNoPage: boolean;
+}
+
+interface LoadPageArgs {
+  category: string;
+  subcategory: string;
+  promise?: Promise<void>;
 }
 
 export default defineComponent({
@@ -125,11 +136,24 @@ export default defineComponent({
         this.hasNoVisits = false;
       }
 
-      this.renderPage(newValue.category as string, newValue.subcategory as string);
+      this.renderPage(
+        newValue.category as string,
+        newValue.subcategory as string,
+        newValue.period as string,
+        newValue.date as string,
+        newValue.segment as string,
+      );
     });
 
     Matomo.on('loadPage', (category: string, subcategory: string) => {
-      this.renderPage(category, subcategory);
+      const parsedUrl = MatomoUrl.parsed.value;
+      this.renderPage(
+        category,
+        subcategory,
+        parsedUrl.period as string,
+        parsedUrl.date as string,
+        parsedUrl.segment as string,
+      );
     });
   },
   computed: {
@@ -138,19 +162,17 @@ export default defineComponent({
     },
   },
   methods: {
-    renderPage(category: string, subcategory: string) {
+    renderPage(
+      category: string, subcategory: string, period: string, date: string, segment: string,
+    ) {
       if (!category || !subcategory) {
         ReportingPageStoreInstance.resetPage();
         this.loading = false;
         return;
       }
 
-      const parsedUrl = MatomoUrl.parsed.value;
-      const currentPeriod = parsedUrl.period as string;
-      const currentDate = parsedUrl.date as string;
-
       try {
-        Periods.parse(currentPeriod, currentDate);
+        Periods.parse(period, date);
       } catch (e) {
         NotificationsStore.show({
           id: 'invalidDate',
@@ -167,32 +189,21 @@ export default defineComponent({
 
       NotificationsStore.remove('invalidDate');
 
-      Matomo.postEvent('piwikPageChange', {});
+      Matomo.postEvent('matomoPageChange', {});
 
       NotificationsStore.clearTransientNotifications();
 
-      if (Periods.parse(currentPeriod, currentDate).containsToday()) {
-        this.showOnlyRawDataMessageIfRequired();
+      if (Periods.parse(period, date).containsToday()) {
+        this.showOnlyRawDataMessageIfRequired(category, subcategory, period, date, segment);
       }
 
-      if (category === 'Dashboard_Dashboard'
-        && $.isNumeric(subcategory)
-        && $('[piwik-dashboard]').length
-      ) {
-        // TODO: should be changed eventually
-        // hack to make loading of dashboards faster since all the information is already there
-        // in the piwik-dashboard widget, we can let the piwik-dashboard widget render the page.
-        // We need to find a proper solution for this. A workaround for now could be an event or
-        // something to let other components render a specific page.
+      const params: LoadPageArgs = { category, subcategory };
+      Matomo.postEvent('ReportingPage.loadPage', params);
+      if (params.promise) {
         this.loading = true;
-        const element = $('[piwik-dashboard]');
-        const scope = window.angular.element(element).scope() as any; // eslint-disable-line
-        scope.fetchDashboard(parseInt(subcategory, 10)).then(() => {
-          this.loading = false;
-        }, () => {
+        Promise.resolve(params.promise).finally(() => {
           this.loading = false;
         });
-
         return;
       }
 
@@ -215,16 +226,21 @@ export default defineComponent({
     },
     renderInitialPage() {
       const parsed = MatomoUrl.parsed.value;
-      this.renderPage(parsed.category as string, parsed.subcategory as string);
+      this.renderPage(
+        parsed.category as string,
+        parsed.subcategory as string,
+        parsed.period as string,
+        parsed.date as string,
+        parsed.segment as string,
+      );
     },
-    showOnlyRawDataMessageIfRequired() {
+    showOnlyRawDataMessageIfRequired(
+      category: string, subcategory: string, period: string, date: string, segment: string,
+    ) {
       if (this.hasRawData && this.hasNoVisits) {
         showOnlyRawDataNotification();
       }
 
-      const parsedUrl = MatomoUrl.parsed.value;
-
-      const { segment } = parsedUrl;
       if (segment) {
         hideOnlyRawDataNoticifation();
         return;
@@ -246,8 +262,6 @@ export default defineComponent({
         'Marketplace_Marketplace',
       ];
 
-      const subcategory = parsedUrl.subcategory as string;
-      const category = parsedUrl.category as string;
       if (subcategoryExceptions.indexOf(subcategory) !== -1
         || categoryExceptions.indexOf(category) !== -1
         || subcategory.toLowerCase().indexOf('manage') !== -1
@@ -263,7 +277,12 @@ export default defineComponent({
         return;
       }
 
-      AjaxHelper.fetch({ method: 'VisitsSummary.getVisits' }).then((json) => {
+      AjaxHelper.fetch({
+        method: 'VisitsSummary.getVisits',
+        date,
+        period,
+        segment,
+      }).then((json) => {
         this.dateLastChecked = new Date();
 
         if (json.value > 0) {
@@ -280,19 +299,19 @@ export default defineComponent({
         }
 
         return AjaxHelper.fetch({
-          method: 'Live.getLastVisitsDetails',
-          filter_limit: 1,
-          doNotFetchActions: 1,
-        });
-      }).then((lastVisits) => {
-        if (!lastVisits || lastVisits.length === 0) {
-          this.hasRawData = false;
-          hideOnlyRawDataNoticifation();
-          return;
-        }
+          method: 'Live.getMostRecentVisitsDateTime',
+          date,
+          period,
+        }).then((lastVisits) => {
+          if (!lastVisits || lastVisits.value === '') {
+            this.hasRawData = false;
+            hideOnlyRawDataNoticifation();
+            return;
+          }
 
-        this.hasRawData = true;
-        showOnlyRawDataNotification();
+          this.hasRawData = true;
+          showOnlyRawDataNotification();
+        });
       });
     },
   },

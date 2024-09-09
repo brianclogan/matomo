@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik;
@@ -43,7 +43,7 @@ class RankingQuery
 {
     // a special label used to mark the 'Others' row in a ranking query result set. this is mapped to the
     // datatable summary row during archiving.
-    const LABEL_SUMMARY_ROW = '__mtm_ranking_query_others__';
+    public const LABEL_SUMMARY_ROW = '__mtm_ranking_query_others__';
 
     /**
      * Contains the labels of the inner query.
@@ -220,14 +220,15 @@ class RankingQuery
      *                            has to be specified in this query. {@link RankingQuery} cannot apply ordering
      *                            itself.
      * @param $bind array         Bindings for the inner query.
-     * @param int $timeLimitInMs  Adds a MAX_EXECUTION_TIME query hint to the query if $timeLimitInMs > 0
+     * @param int $timeLimit      Adds a MAX_EXECUTION_TIME query hint to the query if $timeLimit > 0
+     *                            for more details see {@link DbHelper::addMaxExecutionTimeHintToQuery}
      * @return array              The format depends on which methods have been used
      *                            to configure the ranking query.
      */
-    public function execute($innerQuery, $bind = array(), $timeLimitInMs = 0)
+    public function execute($innerQuery, $bind = array(), $timeLimit = 0)
     {
         $query = $this->generateRankingQuery($innerQuery);
-        $query = DbHelper::addMaxExecutionTimeHintToQuery($query, $timeLimitInMs);
+        $query = DbHelper::addMaxExecutionTimeHintToQuery($query, $timeLimit);
 
         $data  = Db::getReader()->fetchAll($query, $bind);
 

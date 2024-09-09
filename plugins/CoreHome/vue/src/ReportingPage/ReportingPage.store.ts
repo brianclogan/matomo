@@ -1,8 +1,8 @@
 /*!
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 import {
@@ -14,12 +14,12 @@ import {
 import ReportingPagesStoreInstance, { Page } from '../ReportingPages/ReportingPages.store';
 import ReportMetadataStoreInstance from '../ReportMetadata/ReportMetadata.store';
 import { sortOrderables } from '../Orderable';
+import { getWidgetChildren } from '../Widget/Widgets.store';
 import {
-  getWidgetChildren,
   GroupedWidgets,
   Widget,
   WidgetContainer,
-} from '../Widget/Widgets.store';
+} from '../Widget/types';
 
 interface ReportingMenuStoreState {
   page?: DeepReadonly<Page>;

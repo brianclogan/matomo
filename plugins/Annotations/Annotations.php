@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Annotations;
 
 use Piwik\Date;
@@ -76,9 +77,9 @@ class Annotations extends \Piwik\Plugin
         // if the range is just a normal period (or the period is a range in which case lastN is ignored)
         if ($period == 'range') {
             $oPeriod = new Period\Range('day', $date);
-            $startDate = $oPeriod->getDateStart();
-            $endDate = $oPeriod->getDateEnd();
-        } else if ($lastN == false && !$isMultiplePeriod) {
+            $startDate = $oPeriod->getDateStart()->getStartOfDay();
+            $endDate = $oPeriod->getDateEnd()->getStartOfDay();
+        } elseif ($lastN == false && !$isMultiplePeriod) {
             $oPeriod = Period\Factory::build($period, Date::factory($date));
             $startDate = $oPeriod->getDateStart();
             $endDate = $oPeriod->getDateEnd();

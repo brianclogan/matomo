@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\DataTable;
 
 /**
@@ -18,6 +19,7 @@ interface DataTableInterface
     public function queueFilter($className, $parameters = array());
     public function applyQueuedFilters();
     public function filter($className, $parameters = array());
+    public function multiFilter($otherTables, $filter);
     public function getFirstRow();
     public function __toString();
     public function enableRecursiveSort();

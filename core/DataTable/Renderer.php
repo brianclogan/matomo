@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\DataTable;
 
 use Exception;
@@ -129,7 +130,8 @@ abstract class Renderer extends BaseFactory
      */
     public function setTable($table)
     {
-        if (!is_array($table)
+        if (
+            !is_array($table)
             && !($table instanceof DataTableInterface)
         ) {
             throw new Exception("DataTable renderers renderer accepts only DataTable, Simple and Map instances, and arrays.");
@@ -181,7 +183,8 @@ abstract class Renderer extends BaseFactory
      */
     public static function formatValueXml($value)
     {
-        if (is_string($value)
+        if (
+            is_string($value)
             && !is_numeric($value)
         ) {
             $value = html_entity_decode($value, ENT_QUOTES, 'UTF-8');
@@ -343,8 +346,10 @@ abstract class Renderer extends BaseFactory
      * @return bool
      */
     protected static function shouldWrapArrayBeforeRendering(
-        $array, $wrapSingleValues = true, $isAssociativeArray = null)
-    {
+        $array,
+        $wrapSingleValues = true,
+        $isAssociativeArray = null
+    ) {
         if (empty($array)) {
             return false;
         }
@@ -357,7 +362,8 @@ abstract class Renderer extends BaseFactory
         if ($isAssociativeArray) {
             // we don't wrap if the array has one element that is a value
             $firstValue = reset($array);
-            if (!$wrapSingleValues
+            if (
+                !$wrapSingleValues
                 && count($array) === 1
                 && (!is_array($firstValue)
                     && !is_object($firstValue))
@@ -365,7 +371,8 @@ abstract class Renderer extends BaseFactory
                 $wrap = false;
             } else {
                 foreach ($array as $value) {
-                    if (is_array($value)
+                    if (
+                        is_array($value)
                         || is_object($value)
                     ) {
                         $wrap = false;
@@ -419,13 +426,14 @@ abstract class Renderer extends BaseFactory
 
             // if we return only one numeric value then we print out the result in a simple <result> tag
             // keep it simple!
-            if (count($flatArray) == 1
+            if (
+                count($flatArray) == 1
                 && $firstKey !== DataTable\Row::COMPARISONS_METADATA_NAME
             ) {
                 $flatArray = current($flatArray);
             }
-        } // A normal DataTable needs to be handled specifically
-        else {
+        } else {
+            // A normal DataTable needs to be handled specifically
             $array = $this->convertTable($dataTable);
             $flatArray = $this->flattenArray($array);
         }
@@ -459,12 +467,14 @@ abstract class Renderer extends BaseFactory
             }
 
             $subTable = $row->getSubtable();
-            if ($this->isRenderSubtables()
+            if (
+                $this->isRenderSubtables()
                 && $subTable
             ) {
                 $subTable = $this->convertTable($subTable);
                 $newRow['subtable'] = $subTable;
-                if ($this->hideIdSubDatatable === false
+                if (
+                    $this->hideIdSubDatatable === false
                     && isset($newRow['metadata']['idsubdatatable_in_db'])
                 ) {
                     $newRow['columns']['idsubdatatable'] = $newRow['metadata']['idsubdatatable_in_db'];
@@ -516,7 +526,8 @@ abstract class Renderer extends BaseFactory
         $flatArray = [];
         foreach ($array as $row) {
             $newRow = $row['columns'] + $row['metadata'];
-            if (isset($row['idsubdatatable'])
+            if (
+                isset($row['idsubdatatable'])
                 && $this->hideIdSubDatatable === false
             ) {
                 $newRow += array('idsubdatatable' => $row['idsubdatatable']);

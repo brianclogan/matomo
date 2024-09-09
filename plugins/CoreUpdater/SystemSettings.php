@@ -1,9 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\CoreUpdater;
@@ -17,6 +18,7 @@ use Piwik\Plugins\Marketplace\UpdateCommunication as PluginUpdateCommunication;
 use Piwik\Settings\Setting;
 use Piwik\Settings\FieldConfig;
 use Piwik\SettingsPiwik;
+use Piwik\Url;
 
 /**
  * Defines Settings for CoreUpdater.
@@ -80,6 +82,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
 
             $field->availableValues = array();
             foreach ($releaseChannels->getAllReleaseChannels() as $channel) {
+                if (!$channel->isSelectableInSettings()) {
+                    continue;
+                }
                 $name = $channel->getName();
                 $description = $channel->getDescription();
                 if (!empty($description)) {
@@ -97,9 +102,11 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
 
             $field->inlineHelp = Piwik::translate('CoreAdminHome_DevelopmentProcess')
                             . '<br/>'
-                            . Piwik::translate('CoreAdminHome_StableReleases',
-                                               array("<a target='_blank' rel='noreferrer noopener' href='https://developer.matomo.org/guides/core-team-workflow#influencing-piwik-development'>",
-                                                     "</a>"))
+                            . Piwik::translate(
+                                'CoreAdminHome_StableReleases',
+                                ["<a target='_blank' rel='noreferrer noopener' href='" . Url::addCampaignParametersToMatomoLink('https://developer.matomo.org/guides/core-team-workflow#influencing-piwik-development') . "'>",
+                                "</a>"]
+                            )
                             . '<br/>'
                             . Piwik::translate('CoreAdminHome_LtsReleases');
         });
@@ -125,10 +132,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
             $field->inlineHelp = Piwik::translate('CoreUpdater_Utf8mb4ConversionHelp', [
                 '�',
                 '<code>' . PIWIK_INCLUDE_PATH . '/console core:convert-to-utf8mb4</code>',
-                '<a href="https://matomo.org/faq/how-to-update/how-to-convert-the-database-to-utf8mb4-charset/" rel="noreferrer noopener" target="_blank">',
+                '<a href="' . Url::addCampaignParametersToMatomoLink('https://matomo.org/faq/how-to-update/how-to-convert-the-database-to-utf8mb4-charset/') . '" rel="noreferrer noopener" target="_blank">',
                 '</a>'
             ]);
         });
     }
-
 }

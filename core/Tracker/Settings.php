@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Tracker;
 
 use Piwik\Config;
@@ -17,7 +18,7 @@ use Piwik\SettingsPiwik;
 
 class Settings // TODO: merge w/ visitor recognizer or make it it's own service. the class name is required for BC.
 {
-    const OS_BOT = 'BOT';
+    public const OS_BOT = 'BOT';
 
     /**
      * If `true`, the config ID for a visitor will be the same no matter what site is being tracked.
@@ -39,7 +40,7 @@ class Settings // TODO: merge w/ visitor recognizer or make it it's own service.
 
         $userAgent = $request->getUserAgent();
 
-        $deviceDetector = StaticContainer::get(DeviceDetectorFactory::class)->makeInstance($userAgent);
+        $deviceDetector = StaticContainer::get(DeviceDetectorFactory::class)->makeInstance($userAgent, $request->getClientHints());
         $aBrowserInfo   = $deviceDetector->getClient();
 
         if (empty($aBrowserInfo['type']) || 'browser' !== $aBrowserInfo['type']) {
@@ -110,7 +111,8 @@ class Settings // TODO: merge w/ visitor recognizer or make it it's own service.
             $plugin_Cookie,
             $ipAddress,
             $browserLang,
-            $fingerprintSalt);
+            $fingerprintSalt
+        );
     }
 
     /**
@@ -133,11 +135,23 @@ class Settings // TODO: merge w/ visitor recognizer or make it it's own service.
      * @param $fingerprintHash
      * @return string
      */
-    protected function getConfigHash(Request $request, $os, $browserName, $browserVersion, $plugin_Flash, $plugin_Java,
-                                     $plugin_Quicktime, $plugin_RealPlayer, $plugin_PDF,
-                                     $plugin_WindowsMedia, $plugin_Silverlight, $plugin_Cookie, $ip,
-                                     $browserLang, $fingerprintHash)
-    {
+    protected function getConfigHash(
+        Request $request,
+        $os,
+        $browserName,
+        $browserVersion,
+        $plugin_Flash,
+        $plugin_Java,
+        $plugin_Quicktime,
+        $plugin_RealPlayer,
+        $plugin_PDF,
+        $plugin_WindowsMedia,
+        $plugin_Silverlight,
+        $plugin_Cookie,
+        $ip,
+        $browserLang,
+        $fingerprintHash
+    ) {
         // prevent the config hash from being the same, across different Piwik instances
         // (limits ability of different Piwik instances to cross-match users)
         $salt = SettingsPiwik::getSalt();

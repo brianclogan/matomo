@@ -1,9 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\CustomDimensions\Tracker;
@@ -18,14 +19,12 @@ use Piwik\Tracker\Model;
 use Piwik\Tracker\Request;
 use Piwik\Tracker\RequestProcessor;
 use Piwik\Tracker\Visit\VisitProperties;
-use Piwik\Url;
 
 /**
  * Handles tracking of custom dimensions
  */
 class CustomDimensionsRequestProcessor extends RequestProcessor
 {
-
     public function recordLogs(VisitProperties $visitProperties, Request $request)
     {
         if (!self::hasActionCustomDimensionConfiguredInSite($request)) {
@@ -103,7 +102,7 @@ class CustomDimensionsRequestProcessor extends RequestProcessor
         if (!empty($action) && $action->getIdLinkVisitAction() && self::hasActionCustomDimensionConfiguredInSite($request)) {
             // when it is an existing visit, then we first create the action before recording the visit. This allows us
             // to update last_idlink_va in the regular visit update
-            $request->setMetadata('CustomDimensions','previous_idlink_va', $visitProperties->getProperty('last_idlink_va'));
+            $request->setMetadata('CustomDimensions', 'previous_idlink_va', $visitProperties->getProperty('last_idlink_va'));
             $valuesToUpdate['last_idlink_va'] = $action->getIdLinkVisitAction();
         }
     }
@@ -148,9 +147,11 @@ class CustomDimensionsRequestProcessor extends RequestProcessor
             $extractions = $dimension['extractions'];
             if (is_array($extractions)) {
                 foreach ($extractions as $extraction) {
-                    if (!array_key_exists('dimension', $extraction)
-                     || !array_key_exists('pattern', $extraction)
-                     || empty($extraction['pattern'])) {
+                    if (
+                        !array_key_exists('dimension', $extraction)
+                        || !array_key_exists('pattern', $extraction)
+                        || empty($extraction['pattern'])
+                    ) {
                         continue;
                     }
 
@@ -220,5 +221,4 @@ class CustomDimensionsRequestProcessor extends RequestProcessor
 
         return $cache['custom_dimensions'];
     }
-
 }

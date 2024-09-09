@@ -1,9 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\API;
@@ -31,7 +32,7 @@ use Piwik\Plugins\CoreHome\Columns\Metrics\EvolutionMetric;
  */
 class DataTablePostProcessor
 {
-    const PROCESSED_METRICS_COMPUTED_FLAG = 'processed_metrics_computed';
+    public const PROCESSED_METRICS_COMPUTED_FLAG = 'processed_metrics_computed';
 
     /**
      * @var null|Report
@@ -120,6 +121,7 @@ class DataTablePostProcessor
         }
 
         $dataTable = $this->applyGenericFilters($dataTable);
+        $dataTable = $this->applyArchiveStateFilter($dataTable);
         $this->applyComputeProcessedMetrics($dataTable);
         $dataTable = $this->applyComparison($dataTable);
 
@@ -142,6 +144,23 @@ class DataTablePostProcessor
     {
         $dataTable->filter('AddSegmentBySegmentValue', array($this->report));
         $dataTable->filter('ColumnCallbackDeleteMetadata', array('segmentValue'));
+
+        return $dataTable;
+    }
+
+    /**
+     * @param DataTableInterface $dataTable
+     * @return DataTableInterface
+     */
+    public function applyArchiveStateFilter(DataTableInterface $dataTable): DataTableInterface
+    {
+        $fetchArchiveState = (new \Piwik\Request($this->request))->getBoolParameter('fetch_archive_state', false);
+
+        if (false === $fetchArchiveState) {
+            $dataTable->filter(function (DataTable $table) {
+                $table->deleteMetadata(DataTable::ARCHIVE_STATE_METADATA_NAME);
+            });
+        }
 
         return $dataTable;
     }
@@ -249,7 +268,11 @@ class DataTablePostProcessor
         $addNormalProcessedMetrics = null;
         try {
             $addNormalProcessedMetrics = Common::getRequestVar(
-                'filter_add_columns_when_show_all_columns', null, 'integer', $this->request);
+                'filter_add_columns_when_show_all_columns',
+                null,
+                'integer',
+                $this->request
+            );
         } catch (Exception $ex) {
             // ignore
         }
@@ -261,8 +284,13 @@ class DataTablePostProcessor
         $addGoalProcessedMetrics = null;
         try {
             $addGoalProcessedMetrics = Common::getRequestVar(
-                'filter_update_columns_when_show_all_goals', false, 'string', $this->request);
-            if ((int) $addGoalProcessedMetrics === 0
+                'filter_update_columns_when_show_all_goals',
+                false,
+                'string',
+                $this->request
+            );
+            if (
+                (int) $addGoalProcessedMetrics === 0
                 && $addGoalProcessedMetrics !== '0'
                 && $addGoalProcessedMetrics != Piwik::LABEL_ID_GOAL_IS_ECOMMERCE_ORDER
                 && $addGoalProcessedMetrics != Piwik::LABEL_ID_GOAL_IS_ECOMMERCE_CART
@@ -284,8 +312,21 @@ class DataTablePostProcessor
         }
 
         if ($addGoalProcessedMetrics !== null) {
-            $idGoal = Common::getRequestVar(
-                'idGoal', DataTable\Filter\AddColumnsProcessedMetricsGoal::GOALS_OVERVIEW, 'string', $this->request);
+            // if no idGoal is present, but filter_show_goal_columns_process_goals is set to one goal,
+            // default idGoal to that value. this allows us to use filter_update_columns_when_show_all_goals
+            // w/ API.getProcessedReport w/o setting idGoal, which affects the search for report metadata.
+            if (
+                !empty($goalsToProcess)
+                && count($goalsToProcess) == 1
+                && $goalsToProcess[0] !== '0'
+                && $goalsToProcess[0] !== 0
+            ) {
+                $defaultIdGoal = $goalsToProcess[0];
+            } else {
+                $defaultIdGoal = DataTable\Filter\AddColumnsProcessedMetricsGoal::GOALS_OVERVIEW;
+            }
+
+            $idGoal = Common::getRequestVar('idGoal', $defaultIdGoal, 'string', $this->request);
 
             $dataTable->filter('AddColumnsProcessedMetricsGoal', array($ignore = true, $idGoal, $goalsToProcess));
         }
@@ -318,11 +359,12 @@ class DataTablePostProcessor
         $showColumns = Common::getRequestVar('showColumns', '', 'string', $this->request);
         $hideColumnsRecursively = Common::getRequestVar('hideColumnsRecursively', intval($this->report && $this->report->getModule() == 'Live'), 'int', $this->request);
         $showRawMetrics = Common::getRequestVar('showRawMetrics', 0, 'int', $this->request);
-        if (!empty($hideColumns)
+        if (
+            !empty($hideColumns)
             || !empty($showColumns)
         ) {
             $dataTable->filter('ColumnDelete', array($hideColumns, $showColumns, $deleteIfZeroOnly = false, $hideColumnsRecursively));
-        } else if ($showRawMetrics !== 1) {
+        } elseif ($showRawMetrics !== 1) {
             $this->removeTemporaryMetrics($dataTable);
         }
 
@@ -363,7 +405,19 @@ class DataTablePostProcessor
         if (!empty($label)) {
             $addLabelIndex = Common::getRequestVar('labelFilterAddLabelIndex', 0, 'int', $this->request) == 1;
 
-            $filter = new LabelFilter($this->apiModule, $this->apiMethod, $this->request);
+            $labelColumn = 'label';
+            if ($this->report) {
+                // allow DataTables to set a metadata for the column used to uniquely identify a row. primarily
+                // so this can be tested w/o creating a test plugin w/ a test report.
+                $dataTableRowIdentifier = null;
+                $dataTable->filter(function (DataTable $table) use (&$dataTableRowIdentifier) {
+                    $dataTableRowIdentifier = $dataTableRowIdentifier ?: $table->getMetadata(DataTable::ROW_IDENTIFIER_METADATA_NAME);
+                });
+
+                $labelColumn = $dataTableRowIdentifier ?: $this->report->getRowIdentifier() ?: $labelColumn;
+            }
+
+            $filter = new LabelFilter($this->apiModule, $this->apiMethod, $this->request, $labelColumn);
             $dataTable = $filter->filter($label, $dataTable, $addLabelIndex);
         }
         return $dataTable;
@@ -371,18 +425,19 @@ class DataTablePostProcessor
 
     /**
      * @param DataTableInterface $dataTable
+     * @param bool $forceFormatting if set to true, all metrics will be formatted and request parameter will be ignored
      * @return DataTableInterface
      */
-    public function applyMetricsFormatting($dataTable)
+    public function applyMetricsFormatting($dataTable, bool $forceFormatting = false)
     {
         $formatMetrics = Common::getRequestVar('format_metrics', 0, 'string', $this->request);
-        if ($formatMetrics == '0') {
+        if ($formatMetrics == '0' && $forceFormatting === false) {
             return $dataTable;
         }
 
         // in Piwik 2.X & below, metrics are not formatted in API responses except for percents.
         // this code implements this inconsistency
-        $onlyFormatPercents = $formatMetrics === 'bc';
+        $onlyFormatPercents = $forceFormatting === false && $formatMetrics === 'bc';
 
         $metricsToFormat = null;
         if ($onlyFormatPercents) {
@@ -391,9 +446,9 @@ class DataTablePostProcessor
 
         // 'all' is a special value that indicates we should format non-processed metrics that are identified
         // by string, like 'revenue'. this should be removed when all metrics are using the `Metric` class.
-        $formatAll = $formatMetrics === 'all';
+        $formatAll = $forceFormatting === true || $formatMetrics === 'all';
 
-        $dataTable->filter(array($this->formatter, 'formatMetrics'), array($this->report, $metricsToFormat, $formatAll));
+        $dataTable->filter([$this->formatter, 'formatMetrics'], [$this->report, $metricsToFormat, $formatAll]);
         return $dataTable;
     }
 
@@ -423,7 +478,7 @@ class DataTablePostProcessor
         // this is needed because Proxy uses Common::getRequestVar which in turn
         // uses Common::sanitizeInputValue. This causes the > that separates recursive labels
         // to become &gt; and we need to undo that here.
-        $label = str_replace( htmlentities('>', ENT_COMPAT | ENT_HTML401, 'UTF-8'), '>', $label);
+        $label = str_replace(htmlentities('>', ENT_COMPAT | ENT_HTML401, 'UTF-8'), '>', $label);
         return $label;
     }
 
@@ -447,7 +502,7 @@ class DataTablePostProcessor
             }
 
             foreach ($dataTable->getRows() as $row) {
-                if ($row->getColumn($name) !== false) { // only compute the metric if it has not been computed already
+                if ($row->hasColumn($name)) { // only compute the metric if it has not been computed already
                     continue;
                 }
 
@@ -506,4 +561,3 @@ class DataTablePostProcessor
         return $dataTable;
     }
 }
-

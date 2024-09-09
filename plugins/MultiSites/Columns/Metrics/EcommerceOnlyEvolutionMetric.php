@@ -1,9 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\MultiSites\Columns\Metrics;
@@ -22,9 +23,13 @@ class EcommerceOnlyEvolutionMetric extends EvolutionMetric
 {
     private $isRevenueEvolution;
 
-    public function __construct($wrapped, DataTable $pastData, $evolutionMetricName = false, $quotientPrecision = 0,
-                                ?DataTable $currentData = null)
-    {
+    public function __construct(
+        $wrapped,
+        DataTable $pastData,
+        $evolutionMetricName = false,
+        $quotientPrecision = 0,
+        ?DataTable $currentData = null
+    ) {
         parent::__construct($wrapped, $pastData, $evolutionMetricName, $quotientPrecision, $currentData);
 
         $this->isRevenueEvolution = $this->getName() == 'revenue_evolution';

@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -141,6 +142,9 @@
       </a>
     </div>
 
+    <div class="col l12 report-export-popover-footer"
+         v-if="additionalContent" v-html="$sanitize(additionalContent)"></div>
+
   </div>
 </template>
 
@@ -150,7 +154,7 @@ import useExternalPluginComponent from '../useExternalPluginComponent';
 import SelectOnFocus from '../SelectOnFocus/SelectOnFocus';
 import Matomo from '../Matomo/Matomo';
 import MatomoUrl from '../MatomoUrl/MatomoUrl';
-import translate from '../translate';
+import { translate } from '../translate';
 
 interface DataTable {
   param: Record<string, string|string[]>;
@@ -213,6 +217,12 @@ export default defineComponent({
       default: 'XML',
     },
   },
+  mounted() {
+    // pass data as object, so it can be manipulated by subscribers
+    const parameters = { content: this.additionalContent, dataTable: this.dataTable };
+    Matomo.postEvent('ReportExportPopover.additionalContent', parameters);
+    this.additionalContent = parameters.content;
+  },
   data() {
     return {
       showUrl: false,
@@ -225,6 +235,7 @@ export default defineComponent({
       reportLimit: typeof this.initialReportLimit === 'string'
         ? parseInt(this.initialReportLimit, 10)
         : this.initialReportLimit,
+      additionalContent: '',
     };
   },
   watch: {
@@ -277,6 +288,8 @@ export default defineComponent({
 
       if (this.requestParams && typeof this.requestParams === 'string') {
         requestParams = JSON.parse(this.requestParams);
+      } else if (this.requestParams && typeof this.requestParams === 'object') {
+        requestParams = this.requestParams as Record<string, unknown>;
       }
 
       const {

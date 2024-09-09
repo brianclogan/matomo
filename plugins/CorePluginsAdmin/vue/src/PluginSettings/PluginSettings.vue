@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -35,35 +36,10 @@
         />
       </div>
     </div>
-    <div class="confirm-password-modal modal">
-      <div class="modal-content">
-        <h2>{{ translate('UsersManager_ConfirmWithPassword') }}</h2>
-        <div>
-          <Field
-            v-model="passwordConfirmation"
-            :uicontrol="'password'"
-            :name="'currentUserPassword'"
-            :autocomplete="false"
-            :full-width="true"
-            :title="translate('UsersManager_YourCurrentPassword')"
-          >
-          </Field>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <a
-          href=""
-          class="modal-action modal-close btn"
-          :disabled="!passwordConfirmation ? 'disabled' : undefined"
-          @click="$event.preventDefault(); save(this.settingsToSave)"
-        >{{ translate('General_Yes') }}</a>
-        <a
-          href=""
-          class="modal-action modal-close modal-no"
-          @click="$event.preventDefault()"
-        >{{ translate('General_No') }}</a>
-      </div>
-    </div>
+    <PasswordConfirmation
+      v-model="showPasswordConfirmModal"
+      @confirmed="confirmPassword"
+    />
   </div>
 </template>
 
@@ -74,19 +50,19 @@ import {
   AjaxHelper,
   NotificationsStore,
   translate,
+  scrollToAnchorInUrl,
 } from 'CoreHome';
-import KeyPressEvent = JQuery.KeyPressEvent;
-import Field from '../Field/Field.vue';
 import Setting from './Setting';
 import SettingsForSinglePlugin from './SettingsForSinglePlugin';
 import GroupedSettings from '../GroupedSettings/GroupedSettings.vue';
+import PasswordConfirmation from '../PasswordConfirmation/PasswordConfirmation.vue';
 
 const { $ } = window;
 
 interface PluginSettingsState {
   isLoading: boolean;
   isSaving: Record<string, boolean>;
-  passwordConfirmation: string;
+  showPasswordConfirmModal: boolean;
   settingsToSave: null|string; // name of plugin whose settings to save
   settingsPerPlugin: SettingsForSinglePlugin[];
   settingValues: Record<string, unknown>;
@@ -97,15 +73,15 @@ export default defineComponent({
     mode: String,
   },
   components: {
+    PasswordConfirmation,
     ActivityIndicator,
-    Field,
     GroupedSettings,
   },
   data(): PluginSettingsState {
     return {
       isLoading: true,
       isSaving: {},
-      passwordConfirmation: '',
+      showPasswordConfirmModal: false,
       settingsToSave: null,
       settingsPerPlugin: [],
       settingValues: {},
@@ -124,7 +100,7 @@ export default defineComponent({
         });
       });
 
-      window.anchorLinkFix.scrollToAnchorInUrl();
+      scrollToAnchorInUrl();
 
       this.addSectionsToTableOfContents();
     }).catch(() => {
@@ -166,35 +142,19 @@ export default defineComponent({
         }
       });
     },
+    confirmPassword(password: string) {
+      this.showPasswordConfirmModal = false;
+      this.save(this.settingsToSave as string, password);
+    },
     saveSetting(requestedPlugin: string) {
       if (this.mode === 'admin') {
-        this.showPasswordConfirmModal(requestedPlugin);
+        this.settingsToSave = requestedPlugin;
+        this.showPasswordConfirmModal = true;
       } else {
         this.save(requestedPlugin);
       }
     },
-    showPasswordConfirmModal(requestedPlugin: string) {
-      this.settingsToSave = requestedPlugin;
-      const root = this.$refs.root as HTMLElement;
-      const $root = $(root);
-      const onEnter = (event: KeyPressEvent) => {
-        const keycode = event.keyCode ? event.keyCode : event.which;
-        if (keycode === 13) {
-          $root.find('.confirm-password-modal').modal('close');
-          this.save(requestedPlugin);
-        }
-      };
-
-      $root.find('.confirm-password-modal').modal({
-        dismissible: false,
-        onOpenEnd: () => {
-          const passwordField = '.modal.open #currentUserPassword';
-          $(passwordField).focus();
-          $(passwordField).off('keypress').keypress(onEnter);
-        },
-      }).modal('open');
-    },
-    save(requestedPlugin: string) {
+    save(requestedPlugin: string, password?: string) {
       const { saveApiMethod } = this;
 
       this.isSaving[requestedPlugin] = true;
@@ -203,7 +163,7 @@ export default defineComponent({
 
       AjaxHelper.post(
         { method: saveApiMethod },
-        { settingValues: settingValuesPayload, passwordConfirmation: this.passwordConfirmation },
+        { settingValues: settingValuesPayload, passwordConfirmation: password },
       ).then(() => {
         this.isSaving[requestedPlugin] = false;
 
@@ -218,7 +178,6 @@ export default defineComponent({
         this.isSaving[requestedPlugin] = false;
       });
 
-      this.passwordConfirmation = '';
       this.settingsToSave = null;
     },
     getValuesForPlugin(requestedPlugin: string) {

@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\Actions\Actions;
@@ -27,6 +27,7 @@ class ActionSiteSearch extends Action
 {
     private $searchCategory = false;
     private $searchCount = false;
+    protected $originalUrl;
 
     public function __construct(Request $request, $detect = true)
     {
@@ -132,7 +133,7 @@ class ActionSiteSearch extends Action
             $fragmentBeforeQuery = '';
         }
 
-        $parametersRaw = UrlHelper::getArrayFromQueryString($queryString.$separator.$fragmentQuery);
+        $parametersRaw = UrlHelper::getArrayFromQueryString($queryString . $separator . $fragmentQuery);
 
         // strtolower the parameter names for smooth site search detection
         $parameters = array();
@@ -167,7 +168,8 @@ class ActionSiteSearch extends Action
             }
         }
 
-        if (isset($parameters['search_count'])
+        if (
+            isset($parameters['search_count'])
             && self::isValidSearchCount($parameters['search_count'])
         ) {
             $count = $parameters['search_count'];
@@ -184,7 +186,7 @@ class ActionSiteSearch extends Action
                 $parsedUrl['fragment'] = UrlHelper::getQueryStringWithExcludedParameters(UrlHelper::getArrayFromQueryString($fragmentQuery), $parametersToExclude);
                 if ($fragmentBeforeQuery) {
                     if ($parsedUrl['fragment']) {
-                        $parsedUrl['fragment'] = $fragmentBeforeQuery.'?'.$parsedUrl['fragment'];
+                        $parsedUrl['fragment'] = $fragmentBeforeQuery . '?' . $parsedUrl['fragment'];
                     } else {
                         $parsedUrl['fragment'] = $fragmentBeforeQuery;
                     }

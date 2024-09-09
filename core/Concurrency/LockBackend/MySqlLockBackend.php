@@ -1,14 +1,13 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Concurrency\LockBackend;
-
 
 use Piwik\Common;
 use Piwik\Concurrency\LockBackend;
@@ -16,7 +15,7 @@ use Piwik\Db;
 
 class MySqlLockBackend implements LockBackend
 {
-    const TABLE_NAME = 'locks';
+    public const TABLE_NAME = 'locks';
 
     /**
      * fyi: does not support list keys at the moment just because not really needed so much just yet
@@ -46,29 +45,33 @@ class MySqlLockBackend implements LockBackend
         if ($this->get($key)) {
             return false; // a value is set, won't be possible to insert
         }
-        
+
         $tablePrefixed = self::getTableName();
 
         // remove any existing but expired lock
         // todo: we could combine get() and keyExists() in one query!
         if ($this->keyExists($key)) {
-            // most of the time an expired key should not exist... we don't want to lock the row unncessarily therefore we check first
-            // if value exists... 
+            // most of the time an expired key should not exist... we don't want to lock the row unnecessarily therefore we check first
+            // if value exists...
             $sql = sprintf('DELETE FROM %s WHERE `key` = ? and not (%s)', $tablePrefixed, $this->getQueryPartExpiryTime());
             Db::query($sql, array($key));
         }
 
-        $query = sprintf('INSERT INTO %s (`key`, `value`, `expiry_time`) 
+        $query = sprintf(
+            'INSERT INTO %s (`key`, `value`, `expiry_time`) 
                                  VALUES (?,?,(UNIX_TIMESTAMP() + ?))',
-            $tablePrefixed);
+            $tablePrefixed
+        );
         // we make sure to update the row if the key is expired and consider it as "deleted"
 
         try {
             Db::query($query, array($key, $value, (int) $ttlInSeconds));
         } catch (\Exception $e) {
-            if ($e->getCode() == 23000
+            if (
+                $e->getCode() == 23000
                 || strpos($e->getMessage(), 'Duplicate entry') !== false
-                || strpos($e->getMessage(), ' 1062 ') !== false) {
+                || strpos($e->getMessage(), ' 1062 ') !== false
+            ) {
                 return false;
             }
             throw $e;

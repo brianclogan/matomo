@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\UserLanguage\Columns;
 
 use Piwik\Common;
@@ -46,7 +47,7 @@ class Language extends VisitDimension
 
     /**
      * For better privacy we store only the main language code, instead of the whole browser language string.
-     * 
+     *
      * @param $acceptLanguagesString
      * @return string
      */
@@ -59,5 +60,4 @@ class Language extends VisitDimension
         $languageCode = Common::extractLanguageAndRegionCodeFromBrowserLanguage($acceptLanguagesString);
         return $languageCode;
     }
-
 }

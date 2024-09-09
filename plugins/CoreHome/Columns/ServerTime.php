@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\CoreHome\Columns;
 
 use Piwik\Date;
@@ -23,7 +24,7 @@ class ServerTime extends ActionDimension
     protected $columnType = 'DATETIME NOT NULL';
     protected $segmentName = 'actionServerHour';
     protected $sqlSegment = 'HOUR(log_link_visit_action.server_time)';
-    protected $nameSingular = 'VisitTime_ColumnServerHour';
+    protected $nameSingular = 'VisitTime_ColumnSiteHour';
     protected $type = self::TYPE_DATETIME;
 
     public function __construct()

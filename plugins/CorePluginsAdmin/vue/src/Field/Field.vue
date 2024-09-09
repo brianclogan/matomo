@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -9,7 +10,12 @@
     :form-field="field"
     :model-value="modelValue"
     @update:model-value="onChange($event)"
-  />
+    :model-modifiers="modelModifiers"
+  >
+    <template v-slot:inline-help>
+      <slot name="inline-help"></slot>
+    </template>
+  </FormField>
 </template>
 
 <script lang="ts">
@@ -26,6 +32,7 @@ const UI_CONTROLS_TO_TYPE: Record<string, string> = {
 export default defineComponent({
   props: {
     modelValue: null,
+    modelModifiers: Object,
     uicontrol: String,
     name: String,
     defaultValue: null,
@@ -44,8 +51,7 @@ export default defineComponent({
       type: Object,
       default: () => ({}),
     },
-    autocomplete: Boolean,
-    condition: Function,
+    autocomplete: String,
     varType: String,
     autofocus: Boolean,
     tabindex: Number,
@@ -57,7 +63,6 @@ export default defineComponent({
     min: Number,
     max: Number,
     component: null,
-    templateFile: String,
   },
   emits: ['update:modelValue'],
   components: {
@@ -89,7 +94,6 @@ export default defineComponent({
         inlineHelpBind: this.inlineHelpBind,
         title: this.title,
         component: this.component,
-        templateFile: this.templateFile, // BC for angularjs code that uses <Field> indirectly
         uiControlAttributes: {
           ...this.uiControlAttributes,
           disabled: this.disabled,

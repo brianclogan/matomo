@@ -1,31 +1,33 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Marketplace\Api;
 
+use Exception as PhpException;
 use Matomo\Cache\Lazy;
 use Piwik\Common;
+use Piwik\Config\GeneralConfig;
 use Piwik\Container\StaticContainer;
 use Piwik\Filesystem;
 use Piwik\Http;
 use Piwik\Plugin;
 use Piwik\Plugins\Marketplace\Environment;
 use Piwik\SettingsServer;
-use Exception as PhpException;
-use Psr\Log\LoggerInterface;
+use Piwik\Log\LoggerInterface;
 
 /**
  *
  */
 class Client
 {
-    const CACHE_TIMEOUT_IN_SECONDS = 3600;
-    const HTTP_REQUEST_TIMEOUT = 60;
+    public const CACHE_TIMEOUT_IN_SECONDS = 3600;
+    public const HTTP_REQUEST_TIMEOUT = 60;
 
     /**
      * @var Service
@@ -71,14 +73,19 @@ class Client
         return $this->environment;
     }
 
+    /**
+     * @param string $name
+     * @return array
+     * @throws Exception
+     */
     public function getPluginInfo($name)
     {
         $action = sprintf('plugins/%s/info', $name);
 
         $plugin = $this->fetch($action, array());
 
-        if (!empty($plugin) && $this->shouldIgnorePlugin($plugin)) {
-            return;
+        if (empty($plugin['name']) || $this->shouldIgnorePlugin($plugin)) {
+            return [];
         }
 
         return $plugin;
@@ -167,7 +174,7 @@ class Client
             $pluginName = $plugin->getPluginName();
             if (!$this->pluginManager->isPluginBundledWithCore($pluginName)) {
                 $isActivated = $this->pluginManager->isPluginActivated($pluginName);
-                $params[] = array('name' => $plugin->getPluginName(), 'version' => $plugin->getVersion(), 'activated' => (int) $isActivated);
+                $params[] = array('name' => $plugin->getPluginName(), 'version' => $plugin->getVersion(), 'activated' => (int)$isActivated);
             }
         }
 
@@ -188,14 +195,14 @@ class Client
     }
 
     /**
-     * @param  \Piwik\Plugin[] $plugins
-     * @return array
+     * @param \Piwik\Plugin[] $plugins
+     * @return array (pluginName => pluginDetails)
      */
-    public function getInfoOfPluginsHavingUpdate($plugins)
+    public function getInfoOfPluginsHavingUpdate($plugins): array
     {
         $hasUpdates = $this->checkUpdates($plugins);
 
-        $pluginDetails = array();
+        $pluginDetails = [];
 
         foreach ($hasUpdates as $pluginHavingUpdate) {
             if (empty($pluginHavingUpdate)) {
@@ -211,9 +218,8 @@ class Client
 
             if (!empty($plugin)) {
                 $plugin['repositoryChangelogUrl'] = $pluginHavingUpdate['repositoryChangelogUrl'];
-                $pluginDetails[] = $plugin;
+                $pluginDetails[$pluginHavingUpdate['name']] = $plugin;
             }
-
         }
 
         return $pluginDetails;
@@ -267,7 +273,7 @@ class Client
             $params['release_channel'] = $releaseChannel;
         }
 
-        $params['prefer_stable'] = (int) $this->environment->doesPreferStable();
+        $params['prefer_stable'] = (int)$this->environment->doesPreferStable();
         $params['piwik'] = $this->environment->getPiwikVersion();
         $params['php'] = $this->environment->getPhpVersion();
         $params['mysql'] = $this->environment->getMySQLVersion();
@@ -308,8 +314,8 @@ class Client
 
     /**
      * @param  $pluginOrThemeName
-     * @throws Exception
      * @return string
+     * @throws Exception
      */
     public function getDownloadUrl($pluginOrThemeName)
     {
@@ -325,4 +331,21 @@ class Client
         return $this->service->getDomain() . $downloadUrl . '?coreVersion=' . $this->environment->getPiwikVersion();
     }
 
+    /**
+     * Return the api.matomo.org URL with the correct protocol prefix
+     *
+     * @return string|null
+     */
+    public static function getApiServiceUrl(): ?string
+    {
+        // Default is now https://
+        $url = GeneralConfig::getConfigValue('api_service_url');
+
+        if (GeneralConfig::getConfigValue('force_matomo_http_request')) {
+            // http is being forced, downgrade the protocol to http
+            $url = str_replace('https', 'http', $url);
+        }
+
+        return $url;
+    }
 }

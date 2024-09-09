@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -19,12 +20,14 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import AbortableModifiers from './AbortableModifiers';
 
 export default defineComponent({
   props: {
     name: String,
     title: String,
     modelValue: [String, File],
+    modelModifiers: Object,
   },
   inheritAttrs: false,
   emits: ['update:modelValue'],
@@ -44,7 +47,19 @@ export default defineComponent({
       }
 
       const file = files.item(0);
-      this.$emit('update:modelValue', file);
+      if (!(this.modelModifiers as AbortableModifiers)?.abortable) {
+        this.$emit('update:modelValue', file);
+        return;
+      }
+
+      const emitEventData = {
+        value: file,
+        abort() {
+          // not supported
+        },
+      };
+
+      this.$emit('update:modelValue', emitEventData);
     },
   },
   computed: {

@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Insights;
 
 use Piwik\DataTable;
@@ -16,9 +17,9 @@ use Piwik\Piwik;
  */
 class InsightReport
 {
-    const ORDER_BY_RELATIVE   = 'relative';
-    const ORDER_BY_ABSOLUTE   = 'absolute';
-    const ORDER_BY_IMPORTANCE = 'importance';
+    public const ORDER_BY_RELATIVE   = 'relative';
+    public const ORDER_BY_ABSOLUTE   = 'absolute';
+    public const ORDER_BY_IMPORTANCE = 'importance';
 
     /**
      * @param array $reportMetadata
@@ -48,7 +49,6 @@ class InsightReport
             $minGrowthPercentNegative = -70;         // min -70%
             $minDisappearedPercent = 8;              // min 12
             $minNewPercent = min(($totalEvolution / 100) * 3, 10);    // min 6% = min 10 of total visits up to max 10%
-
         } elseif ($totalEvolution >= 0) {
             // eg change from 50 to 75 = 50%
             $minGrowthPercentPositive = $totalEvolution + 20;  // min 70%

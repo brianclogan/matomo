@@ -1,9 +1,10 @@
 /*!
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 (function ($) {
 
     $.widget('piwik.dashboardWidget', {
@@ -135,14 +136,12 @@
                 if (currentWidget.parents('body').length) {
                     // there might be race conditions, eg widget might be just refreshed while whole dashboard is also
                     // removed from DOM
-                    piwikHelper.compileAngularComponents($widgetContent, { forceNewScope: true });
+                    piwikHelper.compileVueEntryComponents($widgetContent);
                 }
                 $widgetContent.removeClass('loading');
                 $widgetContent.trigger('widget:create', [self]);
 
-                angular.element(document).injector().invoke(['notifications', function (notifications) {
-                    notifications.parseNotificationDivs();
-                }]);
+                window.CoreHome.NotificationsStore.parseNotificationDivs();
             }
 
             // Reading segment from hash tag (standard case) or from the URL (when embedding dashboard)
@@ -172,10 +171,23 @@
                     return;
                 }
 
+                var errorMessage;
                 $('.widgetContent', currentWidget).removeClass('loading');
-                var errorMessage = _pk_translate('General_ErrorRequest', ['', '']);
-                if ($('#loadingError').html()) {
-                    errorMessage = $('#loadingError').html();
+
+
+                if (deferred.status === 429) {
+                    errorMessage = `<div class="alert alert-danger">${_pk_translate('General_ErrorRateLimit')}>',
+                        '</a>'])}</div>`;
+
+                    if($('#loadingRateLimitError').html()) {
+                        errorMessage = $('#loadingRateLimitError')
+                          .html();
+                    }
+                } else {
+                    var errorMessage = _pk_translate('General_ErrorRequest', ['', '']);
+                    if ($('#loadingError').html()) {
+                        errorMessage = $('#loadingError').html();
+                    }
                 }
 
                 $('.widgetContent', currentWidget).html('<div class="widgetLoadingError">' + errorMessage + '</div>');
@@ -215,7 +227,7 @@
         },
 
         /**
-         * Creaates the widget markup for the given uniqueId
+         * Creates the widget markup for the given uniqueId
          *
          * @param {String} uniqueId
          */
@@ -225,6 +237,8 @@
 
             widgetsHelper.getWidgetNameFromUniqueId(uniqueId, function(widgetName) {
                 if (!widgetName) {
+                    // when widget not found hide it.
+                    $('[widgetId="' + uniqueId + '"]').hide();
                     widgetName = _pk_translate('Dashboard_WidgetNotFound');
                 }
 

@@ -1,13 +1,15 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Actions;
 
+use Piwik\Columns\Dimension;
 use Piwik\Site;
 use Piwik\Plugin\ViewDataTable;
 use Piwik\Tracker\Action;
@@ -20,7 +22,7 @@ use Piwik\Tracker\Action;
  */
 class Actions extends \Piwik\Plugin
 {
-    const ACTIONS_REPORT_ROWS_DISPLAY = 100;
+    public const ACTIONS_REPORT_ROWS_DISPLAY = 100;
 
     /**
      * @see \Piwik\Plugin::registerEvents
@@ -32,9 +34,31 @@ class Actions extends \Piwik\Plugin
             'AssetManager.getJavaScriptFiles' => 'getJsFiles',
             'Insights.addReportToOverview'    => 'addReportToInsightsOverview',
             'Metrics.getDefaultMetricTranslations' => 'addMetricTranslations',
+            'Metrics.getDefaultMetricSemanticTypes' => 'addMetricSemanticTypes',
             'Metrics.getDefaultMetricDocumentationTranslations' => 'addMetricDocumentationTranslations',
             'Actions.addActionTypes' => 'addActionTypes'
         );
+    }
+
+    public function addMetricSemanticTypes(array &$types): void
+    {
+        $metrics = array(
+            'nb_pageviews'        => Dimension::TYPE_NUMBER,
+            'nb_uniq_pageviews'   => Dimension::TYPE_NUMBER,
+            'nb_downloads'        => Dimension::TYPE_NUMBER,
+            'nb_uniq_downloads'   => Dimension::TYPE_NUMBER,
+            'nb_outlinks'         => Dimension::TYPE_NUMBER,
+            'nb_uniq_outlinks'    => Dimension::TYPE_NUMBER,
+            'nb_searches'         => Dimension::TYPE_NUMBER,
+            'nb_keywords'         => Dimension::TYPE_NUMBER,
+            'entry_nb_visits'      => Dimension::TYPE_NUMBER,
+            'entry_bounce_count'   => Dimension::TYPE_NUMBER,
+            'exit_nb_visits'       => Dimension::TYPE_NUMBER,
+            'nb_pages_per_search'      => Dimension::TYPE_NUMBER,
+            'nb_hits_following_search' => Dimension::TYPE_NUMBER,
+        );
+
+        $types = array_merge($types, $metrics);
     }
 
     public function addMetricTranslations(&$translations)
@@ -171,6 +195,4 @@ class Actions extends \Piwik\Plugin
             }
         }
     }
-
 }
-

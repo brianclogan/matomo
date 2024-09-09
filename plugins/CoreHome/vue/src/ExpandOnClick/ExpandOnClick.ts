@@ -1,8 +1,8 @@
 /*!
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 import { DirectiveBinding } from 'vue';
@@ -12,6 +12,7 @@ import DirectiveUtilities from '../directiveUtilities';
 interface ExpandOnClickArgs {
   // input (specified by user)
   expander: string | HTMLElement,
+  onClosed?: () => void;
 
   // state
   isMouseDown?: boolean;
@@ -49,6 +50,10 @@ function onClickOutsideElement(
 
   if (!element.contains(event.target as HTMLElement)) {
     element.classList.remove('expanded');
+
+    if (binding.value?.onClosed) {
+      binding.value.onClosed();
+    }
   }
 }
 

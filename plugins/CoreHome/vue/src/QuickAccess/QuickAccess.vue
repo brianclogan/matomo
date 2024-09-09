@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -13,7 +14,6 @@
     <span
       class="icon-search"
       @mouseenter="searchActive = true"
-      v-show="!(searchTerm || searchActive)"
     />
     <input
       class="s"
@@ -22,8 +22,9 @@
       v-model="searchTerm"
       type="text"
       tabindex="2"
-      v-focus-if:[searchActive]="{}"
+      v-focus-if="{ focused: searchActive }"
       :title="quickAccessTitle"
+      :placeholder="translate('General_Search')"
       ref="input"
     />
     <div
@@ -84,7 +85,7 @@
           @mouseenter="searchIndex = 'help'"
         >
           <a
-            :href="`https://matomo.org?s=${encodeURIComponent(searchTerm)}`"
+            :href="`https://matomo.org?mtm_campaign=App_Help&mtm_source=Matomo_App&mtm_keyword=QuickSearch&s=${encodeURIComponent(searchTerm)}`"
             target="_blank"
           >
             {{ translate('CoreHome_SearchOnMatomo', searchTerm) }}
@@ -99,11 +100,13 @@
 import { DeepReadonly, defineComponent } from 'vue';
 import FocusAnywhereButHere from '../FocusAnywhereButHere/FocusAnywhereButHere';
 import FocusIf from '../FocusIf/FocusIf';
-import translate from '../translate';
+import { translate } from '../translate';
 import SitesStore from '../SiteSelector/SitesStore';
 import Site from '../SiteSelector/Site';
 import Matomo from '../Matomo/Matomo';
 import debounce from '../debounce';
+
+const { ListingFormatter } = window;
 
 interface SubMenuItem {
   name: string;
@@ -171,8 +174,7 @@ export default defineComponent({
   mounted() {
     const root = this.$refs.root as HTMLElement;
 
-    // TODO: temporary, remove after angularjs is removed.
-    // this is currently needed since angularjs will render a div, then vue will render a div
+    // this is currently needed since vue-entry code will render a div, then vue will render a div
     // within it, but the top controls and CSS expect to have certain CSS classes in the root
     // element.
     // same applies to above watch for searchActive()
@@ -219,10 +221,11 @@ export default defineComponent({
   },
   computed: {
     hasSitesSelector() {
-      return !!document.querySelector('.top_controls [piwik-siteselector]');
+      return !!document.querySelector(
+        '.top_controls .siteSelector,.top_controls [vue-entry="CoreHome.SiteSelector"]',
+      );
     },
     quickAccessTitle() {
-      let searchAreasTitle = '';
       const searchAreas = [translate('CoreHome_MenuEntries')];
 
       if (this.hasSegmentSelector) {
@@ -233,16 +236,7 @@ export default defineComponent({
         searchAreas.push(translate('SitesManager_Sites'));
       }
 
-      while (searchAreas.length) {
-        searchAreasTitle += searchAreas.shift();
-        if (searchAreas.length >= 2) {
-          searchAreasTitle += ', ';
-        } else if (searchAreas.length === 1) {
-          searchAreasTitle += ` ${translate('General_And')} `;
-        }
-      }
-
-      return translate('CoreHome_QuickAccessTitle', searchAreasTitle);
+      return translate('CoreHome_QuickAccessTitle', ListingFormatter.formatAnd(searchAreas));
     },
   },
   emits: ['itemSelected', 'blur'],
@@ -419,10 +413,11 @@ export default defineComponent({
       const category = translate('CoreHome_Menu');
 
       const topMenuItems: SubMenuItem[] = [];
-      document.querySelectorAll('nav .sidenav li > a').forEach((element) => {
+      document.querySelectorAll('nav .sidenav li > a, nav .sidenav li > div > a').forEach((element) => {
         let text = element.textContent?.trim();
 
-        if (!text) {
+        if (!text || (element.parentElement != null && element.parentElement.tagName != null
+          && element.parentElement.tagName === 'DIV')) {
           text = element.getAttribute('title')?.trim(); // possibly a icon, use title instead
         }
 
@@ -443,7 +438,7 @@ export default defineComponent({
 
         if (category && category.lastIndexOf('\n') !== -1) {
           // remove "\n\nMenu"
-          category = category.substr(0, category.lastIndexOf('\n')).trim();
+          category = category.slice(0, category.lastIndexOf('\n')).trim();
         }
 
         window.$(element).find('li .item').each((i, subElement) => {

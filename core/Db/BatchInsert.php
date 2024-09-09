@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Db;
 
 use Exception;
@@ -85,9 +86,10 @@ class BatchInsert
     {
         $loadDataInfileEnabled = Config::getInstance()->General['enable_load_data_infile'];
 
-        if ($loadDataInfileEnabled
-            && Db::get()->hasBulkLoader()) {
-
+        if (
+            $loadDataInfileEnabled
+            && Db::get()->hasBulkLoader()
+        ) {
             $path = self::getBestPathForLoadData();
             $instanceId = SettingsPiwik::getPiwikInstanceId();
             if (empty($instanceId)) {
@@ -103,7 +105,7 @@ class BatchInsert
                     'escape'           => '\\\\', // chr(92)
                     'escapespecial_cb' => function ($str) {
                             return str_replace(array(chr(92), chr(34)), array(chr(92) . chr(92), chr(92) . chr(34)), $str);
-                        },
+                    },
                     'eol'              => "\r\n",
                     'null'             => 'NULL',
                     'charset'          => $charset

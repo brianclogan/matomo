@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\ArchiveProcessor;
@@ -60,6 +60,11 @@ class PluginsArchiver
      * @var bool
      */
     private $shouldAggregateFromRawData;
+
+    /**
+     * @var ArchiveWriter
+     */
+    private $archiveWriter;
 
     public function __construct(Parameters $params, ArchiveWriter $archiveWriter = null)
     {
@@ -122,8 +127,12 @@ class PluginsArchiver
      */
     public function callAggregateAllPlugins($visits, $visitsConverted, $forceArchivingWithoutVisits = false)
     {
-        Log::debug("PluginsArchiver::%s: Initializing archiving process for all plugins [visits = %s, visits converted = %s]",
-            __FUNCTION__, $visits, $visitsConverted);
+        Log::debug(
+            "PluginsArchiver::%s: Initializing archiving process for all plugins [visits = %s, visits converted = %s]",
+            __FUNCTION__,
+            $visits,
+            $visitsConverted
+        );
 
         /** @var Logger $performanceLogger */
         $performanceLogger = StaticContainer::get(Logger::class);
@@ -132,7 +141,20 @@ class PluginsArchiver
 
         $archivers = static::getPluginArchivers();
 
+        $archiveOnlyPlugin = $this->params->getRequestedPlugin();
+        $archiveOnlyReports = $this->params->getArchiveOnlyReport();
+
         foreach ($archivers as $pluginName => $archiverClass) {
+            // if we are archiving specific reports for a single plugin then we don't need or want to create
+            // Archiver instances, since they will set the archive to partial even if the requested reports aren't
+            // handled by the Archiver
+            if (
+                !empty($archiveOnlyReports)
+                && $archiveOnlyPlugin != $pluginName
+            ) {
+                continue;
+            }
+
             // We clean up below all tables created during this function call (and recursive calls)
             $latestUsedTableId = Manager::getInstance()->getMostRecentTableId();
 
@@ -172,7 +194,8 @@ class PluginsArchiver
 
                     $performanceLogger->logMeasurement('plugin', $pluginName, $this->params, $timer);
 
-                    Log::debug("PluginsArchiver::%s: %s while archiving %s reports for plugin '%s' %s.",
+                    Log::debug(
+                        "PluginsArchiver::%s: %s while archiving %s reports for plugin '%s' %s.",
                         __FUNCTION__,
                         $timer->getMemoryLeak(),
                         $this->params->getPeriod()->getLabel(),
@@ -238,14 +261,19 @@ class PluginsArchiver
         return static::$archivers;
     }
 
-    private static function getPluginArchiverClass($pluginName)
+    private static function getPluginArchiverClass(string $pluginName): ?string
     {
         $klassName = 'Piwik\\Plugins\\' . $pluginName . '\\Archiver';
-        if (class_exists($klassName)
-            && is_subclass_of($klassName, 'Piwik\\Plugin\\Archiver')) {
+        if (
+            class_exists($klassName)
+            && is_subclass_of($klassName, 'Piwik\\Plugin\\Archiver')
+        ) {
             return $klassName;
         }
-        return false;
+        if (Archiver::doesPluginHaveRecordBuilders($pluginName)) {
+            return Archiver::class;
+        }
+        return null;
     }
 
     /**
@@ -263,15 +291,18 @@ class PluginsArchiver
             return false;
         }
 
-        if (Rules::shouldProcessReportsAllPlugins(
-            array($this->params->getSite()->getId()),
-            $this->params->getSegment(),
-            $this->params->getPeriod()->getLabel())
+        if (
+            Rules::shouldProcessReportsAllPlugins(
+                [$this->params->getSite()->getId()],
+                $this->params->getSegment(),
+                $this->params->getPeriod()->getLabel()
+            )
         ) {
             return true;
         }
 
-        if ($this->params->getRequestedPlugin() &&
+        if (
+            $this->params->getRequestedPlugin() &&
             !\Piwik\Plugin\Manager::getInstance()->isPluginLoaded($this->params->getRequestedPlugin())
         ) {
             return false;
@@ -314,7 +345,11 @@ class PluginsArchiver
      */
     private function makeNewArchiverObject($archiverClass, $pluginName)
     {
-        $archiver = new $archiverClass($this->archiveProcessor);
+        if ($archiverClass === Archiver::class) {
+            $archiver = new Archiver($this->archiveProcessor, $pluginName);
+        } else {
+            $archiver = new $archiverClass($this->archiveProcessor);
+        }
 
         /**
          * Triggered right after a new **plugin archiver instance** is created.

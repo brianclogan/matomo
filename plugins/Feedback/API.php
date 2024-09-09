@@ -1,18 +1,19 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Feedback;
+
 use Piwik\Common;
 use Piwik\Config;
 use Piwik\Container\StaticContainer;
 use Piwik\DataTable\Renderer\Json;
 use Piwik\Date;
-use Piwik\IP;
 use Piwik\Mail;
 use Piwik\Piwik;
 use Piwik\SettingsServer;
@@ -54,12 +55,13 @@ class API extends \Piwik\Plugin\API
         $body = sprintf("Feature: %s\nLike: %s\n", $featureName, $likeText);
 
         if (!empty($choice) && $choice !== 'undefined') {
-            $body .= "Choice: ".$choice."\n";
+            $body .= "Choice: " . $choice . "\n";
         }
 
         $body .= sprintf("Feedback:\n%s\n", trim($message));
 
-        $subject = sprintf("%s for %s",
+        $subject = sprintf(
+            "%s for %s",
             empty($like) ? "-1" : "+1",
             $featureName
         );
@@ -67,12 +69,12 @@ class API extends \Piwik\Plugin\API
         // Determine where Matomo is running and add as source
         if (Config::getHostname() === 'demo.matomo.cloud') {
             $source = 'Demo';
-        } else if (SettingsServer::isMatomoForWordPress()) {
+        } elseif (SettingsServer::isMatomoForWordPress()) {
             $source = 'Wordpress';
         } else {
             $source = 'On-Premise';
         }
-        $body .= "Source: ".$source."\n";
+        $body .= "Source: " . $source . "\n";
 
         $this->sendMail($subject, $body);
 
@@ -88,7 +90,7 @@ class API extends \Piwik\Plugin\API
      * @throws \Piwik\NoAccessException
      * @throws \Exception
      */
-    public function sendFeedbackForSurvey($question,  $message = false)
+    public function sendFeedbackForSurvey($question, $message = false)
     {
         Piwik::checkUserIsNotAnonymous();
         Piwik::checkUserHasSomeViewAccess();
@@ -107,10 +109,11 @@ class API extends \Piwik\Plugin\API
 
         $body .= $feedbackMessage ? $feedbackMessage : " \n";
 
-        $subject = sprintf("%s for %s %s",
-          empty($like) ? "-1" : "+1",
-          $featureName,
-          empty($feedbackMessage) ? "" : "(w/ feedback Survey)"
+        $subject = sprintf(
+            "%s for %s %s",
+            empty($like) ? "-1" : "+1",
+            $featureName,
+            empty($feedbackMessage) ? "" : "(w/ feedback Survey)"
         );
 
         $this->sendMail($subject, $body);
@@ -121,7 +124,6 @@ class API extends \Piwik\Plugin\API
         $feedbackReminder->setUserOption($nextReminder);
 
         return 'success';
-
     }
 
     public function updateFeedbackReminderDate()
@@ -147,7 +149,8 @@ class API extends \Piwik\Plugin\API
                  . 'URL: ' . Url::getReferrer() . "\n";
 
         $mail = new Mail();
-        $mail->setFrom(Piwik::getCurrentUserEmail());
+        $mail->setDefaultFromPiwik();
+        $mail->addReplyTo(Piwik::getCurrentUserEmail());
         $mail->addTo($feedbackEmailAddress, 'Matomo Team');
         $mail->setSubject($subject);
         $mail->setBodyText($body);

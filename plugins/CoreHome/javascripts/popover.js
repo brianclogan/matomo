@@ -1,8 +1,8 @@
 /*!
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 var Piwik_Popover = (function () {
@@ -12,6 +12,7 @@ var Piwik_Popover = (function () {
     var closeCallback = false;
     var isProgrammaticClose = false;
     var scrollTopPosition = 0;
+    var ajaxLoadingRequest = null;
 
     var createContainer = function () {
         if (container === false) {
@@ -63,7 +64,11 @@ var Piwik_Popover = (function () {
                 container.find('div.jqplot-target').trigger('piwikDestroyPlot');
                 container[0].innerHTML = '';
                 container.dialog('destroy').remove();
-                globalAjaxQueue.abort();
+
+                if (ajaxLoadingRequest) {
+                    ajaxLoadingRequest.abort();
+                }
+
                 $('.ui-widget-overlay').off('click.popover');
                 isOpen = false;
                 require('piwik/UI').UIControl.cleanupUnusedControls();
@@ -107,6 +112,10 @@ var Piwik_Popover = (function () {
         if (container !== false) {
             $('.ui-dialog').css({margin: '0 0'});
             container.dialog("option", "position", {my: 'center', at: 'center', of: '.ui-widget-overlay', collision: 'fit'});
+            // in some cases jQuery UI fails to place the dialog correctly and set the top values to something negative
+            if ($('.ui-dialog').position().top < 0) {
+                $('.ui-dialog').css('top', '0');
+            }
             $('.ui-dialog').css({margin: '15px 0'});
         }
     };
@@ -205,9 +214,9 @@ var Piwik_Popover = (function () {
             }
 
             container.html(html);
-            
+
             container.children().each(function (i, childNode) {
-                piwikHelper.compileAngularComponents(childNode);
+                piwikHelper.compileVueEntryComponents(childNode);
             });
 
             centerPopover();
@@ -306,6 +315,8 @@ var Piwik_Popover = (function () {
             ajaxRequest.setCallback(callback);
             ajaxRequest.setFormat('html');
             ajaxRequest.send();
+
+            ajaxLoadingRequest = ajaxRequest;
         },
 
         isOpen: function() {

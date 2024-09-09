@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\CoreVisualizations\Visualizations;
 
 use Exception;
@@ -13,7 +14,6 @@ use Piwik\Common;
 use Piwik\DataTable;
 use Piwik\Period;
 use Piwik\Plugin\ViewDataTable;
-use Piwik\Site;
 
 /**
  * Reads the requested DataTable from the API and prepare data for the Sparkline view.
@@ -21,7 +21,7 @@ use Piwik\Site;
  */
 class Sparkline extends ViewDataTable
 {
-    const ID = 'sparkline';
+    public const ID = 'sparkline';
 
     public function supportsComparison()
     {
@@ -38,9 +38,7 @@ class Sparkline extends ViewDataTable
         $period = Common::getRequestVar('period');
         $date = Common::getRequestVar('date');
 
-        if ($period == 'range'
-            || $this->isComparing()
-        ) {
+        if ($period == 'range') {
             $periodObj = Period\Factory::build($period, $date);
             $_GET['period'] = 'day';
             $_GET['date'] = $periodObj->getRangeString();
@@ -121,7 +119,6 @@ class Sparkline extends ViewDataTable
         $values = array();
 
         foreach ($dataTableMap->getDataTables() as $table) {
-
             if ($table->getRowsCount() > 1) {
                 throw new Exception("Expecting only one row per DataTable");
             }
@@ -132,9 +129,9 @@ class Sparkline extends ViewDataTable
             if (false !== $onlyRow) {
                 if (!empty($columnToPlot)) {
                     $value = $onlyRow->getColumn($columnToPlot);
-                } // if not specified, we load by default the first column found
-                // eg. case of getLastDistinctCountriesGraph
-                else {
+                } else {
+                    // if not specified, we load by default the first column found
+                    // eg. case of getLastDistinctCountriesGraph
                     $columns = $onlyRow->getColumns();
                     $value = current($columns);
                 }

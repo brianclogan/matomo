@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 use Piwik\Container\StaticContainer;
@@ -33,24 +34,24 @@ class UrlHelper
     * @param $test String to test.
     * @param $patterns Array of strings or regexs.
     *
-    * @return true if $test matches or is equal to one of the regex/string in $patterns, false otherwise.
+    * @return bool true if $test matches or is equal to one of the regex/string in $patterns, false otherwise.
     */
-    protected static function in_array_matches_regex($test, $patterns)
+    protected static function inArrayMatchesRegex($test, $patterns): bool
     {
-        foreach($patterns as $val) {
-            if(@preg_match($val, null) === false) {
-                if( strcasecmp($val, $test) === 0 ) {
+        foreach ($patterns as $val) {
+            if (@preg_match($val, '') === false) {
+                if (strcasecmp($val, $test) === 0) {
                     return true;
                 }
             } else {
-                if( preg_match($val, $test) === 1 ) {
+                if (preg_match($val, $test) === 1) {
                     return true;
                 }
             }
         }
         return false;
     }
-    
+
     /**
      * Converts an array of query parameter name/value mappings into a query string.
      * Parameters that are in `$parametersToExclude` will not appear in the result.
@@ -70,7 +71,7 @@ class UrlHelper
             // decode encoded square brackets
             $name = str_replace(array('%5B', '%5D'), array('[', ']'), $name);
 
-            if (!self::in_array_matches_regex(strtolower($name), $parametersToExclude)) {
+            if (!self::inArrayMatchesRegex(strtolower($name), $parametersToExclude)) {
                 if (is_array($value)) {
                     foreach ($value as $param) {
                         if ($param === false) {
@@ -127,7 +128,8 @@ class UrlHelper
                  '.{}$4',
                  '$1{}.',
             ),
-            $url);
+            $url
+        );
     }
 
     /**
@@ -177,8 +179,14 @@ class UrlHelper
             return false;
         }
 
+        // According to RFC 1738, the chars ':', '@' and '/' need to be encoded in username or password part of an url
+        // We also encode '\' as a username or password containing that char, might be handled incorrectly by browsers
+        $escapeSpecialChars = function ($value) {
+            return str_replace([':', '@', '/', '\\'], [urlencode(':'), urlencode('@'), urlencode('/'), urlencode('\\')], $value);
+        };
+
         $uri = !empty($parsed['scheme']) ? $parsed['scheme'] . ':' . (!strcasecmp($parsed['scheme'], 'mailto') ? '' : '//') : '';
-        $uri .= !empty($parsed['user']) ? $parsed['user'] . (!empty($parsed['pass']) ? ':' . $parsed['pass'] : '') . '@' : '';
+        $uri .= !empty($parsed['user']) ? $escapeSpecialChars($parsed['user']) . (!empty($parsed['pass']) ? ':' . $escapeSpecialChars($parsed['pass']) : '') . '@' : '';
         $uri .= !empty($parsed['host']) ? $parsed['host'] : '';
         $uri .= !empty($parsed['port']) ? ':' . $parsed['port'] : '';
 
@@ -222,7 +230,7 @@ class UrlHelper
         $separator = '&';
 
         $urlQuery = $separator . $urlQuery;
-        //		$urlQuery = str_replace(array('%20'), ' ', $urlQuery);
+        //        $urlQuery = str_replace(array('%20'), ' ', $urlQuery);
         $referrerQuery = trim($urlQuery);
 
         $values = explode($separator, $referrerQuery);
@@ -288,22 +296,39 @@ class UrlHelper
     /**
      * Returns the path and query string of a URL.
      *
-     * @param string $url The URL.
+     * @param string    $url                    The URL.
+     * @param array     $additionalParamsToAdd  If not empty the given parameters will be added to the query.
+     * @param bool      $preserveAnchor         If true then do not remove any #anchor from the url, default false
      * @return string eg, `/test/index.php?module=CoreHome` if `$url` is `http://piwik.org/test/index.php?module=CoreHome`.
      * @api
      */
-    public static function getPathAndQueryFromUrl($url)
+    public static function getPathAndQueryFromUrl($url, array $additionalParamsToAdd = [], bool $preserveAnchor = false)
     {
         $parsedUrl = parse_url($url);
+
+        // If an anchor is included in the URL parse_url() will not split the anchor and query, so we do that there
+        if (isset($parsedUrl['fragment']) && strpos($parsedUrl['fragment'], '?') !== false) {
+            $parsedUrl['query'] = substr($parsedUrl['fragment'], strpos($parsedUrl['fragment'], '?') + 1);
+            $parsedUrl['fragment'] = substr($parsedUrl['fragment'], 0, strpos($parsedUrl['fragment'], '?'));
+        }
+
         $result = '';
+
         if (isset($parsedUrl['path'])) {
             if (substr($parsedUrl['path'], 0, 1) == '/') {
                 $parsedUrl['path'] = substr($parsedUrl['path'], 1);
             }
             $result .= $parsedUrl['path'];
         }
-        if (isset($parsedUrl['query'])) {
-            $result .= '?' . $parsedUrl['query'];
+
+        if ($preserveAnchor && isset($parsedUrl['fragment'])) {
+            $result .= '#' . $parsedUrl['fragment'];
+        }
+
+        if (isset($parsedUrl['query']) || count($additionalParamsToAdd)) {
+            $query = (isset($parsedUrl['query']) ? $parsedUrl['query'] : '');
+            $query = self::addAdditionalParameters($query, $additionalParamsToAdd);
+            $result .= '?' . $query;
         }
         return $result;
     }
@@ -317,7 +342,7 @@ class UrlHelper
      * @return string eg. `"foo=bar&foo2=bar2"`
      * @api
      */
-    public static function getQueryFromUrl($url, array $additionalParamsToAdd = array())
+    public static function getQueryFromUrl($url, array $additionalParamsToAdd = [])
     {
         $url = @parse_url($url);
         $query = '';
@@ -326,11 +351,25 @@ class UrlHelper
             $query .= $url['query'];
         }
 
+        $query = self::addAdditionalParameters($query, $additionalParamsToAdd);
+
+        return $query;
+    }
+
+    /**
+     * Add an array of additional parameters to a query string
+     *
+     * @param string $query
+     * @param array  $additionalParamsToAdd
+     *
+     * @return string
+     */
+    private static function addAdditionalParameters(string $query, array $additionalParamsToAdd): string
+    {
         if (!empty($additionalParamsToAdd)) {
             if (!empty($query)) {
                 $query .= '&';
             }
-
             $query .= Url::getQueryStringFromParameters($additionalParamsToAdd);
         }
 

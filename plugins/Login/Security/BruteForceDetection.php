@@ -1,29 +1,28 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Login\Security;
 
 use Piwik\Common;
 use Piwik\Container\StaticContainer;
 use Piwik\Date;
 use Piwik\Db;
-use Piwik\Option;
 use Piwik\Plugins\Login\Emails\SuspiciousLoginAttemptsInLastHourEmail;
 use Piwik\Plugins\Login\Model;
 use Piwik\Plugins\Login\SystemSettings;
 use Piwik\Updater;
-use Piwik\Version;
-use Psr\Log\LoggerInterface;
+use Piwik\Log\LoggerInterface;
 
-class BruteForceDetection {
-
-    const OVERALL_LOGIN_LOCKOUT_THRESHOLD_MIN = 10;
-    const TABLE_NAME = 'brute_force_log';
+class BruteForceDetection
+{
+    public const OVERALL_LOGIN_LOCKOUT_THRESHOLD_MIN = 10;
+    public const TABLE_NAME = 'brute_force_log';
 
     private $minutesTimeRange;
     private $maxLogAttempts;
@@ -90,7 +89,7 @@ class BruteForceDetection {
         $db = Db::get();
 
         $startTime = $this->getStartTimeRange();
-        $sql = 'SELECT count(*) as numLogins FROM '.$this->tablePrefixed.' WHERE ip_address = ? AND attempted_at > ?';
+        $sql = 'SELECT count(*) as numLogins FROM ' . $this->tablePrefixed . ' WHERE ip_address = ? AND attempted_at > ?';
         $numLogins = $db->fetchOne($sql, array($ipAddress, $startTime));
 
         return empty($numLogins) || $numLogins <= $this->maxLogAttempts;
@@ -119,7 +118,7 @@ class BruteForceDetection {
     public function unblockIp($ip)
     {
         // we only delete where attempted_at was recent and keep other IPs for history purposes
-        Db::get()->query('DELETE FROM '.$this->tablePrefixed.' WHERE ip_address = ? and attempted_at > ?', array($ip, $this->getStartTimeRange()));
+        Db::get()->query('DELETE FROM ' . $this->tablePrefixed . ' WHERE ip_address = ? and attempted_at > ?', array($ip, $this->getStartTimeRange()));
     }
 
     public function cleanupOldEntries()
@@ -129,7 +128,7 @@ class BruteForceDetection {
 
         $minutes = max($minutesAutoDelete, $this->minutesTimeRange);
         $deleteOlderDate = $this->getDateTimeSubMinutes($minutes);
-        Db::get()->query('DELETE FROM '.$this->tablePrefixed.' WHERE attempted_at < ?', array($deleteOlderDate));
+        Db::get()->query('DELETE FROM ' . $this->tablePrefixed . ' WHERE attempted_at < ?', array($deleteOlderDate));
     }
 
     /**
@@ -206,9 +205,9 @@ class BruteForceDetection {
             // log if error is not that we can't find a user
             if (strpos($ex->getMessage(), 'unable to find user to send') === false) {
                 StaticContainer::get(LoggerInterface::class)->info(
-                    'Error when sending ' . SuspiciousLoginAttemptsInLastHourEmail::class . ' email. User exists but encountered {exception}', [
-                    'exception' => $ex,
-                ]);
+                    'Error when sending ' . SuspiciousLoginAttemptsInLastHourEmail::class . ' email. User exists but encountered {exception}',
+                    ['exception' => $ex]
+                );
             }
         }
     }
@@ -224,7 +223,8 @@ class BruteForceDetection {
     {
         // ignore column not found errors during one click update since the db will not be up to date while new code is being used
         $module = Common::getRequestVar('module', false);
-        if (strpos($ex->getMessage(), 'Unknown column') === false
+        if (
+            strpos($ex->getMessage(), 'Unknown column') === false
             || $module != 'CoreUpdater'
         ) {
             throw $ex;

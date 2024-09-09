@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\ScheduledReports;
 
 use Piwik\Access;
@@ -36,7 +37,7 @@ class SubscriptionModel
 
         $email = $details['email'];
 
-        $report = Access::doAsSuperUser(function() use ($details) {
+        $report = Access::doAsSuperUser(function () use ($details) {
             $reports = Request::processRequest('ScheduledReports.getReports', array(
                 'idReport'    => $details['idreport'],
             ));
@@ -128,7 +129,7 @@ class SubscriptionModel
 
         // add new subscriptions
         foreach ($emails as $email) {
-            while($token = $this->generateToken($email)) {
+            while ($token = $this->generateToken($email)) {
                 if (!$this->tokenExists($token)) {
                     break;
                 }
@@ -145,7 +146,6 @@ class SubscriptionModel
                 $this->getDb()->insert($this->table, $subscription);
             }
         }
-
     }
 
     private function removeSubscription($token)

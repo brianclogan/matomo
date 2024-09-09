@@ -1,16 +1,14 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik;
 
-use Piwik\Http;
-use Piwik\Piwik;
 use Piwik\Container\StaticContainer;
 use Piwik\DeviceDetector\DeviceDetectorFactory;
 use Piwik\Exception\NotSupportedBrowserException;
@@ -45,7 +43,7 @@ class SupportedBrowser
 
         $ddFactory = StaticContainer::get(DeviceDetectorFactory::class);
         /** @var \DeviceDetector\DeviceDetector */
-        $deviceDetector = $ddFactory->makeInstance($userAgent);
+        $deviceDetector = $ddFactory->makeInstance($userAgent, Http::getClientHintsFromServerVariables());
 
         $deviceDetector->parse();
         $client = $deviceDetector->getClient();

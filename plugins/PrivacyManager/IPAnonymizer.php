@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\PrivacyManager;
 
 use Piwik\Common;
@@ -39,7 +40,7 @@ class IPAnonymizer
         $ipObject = IP::fromBinaryIP($ip);
 
         if (!$this->isActive()) {
-            Common::printDebug("Visitor IP was _not_ anonymized: ". $ipObject->toString());
+            Common::printDebug("Visitor IP was _not_ anonymized: " . $ipObject->toString());
             return;
         }
 
@@ -48,7 +49,7 @@ class IPAnonymizer
         $newIpObject = self::applyIPMask($ipObject, $privacyConfig->ipAddressMaskLength);
         $ip = $newIpObject->toBinary();
 
-        Common::printDebug("Visitor IP (was: ". $ipObject->toString() .") has been anonymized: ". $newIpObject->toString());
+        Common::printDebug("Visitor IP (was: " . $ipObject->toString() . ") has been anonymized: " . $newIpObject->toString());
     }
 
     /**

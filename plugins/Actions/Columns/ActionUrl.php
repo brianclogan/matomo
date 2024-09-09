@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Actions\Columns;
 
 use Piwik\Columns\DimensionSegmentFactory;
@@ -13,12 +14,14 @@ use Piwik\Columns\Join\ActionNameJoin;
 use Piwik\Plugin\Dimension\ActionDimension;
 use Piwik\Plugins\Actions\Segment;
 use Piwik\Segment\SegmentsList;
+use Piwik\Tracker\TableLogAction;
 
 class ActionUrl extends ActionDimension
 {
     protected $nameSingular = 'Actions_ColumnActionURL';
     protected $columnName = 'idaction_url';
     protected $type = self::TYPE_URL;
+    protected $sqlFilter = [TableLogAction::class, 'getOptimizedIdActionSqlMatch'];
 
     public function getDbColumnJoin()
     {
@@ -34,5 +37,4 @@ class ActionUrl extends ActionDimension
 
         $segmentsList->addSegment($dimensionSegmentFactory->createSegment($segment));
     }
-
 }

@@ -1,20 +1,19 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Referrers\Reports;
 
 use Piwik\EventDispatcher;
 use Piwik\Piwik;
 use Piwik\Plugin\ViewDataTable;
 use Piwik\Plugins\CoreVisualizations\Visualizations\HtmlTable;
-use Piwik\Plugins\CoreVisualizations\Visualizations\JqplotGraph\Evolution;
 use Piwik\Plugins\Referrers\Columns\Keyword;
-use Piwik\Tracker\Visit;
 
 class GetKeywords extends Base
 {
@@ -24,7 +23,7 @@ class GetKeywords extends Base
         $this->dimension     = new Keyword();
         $this->name          = Piwik::translate('Referrers_Keywords');
         $this->documentation = Piwik::translate('Referrers_KeywordsReportDocumentation', '<br /><br />') .
-                               '<br /><br />'. Piwik::translate('Referrers_KeywordsReportDocumentationNote');
+                               '<br /><br />' . Piwik::translate('Referrers_KeywordsReportDocumentationNote');
         $this->actionToLoadSubTables = 'getSearchEnginesFromKeywordId';
         $this->hasGoalMetrics = true;
         $this->order = 3;
@@ -56,6 +55,4 @@ class GetKeywords extends Base
         EventDispatcher::getInstance()->postEvent('Template.afterReferrersKeywordsReport', array(&$out));
         $view->config->show_footer_message = $out;
     }
-
-
 }

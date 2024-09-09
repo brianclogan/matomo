@@ -1,28 +1,22 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Tracker;
 
 use Piwik\Common;
 use Piwik\Date;
-use Piwik\Exception\InvalidRequestParameterException;
-use Piwik\Exception\UnexpectedWebsiteFoundException;
 use Piwik\Option;
-use Piwik\Piwik;
-use Piwik\SettingsServer;
-use Piwik\Site;
-use Piwik\Db as PiwikDb;
 
 class FingerprintSalt
 {
-    const OPTION_PREFIX = 'fingerprint_salt_';
-    const DELETE_FINGERPRINT_OLDER_THAN_SECONDS = 432000; // 5 days in seconds
+    public const OPTION_PREFIX = 'fingerprint_salt_';
+    public const DELETE_FINGERPRINT_OLDER_THAN_SECONDS = 432000; // 5 days in seconds
 
     public function generateSalt()
     {

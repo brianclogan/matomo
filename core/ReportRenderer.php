@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 use Exception;
@@ -21,31 +22,31 @@ use Piwik\Plugins\ImageGraph\API;
  */
 abstract class ReportRenderer extends BaseFactory
 {
-    const DEFAULT_REPORT_FONT_FAMILY = 'dejavusans';
-    const REPORT_TEXT_COLOR = "13,13,13";
-    const REPORT_TITLE_TEXT_COLOR = "13,13,13";
-    const TABLE_HEADER_BG_COLOR = "255,255,255";
-    const TABLE_HEADER_TEXT_COLOR = "13,13,13";
-    const TABLE_HEADER_TEXT_TRANSFORM = "uppercase";
-    const TABLE_HEADER_TEXT_WEIGHT = "normal";
-    const TABLE_CELL_BORDER_COLOR = "217,217,217";
-    const TABLE_BG_COLOR = "242,242,242";
+    public const DEFAULT_REPORT_FONT_FAMILY = 'dejavusans';
+    public const REPORT_TEXT_COLOR = "13,13,13";
+    public const REPORT_TITLE_TEXT_COLOR = "13,13,13";
+    public const TABLE_HEADER_BG_COLOR = "255,255,255";
+    public const TABLE_HEADER_TEXT_COLOR = "13,13,13";
+    public const TABLE_HEADER_TEXT_TRANSFORM = "uppercase";
+    public const TABLE_HEADER_TEXT_WEIGHT = "normal";
+    public const TABLE_CELL_BORDER_COLOR = "217,217,217";
+    public const TABLE_BG_COLOR = "242,242,242";
 
-    const HTML_FORMAT = 'html';
-    const PDF_FORMAT = 'pdf';
-    const CSV_FORMAT = 'csv';
-    const TSV_FORMAT = 'tsv';
+    public const HTML_FORMAT = 'html';
+    public const PDF_FORMAT = 'pdf';
+    public const CSV_FORMAT = 'csv';
+    public const TSV_FORMAT = 'tsv';
 
     protected $idSite = 'all';
 
     protected $report;
 
-    private static $availableReportRenderers = array(
+    private static $availableReportRenderers = [
         self::PDF_FORMAT,
         self::HTML_FORMAT,
         self::CSV_FORMAT,
         self::TSV_FORMAT,
-    );
+    ];
 
     /**
      * Sets the site id
@@ -71,7 +72,7 @@ abstract class ReportRenderer extends BaseFactory
     {
         return Piwik::translate(
             'General_ExceptionInvalidReportRendererFormat',
-            array(self::normalizeRendererType($rendererType), implode(', ', self::$availableReportRenderers))
+            [self::normalizeRendererType($rendererType), implode(', ', self::$availableReportRenderers)]
         );
     }
 
@@ -155,7 +156,7 @@ abstract class ReportRenderer extends BaseFactory
     protected static function makeFilenameWithExtension($filename, $extension)
     {
         // the filename can be used in HTTP headers, remove new lines to prevent HTTP header injection
-        $filename = str_replace(array("\n", "\t"), " ", $filename);
+        $filename = str_replace(["\n", "\t"], " ", $filename);
 
         return $filename . "." . $extension;
     }
@@ -169,11 +170,16 @@ abstract class ReportRenderer extends BaseFactory
      */
     protected static function getOutputPath($filename)
     {
-        $outputFilename = StaticContainer::get('path.tmp') . '/assets/' . $filename;
+        $baseAssetsDir = StaticContainer::get('path.tmp') . '/assets/';
+        $outputFilename = $baseAssetsDir . $filename;
+
+        if (!is_dir($baseAssetsDir)) {
+            Filesystem::mkdir($baseAssetsDir);
+        }
 
         @chmod($outputFilename, 0600);
 
-        if(file_exists($outputFilename)){
+        if (file_exists($outputFilename)) {
             @unlink($outputFilename);
         }
 
@@ -236,16 +242,16 @@ abstract class ReportRenderer extends BaseFactory
                 }
             }
 
-            $reportColumns = array(
+            $reportColumns = [
                 'label' => Piwik::translate('General_Name'),
                 'value' => Piwik::translate('General_Value'),
-            );
+            ];
         }
 
-        return array(
+        return [
             $finalReport,
             $reportColumns,
-        );
+        ];
     }
 
     public static function getStaticGraph($reportMetadata, $width, $height, $evolution, $segment)

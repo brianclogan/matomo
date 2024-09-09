@@ -149,10 +149,12 @@ class TagsStore {
         idContainerVersion,
         type: tag.type,
         name: tag.name,
+        description: tag.description,
         startDate: tag.start_date,
         endDate: tag.end_date,
         fireLimit: tag.fire_limit,
         fireDelay: tag.fire_delay,
+        priority: tag.priority,
       },
       {
         parameters,

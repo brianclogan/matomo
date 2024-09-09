@@ -1,8 +1,8 @@
 /*!
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 /**
@@ -33,11 +33,12 @@
 
     DataTable_RowActions_PagePerformance.prototype.performAction = function (label, tr, e, originalRow) {
         var apiMethod = this.dataTable.param.module + '.' + this.dataTable.param.action;
-        this.openPopover(apiMethod, label);
+        var isReportFlat = this.dataTable.param.flat || 0;
+        this.openPopover(apiMethod, label, isReportFlat);
     };
 
-    DataTable_RowActions_PagePerformance.prototype.openPopover = function (apiMethod, label) {
-        var urlParam = apiMethod + ':' + label;
+    DataTable_RowActions_PagePerformance.prototype.openPopover = function (apiMethod, label, isReportFlat) {
+        var urlParam = apiMethod + ':' + label + ':' + isReportFlat;
         DataTable_RowAction.prototype.openPopover.apply(this, [urlParam]);
     };
 
@@ -45,8 +46,9 @@
         var urlParamParts = urlParam.split(':');
         var apiMethod = urlParamParts.shift();
         var label = decodeURIComponent(urlParamParts.shift());
+        var isReportFlat = urlParamParts.shift();
 
-        PagePerformance.show(apiMethod, label);
+        PagePerformance.show(apiMethod, label, isReportFlat);
     };
 
     DataTable_RowActions_Registry.register({
@@ -70,7 +72,7 @@
         },
 
         isAvailableOnRow: function (dataTableParams, tr) {
-            return true;
+            return !tr.is('.totalsRow');
         },
 
         createInstance: function (dataTable, param) {

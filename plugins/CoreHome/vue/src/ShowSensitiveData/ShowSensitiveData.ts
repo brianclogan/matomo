@@ -1,12 +1,12 @@
 /*!
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 import { DirectiveBinding } from 'vue';
-import translate from '../translate';
+import { translate } from '../translate';
 
 interface ShowSensitiveDataArgs {
   sensitiveData: string;
@@ -38,9 +38,9 @@ export default {
 
     let protectedData = '';
     if (showCharacters > 0) {
-      protectedData += sensitiveData.substr(0, showCharacters);
+      protectedData += sensitiveData.slice(0, showCharacters);
     }
-    protectedData += sensitiveData.substr(showCharacters).replace(/./g, '*');
+    protectedData += sensitiveData.slice(showCharacters).replace(/./g, '*');
     element.html(protectedData);
 
     function onClickHandler() {

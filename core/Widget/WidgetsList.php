@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Widget;
 
 use Piwik\Container\StaticContainer;
@@ -172,7 +173,7 @@ class WidgetsList
      */
     public static function get()
     {
-        $list = new static;
+        $list = new static();
 
         $widgets = StaticContainer::get('Piwik\Plugin\WidgetsProvider');
 
@@ -244,5 +245,4 @@ class WidgetsList
 
         return $widgetUniqueId;
     }
-
 }

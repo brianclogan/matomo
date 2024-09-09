@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Goals;
 
 use Piwik\Common;
@@ -103,11 +104,24 @@ class Model
     {
         return (int) Db::fetchOne("SELECT count(*) FROM " . $this->table . "
                                 WHERE deleted = 0");
-
     }
 
     private function getDb()
     {
         return Db::get();
+    }
+
+    /**
+     * Checks if an active idgoal exists for the site
+     *
+     * @param int $idGoal
+     * @param int $idSite
+     *
+     * @return bool
+     */
+    public function doesGoalExist(int $idGoal, int $idSite): bool
+    {
+        return (bool) Db::fetchOne("SELECT COUNT(*) FROM " . $this->table . "
+                                WHERE deleted = 0 AND idsite = ? AND idgoal = ?", [$idSite, $idGoal]);
     }
 }

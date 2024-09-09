@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Access;
 
 use Exception;
@@ -34,7 +35,7 @@ class CapabilitiesProvider
              *
              *     public function addCapabilities(&$capabilities)
              *     {
-             *         $capabilities[] = new MyNewCapabilitiy();
+             *         $capabilities[] = new MyNewCapability();
              *     }
              *
              * @param Capability[] $reports An array of reports

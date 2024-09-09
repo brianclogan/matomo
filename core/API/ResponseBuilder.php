@@ -1,20 +1,21 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\API;
 
 use Exception;
 use Piwik\Common;
 use Piwik\DataTable;
-use Piwik\DataTable\Renderer;
 use Piwik\DataTable\DataTableInterface;
 use Piwik\DataTable\Filter\ColumnDelete;
 use Piwik\DataTable\Filter\Pattern;
+use Piwik\DataTable\Renderer;
 use Piwik\Http\HttpCodeException;
 use Piwik\Plugins\Monolog\Processor\ExceptionToTextProcessor;
 
@@ -136,7 +137,8 @@ class ResponseBuilder
         $e       = $this->decorateExceptionWithDebugTrace($e);
         $message = $this->formatExceptionMessage($e);
 
-        if ($this->sendHeader
+        if (
+            $this->sendHeader
             && $e instanceof HttpCodeException
             && $e->getCode() > 0
         ) {

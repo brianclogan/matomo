@@ -1,10 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Updater\Migration\Db;
 
 /**
@@ -22,5 +24,4 @@ class DropTable extends Sql
 
         parent::__construct($sql, array(static::ERROR_CODE_TABLE_NOT_EXISTS, static::ERROR_CODE_UNKNOWN_TABLE));
     }
-
 }

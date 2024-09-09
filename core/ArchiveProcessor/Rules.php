@@ -1,26 +1,24 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\ArchiveProcessor;
 
 use Exception;
-use Piwik\Common;
 use Piwik\Config;
 use Piwik\Config\GeneralConfig;
 use Piwik\DataAccess\ArchiveWriter;
-use Piwik\DataAccess\Model;
 use Piwik\Date;
 use Piwik\Log;
 use Piwik\Option;
 use Piwik\Piwik;
 use Piwik\Plugin\Manager;
 use Piwik\Plugins\CoreAdminHome\Controller;
-use Piwik\Scheduler\Task;
 use Piwik\Segment;
 use Piwik\SettingsPiwik;
 use Piwik\SettingsServer;
@@ -33,11 +31,11 @@ use Piwik\Tracker\Cache;
  */
 class Rules
 {
-    const OPTION_TODAY_ARCHIVE_TTL = 'todayArchiveTimeToLive';
+    public const OPTION_TODAY_ARCHIVE_TTL = 'todayArchiveTimeToLive';
 
-    const OPTION_BROWSER_TRIGGER_ARCHIVING = 'enableBrowserTriggerArchiving';
+    public const OPTION_BROWSER_TRIGGER_ARCHIVING = 'enableBrowserTriggerArchiving';
 
-    const FLAG_TABLE_PURGED = 'lastPurge_';
+    public const FLAG_TABLE_PURGED = 'lastPurge_';
 
     /** Flag that will forcefully disable the archiving process (used in tests only) */
     public static $archivingDisabledByTests = false;
@@ -58,8 +56,9 @@ class Rules
      */
     public static function getDoneStringFlagFor(array $idSites, $segment, $periodLabel, $plugin)
     {
-        if (!empty($plugin)
-          && !self::shouldProcessReportsAllPlugins($idSites, $segment, $periodLabel)
+        if (
+            !empty($plugin)
+            && !self::shouldProcessReportsAllPlugins($idSites, $segment, $periodLabel)
         ) {
             return self::getDoneFlagArchiveContainsOnePlugin($segment, $plugin);
         }
@@ -132,10 +131,10 @@ class Rules
     }
 
     public static function getMinTimeProcessedForInProgressArchive(
-      Date $dateStart,
-      \Piwik\Period $period,
-      Segment $segment,
-      Site $site
+        Date $dateStart,
+        \Piwik\Period $period,
+        Segment $segment,
+        Site $site
     ) {
         $todayArchiveTimeToLive = self::getPeriodArchiveTimeToLiveDefault($period->getLabel());
 
@@ -145,8 +144,9 @@ class Rules
         $idSites = array($site->getId());
         $isArchivingDisabled = Rules::isArchivingDisabledFor($idSites, $segment, $period->getLabel());
         if ($isArchivingDisabled) {
-            if ($period->getNumberOfSubperiods() == 0
-              && $dateStart->getTimestamp() <= $now
+            if (
+                $period->getNumberOfSubperiods() == 0
+                && $dateStart->getTimestamp() <= $now
             ) {
                 // Today: accept any recent enough archive
                 $minimumArchiveTime = false;
@@ -154,8 +154,10 @@ class Rules
                 // This week, this month, this year:
                 // accept any archive that was processed today after 00:00:01 this morning
                 $timezone = $site->getTimezone();
-                $minimumArchiveTime = Date::factory(Date::factory('now',
-                  $timezone)->getDateStartUTC())->setTimezone($timezone)->getTimestamp();
+                $minimumArchiveTime = Date::factory(Date::factory(
+                    'now',
+                    $timezone
+                )->getDateStartUTC())->setTimezone($timezone)->getTimestamp();
             }
         }
         return $minimumArchiveTime;
@@ -218,8 +220,9 @@ class Rules
         $generalConfig = Config::getInstance()->General;
 
         if ($periodLabel === 'range') {
-            if (isset($generalConfig['archiving_range_force_on_browser_request'])
-              && $generalConfig['archiving_range_force_on_browser_request'] == false
+            if (
+                isset($generalConfig['archiving_range_force_on_browser_request'])
+                && $generalConfig['archiving_range_force_on_browser_request'] == false
             ) {
                 Log::debug("Not forcing archiving for range period.");
                 return $isArchivingEnabled;
@@ -233,9 +236,10 @@ class Rules
             return $isArchivingEnabled;
         }
 
-        if (!$isArchivingEnabled
-          && (!self::isBrowserArchivingAvailableForSegments() || self::isSegmentPreProcessed($idSites, $segment))
-          && !SettingsServer::isArchivePhpTriggered() // Only applies when we are not running core:archive command
+        if (
+            !$isArchivingEnabled
+            && (!self::isBrowserArchivingAvailableForSegments() || self::isSegmentPreProcessed($idSites, $segment))
+            && !SettingsServer::isArchivePhpTriggered() // Only applies when we are not running core:archive command
         ) {
             Log::debug("Archiving is disabled because of config setting browser_archiving_disabled_enforce=1 or because the segment is selected to be pre-processed.");
             return false;
@@ -329,9 +333,9 @@ class Rules
      * @return string[]
      */
     public static function getSelectableDoneFlagValues(
-      $includeInvalidated = true,
-      Parameters $params = null,
-      $checkAuthorizedToArchive = true
+        $includeInvalidated = true,
+        Parameters $params = null,
+        $checkAuthorizedToArchive = true
     ) {
         $possibleValues = array(ArchiveWriter::DONE_OK, ArchiveWriter::DONE_OK_TEMPORARY);
 
@@ -375,7 +379,7 @@ class Rules
 
         if (is_string($pluginArchivingSetting)) {
             $pluginArchivingSetting = explode(",", $pluginArchivingSetting);
-            $pluginArchivingSetting = array_filter($pluginArchivingSetting, function($plugin){
+            $pluginArchivingSetting = array_filter($pluginArchivingSetting, function ($plugin) {
                 return Manager::getInstance()->isValidPluginName($plugin);
             });
         }
@@ -383,5 +387,14 @@ class Rules
         $pluginArchivingSetting = array_map('strtolower', $pluginArchivingSetting);
 
         return in_array(strtolower($pluginName), $pluginArchivingSetting);
+    }
+
+    public static function shouldProcessOnlyReportsRequestedInArchiveQuery(string $periodLabel): bool
+    {
+        if (SettingsServer::isArchivePhpTriggered()) {
+            return false;
+        }
+
+        return $periodLabel === 'range';
     }
 }

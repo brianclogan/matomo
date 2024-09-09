@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Updates;
@@ -74,7 +74,7 @@ class Updates_1_2_rc1 extends Updates
 
             $this->migration->db->addColumn('log_link_visit_action', 'server_time', 'DATETIME', 'idsite'),
             $this->migration->db->addIndex('log_link_visit_action', array('idsite', 'server_time'), 'index_idsite_servertime'),
-            
+
             $this->migration->db->sql('ALTER TABLE `' . Common::prefixTable('log_conversion') . '`
                 DROP `referer_idvisit`,
                 ADD `idvisitor` BINARY(8) NOT NULL AFTER `idsite`

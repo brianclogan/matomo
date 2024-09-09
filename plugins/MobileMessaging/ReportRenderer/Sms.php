@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\MobileMessaging\ReportRenderer;
 
 use Piwik\Common;
@@ -19,9 +20,9 @@ use Piwik\View;
  */
 class Sms extends ReportRenderer
 {
-    const FLOAT_REGEXP = '/[-+]?[0-9]*[\.,]?[0-9]+/';
-    const SMS_CONTENT_TYPE = 'text/plain';
-    const SMS_FILE_EXTENSION = 'sms';
+    public const FLOAT_REGEXP = '/[-+]?[0-9]*[\.,]?[0-9]+/';
+    public const SMS_CONTENT_TYPE = 'text/plain';
+    public const SMS_FILE_EXTENSION = 'sms';
 
     private $rendering = "";
 
@@ -61,7 +62,7 @@ class Sms extends ReportRenderer
         $prettyDate = $processedReport['prettyDate'];
         $reportData = $processedReport['reportData'];
 
-        $evolutionMetrics = array();
+        $evolutionMetrics = [];
         $multiSitesAPIMetrics = API::getApiMetrics($enhanced = true);
         foreach ($multiSitesAPIMetrics as $metricSettings) {
             $evolutionMetrics[] = $metricSettings[API::METRIC_EVOLUTION_COL_NAME_KEY];
@@ -71,18 +72,21 @@ class Sms extends ReportRenderer
         // no decimal for all metrics to shorten SMS content (keeps the monetary sign for revenue metrics)
         $reportData->filter(
             'ColumnCallbackReplace',
-            array(
-                 array_merge(array_keys($multiSitesAPIMetrics), $evolutionMetrics),
-                 function ($value) use ($floatRegex) {
-                     return preg_replace_callback(
-                         $floatRegex,
-                         function ($matches) {
-                             return round((float) $matches[0]);
-                         },
-                         $value
-                     );
-                 }
-            )
+            [
+                array_merge(
+                    array_keys($multiSitesAPIMetrics),
+                    $evolutionMetrics
+                ),
+                function ($value) use ($floatRegex) {
+                    return preg_replace_callback(
+                        $floatRegex,
+                        function ($matches) {
+                            return round((float)$matches[0]);
+                        },
+                        $value
+                    );
+                }
+            ]
         );
 
         // evolution metrics formatting :
@@ -90,20 +94,20 @@ class Sms extends ReportRenderer
         //    (this is also needed to be able to test $value != 0 and see if there is an evolution at all in SMSReport.twig)
         $reportData->filter(
             'ColumnCallbackReplace',
-            array(
-                 $evolutionMetrics,
-                 function ($value) use ($floatRegex) {
-                     $matched = preg_match($floatRegex, $value, $matches);
-                     return $matched ? (float) $matches[0] : $value;
-                 }
-            )
+            [
+                $evolutionMetrics,
+                function ($value) use ($floatRegex) {
+                    $matched = preg_match($floatRegex, $value, $matches);
+                    return $matched ? (float)$matches[0] : $value;
+                }
+            ]
         );
 
         $dataRows = $reportData->getRows();
         $reportMetadata = $processedReport['reportMetadata'];
         $reportRowsMetadata = $reportMetadata->getRows();
 
-        $siteHasECommerce = array();
+        $siteHasECommerce = [];
         foreach ($reportRowsMetadata as $rowMetadata) {
             $idSite = $rowMetadata->getColumn('idsite');
             $siteHasECommerce[$idSite] = Site::isEcommerceEnabledFor($idSite);
@@ -138,6 +142,6 @@ class Sms extends ReportRenderer
      */
     public function getAttachments($report, $processedReports, $prettyDate)
     {
-        return array();
+        return [];
     }
 }

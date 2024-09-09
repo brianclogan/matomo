@@ -1,27 +1,23 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
  * @link    https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Actions;
 
-use Piwik\Cache;
 use Piwik\Common;
-use Piwik\Config;
 use Piwik\Date;
-use Piwik\Db;
 use Piwik\Metrics\Formatter;
 use Piwik\Piwik;
 use Piwik\Plugin;
 use Piwik\Plugins\Live\VisitorDetailsAbstract;
-use Piwik\Plugins\SitesManager\API as APISitesManager;
 use Piwik\Site;
 use Piwik\Tracker\Action;
 use Piwik\Tracker\PageUrl;
-use Piwik\View;
 
 class VisitorDetails extends VisitorDetailsAbstract
 {
@@ -54,7 +50,6 @@ class VisitorDetails extends VisitorDetailsAbstract
         // Enrich with time spent per action
         $nextActionId = 0;
         foreach ($actionDetails as $idx => &$action) {
-
             if ($idx < $nextActionId || !$this->isPageView($action)) {
                 unset($action['timeSpentRef']);
                 continue; // skip to next page view
@@ -101,7 +96,6 @@ class VisitorDetails extends VisitorDetailsAbstract
                 if ($this->isPageView($nextAction)) {
                     break;
                 }
-
             } while (isset($actionDetails[$nextActionId]));
 
             if (isset($action['timeSpent'])) {
@@ -217,7 +211,7 @@ class VisitorDetails extends VisitorDetailsAbstract
 
                 $itemNames = implode(', ', array_column($action['itemDetails'], 'itemName'));
                 $action['subtitle'] = Piwik::translate('Goals_NRevenue', $formatter->getPrettyMoney($action['revenue'], $visitorDetails['idSite']));
-                $action['subtitle'] .= ' - ' .  Piwik::translate('Goals_NItems', $action['items']) . ': ' . $itemNames .')';
+                $action['subtitle'] .= ' - ' .  Piwik::translate('Goals_NItems', $action['items']) . ': ' . $itemNames . ')';
                 break;
             case Action::TYPE_CONTENT:
                 if (!empty($action['contentInteraction'])) {
@@ -279,8 +273,10 @@ class VisitorDetails extends VisitorDetailsAbstract
         }
 
         // Convert datetimes to the site timezone
-        $dateTimeVisit              = Date::factory($action['serverTimePretty'],
-            Site::getTimezoneFor($visitorDetails['idSite']));
+        $dateTimeVisit              = Date::factory(
+            $action['serverTimePretty'],
+            Site::getTimezoneFor($visitorDetails['idSite'])
+        );
         $action['serverTimePretty'] = $dateTimeVisit->getLocalized(Date::DATETIME_FORMAT_SHORT);
         $action['timestamp']        = $dateTimeVisit->getTimestamp();
 
@@ -397,7 +393,7 @@ class VisitorDetails extends VisitorDetailsAbstract
             ];
         }
 
-        usort($profile['visitedPages'], function($a, $b) {
+        usort($profile['visitedPages'], function ($a, $b) {
             if ($a['count'] == $b['count']) {
                 return strcmp($a['url'], $b['url']);
             }

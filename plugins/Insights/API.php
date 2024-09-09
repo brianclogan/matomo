@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Insights;
 
 use Piwik\API\Request as ApiRequest;
@@ -22,17 +23,17 @@ class API extends \Piwik\Plugin\API
     /**
      * Include only 'movers' which are existing in the current and past report.
      */
-    const FILTER_BY_MOVERS = 'movers';
+    public const FILTER_BY_MOVERS = 'movers';
 
     /**
      * Include only 'new' rows which were not existing in the past report.
      */
-    const FILTER_BY_NEW = 'new';
+    public const FILTER_BY_NEW = 'new';
 
     /**
      * Include only 'disappeared' rows which were existing in the past report but no longer in the current report.
      */
-    const FILTER_BY_DISAPPEARED = 'disappeared';
+    public const FILTER_BY_DISAPPEARED = 'disappeared';
 
     /**
      * @var Model
@@ -198,9 +199,16 @@ class API extends \Piwik\Plugin\API
      * @throws \Exception In case a report having the given ID does not exist
      * @throws \Exception In case the report exists but does not return a dataTable
      */
-    public function getMoversAndShakers($idSite, $period, $date, $reportUniqueId, $segment = false,
-                                        $comparedToXPeriods = 1, $limitIncreaser = 4, $limitDecreaser = 4)
-    {
+    public function getMoversAndShakers(
+        $idSite,
+        $period,
+        $date,
+        $reportUniqueId,
+        $segment = false,
+        $comparedToXPeriods = 1,
+        $limitIncreaser = 4,
+        $limitDecreaser = 4
+    ) {
         Piwik::checkUserHasViewAccess(array($idSite));
 
         $metric  = 'nb_visits';
@@ -252,10 +260,19 @@ class API extends \Piwik\Plugin\API
      * @throws \Exception In case the report exists but does not return a dataTable
      */
     public function getInsights(
-        $idSite, $period, $date, $reportUniqueId, $segment = false, $limitIncreaser = 5, $limitDecreaser = 5,
-        $filterBy = '', $minImpactPercent = 2, $minGrowthPercent = 20,
-        $comparedToXPeriods = 1, $orderBy = 'absolute')
-    {
+        $idSite,
+        $period,
+        $date,
+        $reportUniqueId,
+        $segment = false,
+        $limitIncreaser = 5,
+        $limitDecreaser = 5,
+        $filterBy = '',
+        $minImpactPercent = 2,
+        $minGrowthPercent = 20,
+        $comparedToXPeriods = 1,
+        $orderBy = 'absolute'
+    ) {
         Piwik::checkUserHasViewAccess(array($idSite));
 
         $metric = 'nb_visits';
@@ -337,5 +354,4 @@ class API extends \Piwik\Plugin\API
 
         return ApiRequest::processRequest('Insights.' . $method, $params, $default = []);
     }
-
 }

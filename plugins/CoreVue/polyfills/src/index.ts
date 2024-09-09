@@ -1,8 +1,8 @@
 /*!
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 /* eslint-disable */
@@ -26,25 +26,22 @@ Object.fromEntries = function fromEntries(it) {
 
 import './jqueryNativeEventTrigger';
 
-function htmlDecode(value: string) {
-  const textArea = document.createElement('textarea');
-  textArea.innerHTML = value;
-  return textArea.value;
+function hasSafeRel(rel: string) {
+  const parts = rel.split(/\s+/);
+  return parts.includes('noopener') && parts.includes('noreferrer');
 }
 
-const invisibleCharEncoded = htmlDecode('&#8291;');
-
-// modify Vue's escaping functionality to also escape angularjs {{ fields.
-// vue doesn't do this since it doesn't have this problem;
-const oldToDisplayString = window.Vue.toDisplayString;
-window.Vue.toDisplayString = function matomoToDisplayString(val: unknown): string {
-  let result = oldToDisplayString.call(this, val);
-  result = result.replace(/{{/g, `{${invisibleCharEncoded}{`);
-  return result;
-};
+// remove target=_blank if a link doesn't have noopener noreferrer
+DOMPurify.addHook('afterSanitizeAttributes', (node: Element) => {
+  if (node.hasAttribute('target')
+    && node.getAttribute('target') === '_blank'
+    && (!node.hasAttribute('rel')
+      || !hasSafeRel(node.getAttribute('rel')))
+  ) {
+    node.removeAttribute('target');
+  }
+});
 
 window.vueSanitize = function vueSanitize(val: unknown): string {
-  let result = DOMPurify.sanitize(val);
-  result = result.replace(/{{/g, '{&#8291;{');
-  return result;
+  return DOMPurify.sanitize(val, { ADD_ATTR: ['target'] });
 };

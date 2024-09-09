@@ -1,11 +1,11 @@
 /*!
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
- (function ($, require) {
+(function ($, require) {
 
     var exports = require('piwik/UI'),
         DataTable = exports.DataTable,
@@ -19,7 +19,7 @@
 
         var currentLevelIndex = style.indexOf('level');
         if (currentLevelIndex >= 0) {
-            currentLevel = Number(style.substr(currentLevelIndex + 5, 1));
+            currentLevel = Number(style.slice(currentLevelIndex + 5, currentLevelIndex + 6));
         }
         return currentLevel;
     }
@@ -127,6 +127,8 @@
                 .each(function () {
                     if (self.param.filter_pattern_recursive) {
                         $(this).addClass('expanded');
+                        // remove tooltip "Click this row to expand or contract the subtable"
+                        $(this).attr('title', '');
                     }
                 });
 
@@ -281,7 +283,7 @@
 
             content.trigger('piwik:dataTableLoaded');
 
-            piwikHelper.compileAngularComponents(content);
+            piwikHelper.compileVueEntryComponents(content);
 
             piwikHelper.lazyScrollTo(content[0], 400);
 

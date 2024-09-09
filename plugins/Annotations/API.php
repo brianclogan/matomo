@@ -1,19 +1,17 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Annotations;
 
 use Exception;
 use Piwik\Date;
-use Piwik\Period\Range;
-use Piwik\Period;
 use Piwik\Piwik;
-use Piwik\Plugins\CoreVisualizations\Visualizations\JqplotGraph\Evolution as EvolutionViz;
 
 /**
  * @see plugins/Annotations/AnnotationList.php
@@ -251,11 +249,15 @@ class API extends \Piwik\Plugin\API
                 $result[$idSite][$strDate] = $annotations->count($idSite, $date, $nextDate);
 
                 // if only one annotation, return the one annotation's text w/ the counts
-                if ($getAnnotationText
+                if (
+                    $getAnnotationText
                     && $result[$idSite][$strDate]['count'] == 1
                 ) {
                     $annotationsForSite = $annotations->search(
-                        $date, Date::factory($nextDate->getTimestamp() - 1), $idSite);
+                        $date,
+                        Date::factory($nextDate->getTimestamp() - 1),
+                        $idSite
+                    );
                     $annotation = reset($annotationsForSite[$idSite]);
 
                     $result[$idSite][$strDate]['note'] = $annotation['note'];
@@ -319,7 +321,8 @@ class API extends \Piwik\Plugin\API
      */
     private function checkDateIsValid($date, $canBeNull = false)
     {
-        if ($date === null
+        if (
+            $date === null
             && $canBeNull
         ) {
             return;

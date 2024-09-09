@@ -1,25 +1,28 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\CoreHome;
 
+use Piwik\Access;
 use Piwik\Archive\ArchiveInvalidator;
 use Piwik\Columns\ComputedMetricFactory;
 use Piwik\Columns\MetricsList;
 use Piwik\Common;
 use Piwik\Container\StaticContainer;
 use Piwik\DbHelper;
-use Piwik\Development;
 use Piwik\IP;
+use Piwik\Menu\MenuAdmin;
 use Piwik\Piwik;
 use Piwik\Plugin\ArchivedMetric;
 use Piwik\Plugin\ComputedMetric;
 use Piwik\Plugin\ThemeStyles;
+use Piwik\SettingsPiwik;
 use Piwik\SettingsServer;
 use Piwik\Tracker\Model as TrackerModel;
 
@@ -33,7 +36,7 @@ class CoreHome extends \Piwik\Plugin
      * where on the left side a link is shown for each widget and on the right side the selected widget.
      * @api
      */
-    const WIDGET_CONTAINER_LAYOUT_BY_DIMENSION = 'ByDimension';
+    public const WIDGET_CONTAINER_LAYOUT_BY_DIMENSION = 'ByDimension';
 
     /**
      * @see \Piwik\Plugin::registerEvents
@@ -64,8 +67,8 @@ class CoreHome extends \Piwik\Plugin
         $archiveInvalidator = StaticContainer::get(ArchiveInvalidator::class);
         $cacheGeneral[ArchiveInvalidator::TRACKER_CACHE_KEY] = $archiveInvalidator->getAllRememberToInvalidateArchivedReportsLater();
 
-        $hasIndex = DbHelper::tableHasIndex(Common::prefixTable('log_visit'), 'index_idsite_idvisitor');
-        $cacheGeneral[TrackerModel::CACHE_KEY_INDEX_IDSITE_IDVISITOR] = $hasIndex;
+        $hasIndex = DbHelper::tableHasIndex(Common::prefixTable('log_visit'), 'index_idsite_idvisitor_time');
+        $cacheGeneral[TrackerModel::CACHE_KEY_INDEX_IDSITE_IDVISITOR_TIME] = $hasIndex;
     }
 
     public function addStylesheets(&$mergedContent)
@@ -101,10 +104,12 @@ class CoreHome extends \Piwik\Plugin
         foreach ($metrics as $metric) {
             if ($metric instanceof ArchivedMetric && $metric->getDimension()) {
                 $metricName = $metric->getName();
-                if ($metric->getDbTableName() === 'log_visit'
+                if (
+                    $metric->getDbTableName() === 'log_visit'
                     && $metricName !== 'nb_uniq_visitors'
                     && $metricName !== 'nb_visits'
-                    && strpos($metricName, ArchivedMetric::AGGREGATION_SUM_PREFIX) === 0) {
+                    && strpos($metricName, ArchivedMetric::AGGREGATION_SUM_PREFIX) === 0
+                ) {
                     $metric = $computedMetricFactory->createComputedMetric($metric->getName(), 'nb_visits', ComputedMetric::AGGREGATION_AVG);
                     $list->addMetric($metric);
                 }
@@ -121,7 +126,7 @@ class CoreHome extends \Piwik\Plugin
     {
         $stylesheets[] = "node_modules/jquery-ui-dist/jquery-ui.min.css";
         $stylesheets[] = "node_modules/jquery-ui-dist/jquery-ui.theme.min.css";
-        $stylesheets[] = "node_modules/materialize-css/dist/css/materialize.min.css";
+        $stylesheets[] = "node_modules/@materializecss/materialize/dist/css/materialize.min.css";
         $stylesheets[] = "plugins/Morpheus/stylesheets/base/bootstrap.css";
         $stylesheets[] = "plugins/Morpheus/stylesheets/base/icons.css";
         $stylesheets[] = "plugins/Morpheus/stylesheets/base.less";
@@ -137,6 +142,7 @@ class CoreHome extends \Piwik\Plugin
         $stylesheets[] = "plugins/CoreHome/stylesheets/notification.less";
         $stylesheets[] = "plugins/CoreHome/stylesheets/zen-mode.less";
         $stylesheets[] = "plugins/CoreHome/stylesheets/layout.less";
+        $stylesheets[] = "plugins/CoreHome/stylesheets/matomo-loader.less";
         $stylesheets[] = "plugins/CoreHome/vue/src/EnrichedHeadline/EnrichedHeadline.less";
         $stylesheets[] = "plugins/CoreHome/vue/src/Notification/Notification.less";
         $stylesheets[] = "plugins/CoreHome/vue/src/QuickAccess/QuickAccess.less";
@@ -159,21 +165,12 @@ class CoreHome extends \Piwik\Plugin
     {
         $jsFiles[] = "node_modules/jquery/dist/jquery.min.js";
         $jsFiles[] = "node_modules/jquery-ui-dist/jquery-ui.min.js";
-        $jsFiles[] = "node_modules/materialize-css/dist/js/materialize.min.js";
+        $jsFiles[] = "node_modules/@materializecss/materialize/dist/js/materialize.min.js";
         $jsFiles[] = "plugins/CoreHome/javascripts/materialize-bc.js";
-        $jsFiles[] = "node_modules/jquery.browser/dist/jquery.browser.min.js";
         $jsFiles[] = "node_modules/jquery.scrollto/jquery.scrollTo.min.js";
         $jsFiles[] = "node_modules/sprintf-js/dist/sprintf.min.js";
         $jsFiles[] = "node_modules/mousetrap/mousetrap.min.js";
 
-        $devAngularJs = 'node_modules/angular/angular.js';
-        $jsFiles[] = Development::isEnabled() && is_file(PIWIK_INCLUDE_PATH . '/' . $devAngularJs)
-            ? $devAngularJs : 'node_modules/angular/angular.min.js';
-
-        $jsFiles[] = "node_modules/angular-sanitize/angular-sanitize.min.js";
-        $jsFiles[] = "node_modules/angular-animate/angular-animate.min.js";
-        $jsFiles[] = "node_modules/angular-cookies/angular-cookies.min.js";
-        $jsFiles[] = "node_modules/ng-dialog/js/ngDialog.min.js";
         $jsFiles[] = "plugins/Morpheus/javascripts/piwikHelper.js";
         $jsFiles[] = "plugins/Morpheus/javascripts/layout.js";
         $jsFiles[] = "plugins/CoreHome/javascripts/require.js";
@@ -190,44 +187,11 @@ class CoreHome extends \Piwik\Plugin
         $jsFiles[] = "plugins/CoreHome/javascripts/color_manager.js";
         $jsFiles[] = "plugins/CoreHome/javascripts/notification.js";
         $jsFiles[] = "plugins/CoreHome/javascripts/numberFormatter.js";
-        $jsFiles[] = "plugins/CoreHome/javascripts/zen-mode.js";
-        $jsFiles[] = "plugins/CoreHome/javascripts/noreferrer.js";
-
-        $jsFiles[] = "plugins/CoreHome/angularjs/piwikApp.config.js";
-
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/services/service.module.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/services/piwik-api.js";
-
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/filters/filter.module.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/filters/translate.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/filters/startfrom.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/filters/evolution.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/filters/length.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/filters/trim.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/filters/pretty-url.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/filters/escape.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/filters/htmldecode.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/filters/urldecode.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/filters/ucfirst.js";
-
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/directives/directive.module.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/directives/attributes.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/directives/field-condition.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/directives/autocomplete-matched.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/directives/ignore-click.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/directives/onenter.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/directives/translate.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/common/directives/string-to-number.js";
-
-        $jsFiles[] = "plugins/CoreHome/angularjs/piwikApp.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/anchorLinkFix.js";
-        $jsFiles[] = "plugins/CoreHome/angularjs/http404check.js";
-
-        $jsFiles[] = "plugins/CoreHome/angularjs/history/history.service.js";
+        $jsFiles[] = "plugins/CoreHome/javascripts/listingFormatter.js";
 
         // we have to load these CorePluginsAdmin files here. If we loaded them in CorePluginsAdmin,
         // there would be JS errors as CorePluginsAdmin is loaded first. Meaning it is loaded before
-        // any angular JS file is loaded etc.
+        // any Vue UMD file is loaded etc.
         $jsFiles[] = "node_modules/iframe-resizer/js/iframeResizer.min.js";
         $jsFiles[] = "node_modules/iframe-resizer/js/iframeResizer.contentWindow.min.js";
     }
@@ -268,6 +232,7 @@ class CoreHome extends \Piwik\Plugin
         $translationKeys[] = 'CoreHome_AddTotalsRowDataTable';
         $translationKeys[] = 'CoreHome_RemoveTotalsRowDataTable';
         $translationKeys[] = 'CoreHome_PeriodHasOnlyRawData';
+        $translationKeys[] = 'CoreHome_PeriodHasOnlyRawDataNoVisitsLog';
         $translationKeys[] = 'SitesManager_NotFound';
         $translationKeys[] = 'Annotations_ViewAndAddAnnotations';
         $translationKeys[] = 'General_RowEvolutionRowActionTooltipTitle';
@@ -326,6 +291,14 @@ class CoreHome extends \Piwik\Plugin
         $translationKeys[] = 'Intl_PeriodWeek';
         $translationKeys[] = 'Intl_PeriodMonth';
         $translationKeys[] = 'Intl_PeriodYear';
+        $translationKeys[] = 'Intl_ListPatternAnd2';
+        $translationKeys[] = 'Intl_ListPatternAndEnd';
+        $translationKeys[] = 'Intl_ListPatternAndMiddle';
+        $translationKeys[] = 'Intl_ListPatternAndStart';
+        $translationKeys[] = 'Intl_ListPatternOr2';
+        $translationKeys[] = 'Intl_ListPatternOrEnd';
+        $translationKeys[] = 'Intl_ListPatternOrMiddle';
+        $translationKeys[] = 'Intl_ListPatternOrStart';
         $translationKeys[] = 'General_DateRangeInPeriodList';
         $translationKeys[] = 'General_And';
         $translationKeys[] = 'General_All';
@@ -346,6 +319,7 @@ class CoreHome extends \Piwik\Plugin
         $translationKeys[] = 'General_LoadingData';
         $translationKeys[] = 'General_Error';
         $translationKeys[] = 'General_ErrorRequest';
+        $translationKeys[] = 'General_ErrorRateLimit';
         $translationKeys[] = 'General_ErrorRequestFaqLink';
         $translationKeys[] = 'General_Warning';
         $translationKeys[] = 'General_YourChangesHaveBeenSaved';
@@ -379,6 +353,7 @@ class CoreHome extends \Piwik\Plugin
         $translationKeys[] = 'CoreHome_ShortcutCalendar';
         $translationKeys[] = 'CoreHome_ShortcutSearch';
         $translationKeys[] = 'CoreHome_ShortcutHelp';
+        $translationKeys[] = 'CoreHome_ShortcutRefresh';
         $translationKeys[] = 'CoreHome_StandardReport';
         $translationKeys[] = 'CoreHome_ReportWithMetadata';
         $translationKeys[] = 'CoreHome_ReportType';
@@ -410,5 +385,38 @@ class CoreHome extends \Piwik\Plugin
         $translationKeys[] = 'CoreHome_StartDate';
         $translationKeys[] = 'CoreHome_EndDate';
         $translationKeys[] = 'CoreHome_DataForThisReportHasBeenDisabled';
+        $translationKeys[] = 'CoreHome_ChangeVisualization';
+        $translationKeys[] = 'General_ExportThisReport';
+        $translationKeys[] = 'Annotations_Annotations';
+        $translationKeys[] = 'CoreHome_CloseSearch';
+        $translationKeys[] = 'CoreHome_DataTableHowToSearch';
+        $translationKeys[] = 'CoreHome_ChangePeriod';
+        $translationKeys[] = 'General_NewUpdatePiwikX';
+        $translationKeys[] = 'CoreHome_SeeAvailableVersions';
+        $translationKeys[] = 'CoreHome_OneClickUpdateNotPossibleAsMultiServerEnvironment';
+        $translationKeys[] = 'General_PiwikXIsAvailablePleaseUpdateNow';
+        $translationKeys[] = 'General_PiwikXIsAvailablePleaseNotifyPiwikAdmin';
+        $translationKeys[] = 'General_YouAreCurrentlyUsing';
+        $translationKeys[] = 'General_Copy';
+        $translationKeys[] = 'General_CopiedToClipboard';
+
+        // add admin menu translations
+        if (
+            SettingsPiwik::isMatomoInstalled()
+            && Common::getRequestVar('module', '') != 'CoreUpdater'
+            && Piwik::isUserHasSomeViewAccess()
+        ) {
+            Access::doAsSuperUser(function () use (&$translationKeys) {
+                $menu = MenuAdmin::getInstance()->getMenu();
+                foreach ($menu as $level1 => $level2) {
+                    $translationKeys[] = $level1;
+                    foreach ($level2 as $name => $params) {
+                        if (strpos($name, '_') !== false) {
+                            $translationKeys[] = $name;
+                        }
+                    }
+                }
+            });
+        }
     }
 }

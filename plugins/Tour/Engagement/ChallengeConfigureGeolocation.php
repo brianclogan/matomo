@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Tour\Engagement;
 
 use Piwik\Container\StaticContainer;
@@ -36,7 +37,7 @@ class ChallengeConfigureGeolocation extends Challenge
         return 'configure_geolocation';
     }
 
-    public function isCompleted()
+    public function isCompleted(string $login)
     {
         if (!isset($this->completed)) {
             $locationDiagnostic = StaticContainer::get(GeolocationDiagnostic::class);
@@ -50,6 +51,4 @@ class ChallengeConfigureGeolocation extends Challenge
     {
         return 'index.php' . Url::getCurrentQueryStringWithParametersModified(array('module' => 'UserCountry', 'action' => 'adminIndex', 'widget' => false));
     }
-
-
 }

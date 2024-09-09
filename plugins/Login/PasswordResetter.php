@@ -1,10 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Login;
 
 use Exception;
@@ -15,9 +17,9 @@ use Piwik\IP;
 use Piwik\Option;
 use Piwik\Piwik;
 use Piwik\Plugins\Login\Emails\PasswordResetEmail;
+use Piwik\Plugins\UsersManager\API as UsersManagerAPI;
 use Piwik\Plugins\UsersManager\Model;
 use Piwik\Plugins\UsersManager\UsersManager;
-use Piwik\Plugins\UsersManager\API as UsersManagerAPI;
 use Piwik\Plugins\UsersManager\UserUpdater;
 use Piwik\SettingsPiwik;
 use Piwik\Url;
@@ -113,14 +115,20 @@ class PasswordResetter
      * @param string|null $emailFromAddress
      * @param Password $passwordHelper
      */
-    public function __construct($usersManagerApi = null, $confirmPasswordModule = null, $confirmPasswordAction = null,
-                                $emailFromName = null, $emailFromAddress = null, $passwordHelper = null)
-    {
+    public function __construct(
+        $usersManagerApi = null,
+        $confirmPasswordModule = null,
+        $confirmPasswordAction = null,
+        $emailFromName = null,
+        $emailFromAddress = null,
+        $passwordHelper = null
+    ) {
         if (empty($usersManagerApi)) {
             $usersManagerApi = UsersManagerAPI::getInstance();
         }
         $this->usersManagerApi = $usersManagerApi;
 
+        $this->confirmPasswordModule = Piwik::getLoginPluginName();
         if (!empty($confirmPasswordModule)) {
             $this->confirmPasswordModule = $confirmPasswordModule;
         }
@@ -193,7 +201,8 @@ class PasswordResetter
 
         // check that the reset token is valid
         $resetInfo = $this->getPasswordToResetTo($login);
-        if ($resetInfo === false
+        if (
+            $resetInfo === false
             || empty($resetInfo['hash'])
             || empty($resetInfo['keySuffix'])
             || !$this->isTokenValid($resetToken, $user, $resetInfo['keySuffix'])
@@ -281,7 +290,7 @@ class PasswordResetter
             $expiryTimestamp = $this->getDefaultExpiryTime();
         }
 
-        $expiry = strftime('%Y%m%d%H', $expiryTimestamp);
+        $expiry = date('YmdH', $expiryTimestamp);
         $token = $this->generateSecureHash(
             $expiry . $user['login'] . $user['email'] . $user['ts_password_modified'] . $keySuffix,
             $user['password']
@@ -379,6 +388,8 @@ class PasswordResetter
     /**
      * Returns user information based on a login or email.
      *
+     * If user is pending, return null
+     *
      * Derived classes can override this method to provide custom user querying logic.
      *
      * @param string $loginMail user login or email address
@@ -388,10 +399,15 @@ class PasswordResetter
     {
         $userModel = new Model();
 
+        if ($userModel->isPendingUser($loginOrMail)) {
+            return null;
+        }
+
         $user = null;
+
         if ($userModel->userExists($loginOrMail)) {
             $user = $userModel->getUser($loginOrMail);
-        } else if ($userModel->userEmailExists($loginOrMail)) {
+        } elseif ($userModel->userEmailExists($loginOrMail)) {
             $user = $userModel->getUserByEmail($loginOrMail);
         }
         return $user;
@@ -472,11 +488,11 @@ class PasswordResetter
         if ($existingResetInfo) {
             $existingResetInfo = json_decode($existingResetInfo, true);
 
-            if (isset($existingResetInfo['timestamp']) && $existingResetInfo['timestamp'] > time()-3600) {
+            if (isset($existingResetInfo['timestamp']) && $existingResetInfo['timestamp'] > time() - 3600) {
                 $time = $existingResetInfo['timestamp'];
                 $count = !empty($existingResetInfo['requests']) ? $existingResetInfo['requests'] : $count;
 
-                if(isset($existingResetInfo['requests']) && $existingResetInfo['requests'] > 2) {
+                if (isset($existingResetInfo['requests']) && $existingResetInfo['requests'] > 2) {
                     throw new Exception(Piwik::translate('Login_PasswordResetAlreadySent'));
                 }
             }
@@ -487,7 +503,7 @@ class PasswordResetter
             'hash' => $this->passwordHelper->hash(UsersManager::getPasswordHash($newPassword)),
             'keySuffix' => $keySuffix,
             'timestamp' => $time,
-            'requests' => $count+1
+            'requests' => $count + 1
         ];
         $optionData = json_encode($optionData);
 

@@ -1,9 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\CliMulti;
@@ -17,10 +18,6 @@ use Piwik\Option;
 use Piwik\Plugin\ConsoleCommand;
 use Piwik\Url;
 use Piwik\UrlHelper;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * RequestCommand
@@ -36,15 +33,15 @@ class RequestCommand extends ConsoleCommand
     {
         $this->setName('climulti:request');
         $this->setDescription('Parses and executes the given query. See Piwik\CliMulti. Intended only for system usage.');
-        $this->addArgument('url-query', InputArgument::REQUIRED, 'Matomo URL query string, for instance: "module=API&method=API.getPiwikVersion&token_auth=123456789"');
-        $this->addOption('superuser', null, InputOption::VALUE_NONE, 'If supplied, runs the code as superuser.');
+        $this->addRequiredArgument('url-query', 'Matomo URL query string, for instance: "module=API&method=API.getPiwikVersion&token_auth=123456789"');
+        $this->addNoValueOption('superuser', null, 'If supplied, runs the code as superuser.');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function doExecute(): int
     {
         $this->recreateContainerWithWebEnvironment();
 
-        $this->initHostAndQueryString($input);
+        $this->initHostAndQueryString();
 
         if ($this->isTestModeEnabled()) {
             $indexFile = '/tests/PHPUnit/proxy/';
@@ -60,16 +57,16 @@ class RequestCommand extends ConsoleCommand
             $process = new Process($_GET['pid']);
 
             if ($process->hasFinished()) {
-                return;
+                return self::SUCCESS;
             }
 
             $process->startProcess();
         }
 
-        if ($input->getOption('superuser')) {
+        if ($this->getInput()->getOption('superuser')) {
             StaticContainer::addDefinitions(array(
-                'observers.global' => \DI\add(array(
-                    array('Environment.bootstrapped', \DI\value(function () {
+                'observers.global' => \Piwik\DI::add(array(
+                    array('Environment.bootstrapped', \Piwik\DI::value(function () {
                         Access::getInstance()->setSuperUserAccess(true);
                     }))
                 )),
@@ -79,12 +76,14 @@ class RequestCommand extends ConsoleCommand
         require_once PIWIK_INCLUDE_PATH . $indexFile;
 
         while (ob_get_level()) {
-           echo ob_get_clean();
+            echo ob_get_clean();
         }
-        
+
         if (!empty($process)) {
             $process->finishProcess();
         }
+
+        return self::SUCCESS;
     }
 
     private function isTestModeEnabled()
@@ -92,17 +91,14 @@ class RequestCommand extends ConsoleCommand
         return !empty($_GET['testmode']);
     }
 
-    /**
-     * @param InputInterface $input
-     */
-    protected function initHostAndQueryString(InputInterface $input)
+    protected function initHostAndQueryString()
     {
         $_GET = array();
 
-        $hostname = $input->getOption('matomo-domain');
+        $hostname = $this->getInput()->getOption('matomo-domain');
         Url::setHost($hostname);
 
-        $query = $input->getArgument('url-query');
+        $query = $this->getInput()->getArgument('url-query');
         $_SERVER['QUERY_STRING'] = $query;
 
         $query = UrlHelper::getArrayFromQueryString($query); // NOTE: this method can create the StaticContainer now

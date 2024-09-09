@@ -48,16 +48,30 @@ class Version extends AbstractClientParser
             return null;
         }
 
-        if ('Gecko' === $this->engine) {
-            $pattern = '~[ ](?:rv[: ]([0-9\.]+)).*gecko/[0-9]{8,10}~i';
+        if ('Gecko' === $this->engine || 'Clecko' === $this->engine) {
+            $pattern = '~[ ](?:rv[: ]([0-9\.]+)).*(?:g|cl)ecko/[0-9]{8,10}~i';
 
             if (\preg_match($pattern, $this->userAgent, $matches)) {
                 return ['version' => \array_pop($matches)];
             }
         }
 
+        $engineToken = $this->engine;
+
+        if ('Blink' === $this->engine) {
+            $engineToken = 'Chrome|Cronet';
+        }
+
+        if ('Arachne' === $this->engine) {
+            $engineToken = 'Arachne\/5\.';
+        }
+
+        if ('LibWeb' === $this->engine) {
+            $engineToken = 'LibWeb\+LibJs';
+        }
+
         \preg_match(
-            "~{$this->engine}\s*/?\s*((?(?=\d+\.\d)\d+[.\d]*|\d{1,7}(?=(?:\D|$))))~i",
+            "~(?:{$engineToken})\s*/?\s*((?(?=\d+\.\d)\d+[.\d]*|\d{1,7}(?=(?:\D|$))))~i",
             $this->userAgent,
             $matches
         );

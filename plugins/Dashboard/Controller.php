@@ -1,16 +1,17 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link     https://matomo.org
- * @license  http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Dashboard;
 
 use Piwik\API\Request;
 use Piwik\Common;
 use Piwik\DataTable\Renderer\Json;
-use Piwik\Db;
 use Piwik\Piwik;
 use Piwik\Session\SessionNamespace;
 use Piwik\View;
@@ -33,7 +34,7 @@ class Controller extends \Piwik\Plugin\Controller
         $this->dashboard = new Dashboard();
     }
 
-    protected function _getDashboardView($template)
+    protected function getDashboardView($template)
     {
         $view = new View($template);
         $this->setGeneralVariablesView($view);
@@ -49,15 +50,14 @@ class Controller extends \Piwik\Plugin\Controller
     // this
     public function embeddedIndex()
     {
-        $view = $this->_getDashboardView('@Dashboard/embeddedIndex');
+        $view = $this->getDashboardView('@Dashboard/embeddedIndex');
         return $view->render();
     }
 
     // this is the exported widget
     public function index()
     {
-        $view = $this->_getDashboardView('@Dashboard/index');
-        $view->dashboardSettingsControl = new DashboardManagerControl();
+        $view = $this->getDashboardView('@Dashboard/index');
         $view->hasSomeAdminAccess = Piwik::isUserHasSomeAdminAccess();
         $view->dashboards = array();
         if (!Piwik::isUserIsAnonymous()) {
@@ -130,7 +130,7 @@ class Controller extends \Piwik\Plugin\Controller
     {
         $this->checkTokenInUrl();
 
-        $layout      = Common::unsanitizeInputValue(Common::getRequestVar('layout'));
+        $layout      = \Piwik\Request::fromRequest()->getStringParameter('layout');
         $layout      = strip_tags($layout);
         $idDashboard = Common::getRequestVar('idDashboard', 1, 'int');
         $name        = Common::getRequestVar('name', '', 'string');
@@ -155,7 +155,7 @@ class Controller extends \Piwik\Plugin\Controller
         $this->checkTokenInUrl();
 
         if (Piwik::hasUserSuperUserAccess()) {
-            $layout = Common::unsanitizeInputValue(Common::getRequestVar('layout'));
+            $layout = \Piwik\Request::fromRequest()->getStringParameter('layout');
             $layout = strip_tags($layout);
             $this->getModel()->createOrUpdateDashboard('', '1', $layout);
         }
@@ -171,10 +171,8 @@ class Controller extends \Piwik\Plugin\Controller
     protected function getLayout($idDashboard)
     {
         if (Piwik::isUserIsAnonymous()) {
-
             $session = new SessionNamespace("Dashboard");
             if (!isset($session->dashboardLayout)) {
-
                 return $this->dashboard->getDefaultLayout();
             }
 
@@ -209,4 +207,3 @@ class Controller extends \Piwik\Plugin\Controller
         );
     }
 }
-

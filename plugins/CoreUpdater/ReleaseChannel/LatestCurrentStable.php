@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\CoreUpdater\ReleaseChannel;
 
 use Piwik\Piwik;
@@ -18,7 +19,7 @@ class LatestCurrentStable extends ReleaseChannel
     {
         // NOTE: using Version::VERSION instead of Version::MAJOR_VERSION  since MAJOR_VERSION may not exist when
         // updating from pre 4.x to 4.x.
-        return 'latest_'.((int) Version::VERSION).'x_stable';
+        return 'latest_' . ((int) Version::VERSION) . 'x_stable';
     }
 
     public function getName()

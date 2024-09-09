@@ -1,15 +1,14 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\CustomDimensions;
 
-use Piwik\Common;
 use Piwik\Updater;
 use Piwik\Updates as PiwikUpdates;
 use Piwik\Updater\Migration\Factory as MigrationFactory;
@@ -19,7 +18,6 @@ use Piwik\Updater\Migration\Factory as MigrationFactory;
  */
 class Updates_0_1_2 extends PiwikUpdates
 {
-
     /**
      * @var MigrationFactory
      */

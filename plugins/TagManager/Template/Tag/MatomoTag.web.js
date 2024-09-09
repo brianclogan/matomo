@@ -15,8 +15,8 @@
 
     window._paq = window._paq || [];
 
-    if ('object' !== typeof window.piwikPluginAsyncInit) {
-        window.piwikPluginAsyncInit = [];
+    if ('object' !== typeof window.matomoPluginAsyncInit) {
+        window.matomoPluginAsyncInit = [];
     }
 
     function executeCallbacks() {
@@ -29,7 +29,7 @@
         callbacks.callbacks = [];
     }
 
-    window.piwikPluginAsyncInit.push(function () {
+    window.matomoPluginAsyncInit.push(function () {
         libAvailable = true;
         executeCallbacks();
     });
@@ -94,10 +94,11 @@
                 // this is the matomoConfig variable name and the only way to differentiate two different tracker
                 // configurations
                 var variableName = parameters.matomoConfig.name;
-                
+
                 // we need to fetch matomoConfig again in case some parameters changed meanwhile that are variables...
                 // eg userId might be a variable and it's value might be different now
                 var matomoConfig = parameters.get('matomoConfig', {});
+                var trackingEndpoint = matomoConfig.trackingEndpoint == 'custom' ? matomoConfig.trackingEndpointCustom : matomoConfig.trackingEndpoint;
                 var tracker;
                 // we make sure to not update jsonConfig even when the configured values change... otherwise we would create
                 // randomly too many trackers when eg userId changes meanwhile etc
@@ -109,7 +110,7 @@
                     lastIdSite = matomoConfig.idSite;
                     // but even two or more different configs for the same Matomo URL & idSite
                     lastMatomoUrl = getMatomoUrlFromConfig(matomoConfig);
-                    var trackerUrl = lastMatomoUrl + matomoConfig.trackingEndpoint;
+                    var trackerUrl = lastMatomoUrl + trackingEndpoint;
                     if (matomoConfig.registerAsDefaultTracker) {
                         tracker = Piwik.addTracker(trackerUrl, matomoConfig.idSite);
                     } else {
@@ -117,36 +118,51 @@
                     }
                     configuredTrackers[variableName] = tracker;
 
+                    if (matomoConfig.requireCookieConsent) {
+                      	tracker.requireCookieConsent();
+                    }
+
+                    if (matomoConfig.disableBrowserFeatureDetection && typeof tracker.disableBrowserFeatureDetection === 'function') {
+                        tracker.disableBrowserFeatureDetection();
+                    }
+
+                    if (matomoConfig.disableCampaignParameters) {
+                        tracker.disableCampaignParameters();
+                    }
+
                     if (matomoConfig.disableCookies) {
                         tracker.disableCookies();
                     }
 
-                    if (matomoConfig.requireCookieConsent) {
-                        tracker.requireCookieConsent();
-                    }
-
-                    if (matomoConfig.requireConsent) {
-                        tracker.requireConsent();
-                    }
-
                     if (matomoConfig.enableCrossDomainLinking) {
                         tracker.enableCrossDomainLinking();
-                    }
-
-                    if (matomoConfig.setSecureCookie) {
-                        tracker.setSecureCookie(true);
+                        tracker.setCrossDomainLinkingTimeout(matomoConfig.crossDomainLinkingTimeout);
                     }
 
                     if (matomoConfig.cookieSameSite) {
                         tracker.setCookieSameSite(matomoConfig.cookieSameSite);
                     }
 
-                    if (matomoConfig.cookieDomain) {
-                        tracker.setCookieDomain(matomoConfig.cookieDomain);
+                    if (matomoConfig.customCookieTimeOutEnable) {
+                        tracker.setVisitorCookieTimeout(matomoConfig.customCookieTimeOut * 86400);
+                        tracker.setReferralCookieTimeout(matomoConfig.referralCookieTimeOut * 86400);
+                        tracker.setSessionCookieTimeout(matomoConfig.sessionCookieTimeOut * 60);
+                    }
+
+                    if (matomoConfig.setSecureCookie) {
+                        tracker.setSecureCookie(true);
                     }
 
                     if (matomoConfig.cookiePath) {
                         tracker.setCookiePath(matomoConfig.cookiePath);
+                    }
+
+                    if (matomoConfig.cookieNamePrefix) {
+                        tracker.setCookieNamePrefix(matomoConfig.cookieNamePrefix);
+                    }
+
+                    if (matomoConfig.cookieDomain) {
+                        tracker.setCookieDomain(matomoConfig.cookieDomain);
                     }
 
                     if (matomoConfig.domains
@@ -171,23 +187,63 @@
                         tracker.alwaysUseSendBeacon();
                     }
 
+                    if (matomoConfig.disableAlwaysUseSendBeacon) {
+                        tracker.disableAlwaysUseSendBeacon();
+                    }
+
+                    if (matomoConfig.forceRequestMethod) {
+                        tracker.setRequestMethod(matomoConfig.requestMethod);
+                        if(matomoConfig.requestMethod.toUpperCase() === 'POST'){
+                            tracker.setRequestContentType(matomoConfig.requestContentType);
+                        }
+                    }
+
                     if (matomoConfig.enableLinkTracking) {
                         tracker.enableLinkTracking();
                     }
+
+                    if (matomoConfig.enableFileTracking) {
+                        tracker.enableFileTracking();
+                    }
+
+                    if (matomoConfig.requireConsent) {
+                        tracker.requireConsent();
+                    }
+
                     if (matomoConfig.enableDoNotTrack) {
                         tracker.setDoNotTrack(1);
                     }
+
+                    if (matomoConfig.disablePerformanceTracking) {
+                        tracker.disablePerformanceTracking();
+                    }
+
+                    if (typeof matomoConfig.appendToTrackingUrl === 'string' && matomoConfig.appendToTrackingUrl.length > 0) {
+                        tracker.appendToTrackingUrl(matomoConfig.appendToTrackingUrl);
+                    }
+
+                    if(typeof matomoConfig.customRequestProcessing === 'function'
+                        && matomoConfig.customRequestProcessing.length >= 1 ) {
+                        tracker.setCustomRequestProcessing(matomoConfig.customRequestProcessing);
+                    }
+
                     if (matomoConfig.enableJSErrorTracking) {
                         tracker.enableJSErrorTracking();
                     }
                     if (matomoConfig.enableHeartBeatTimer) {
-                        tracker.enableHeartBeatTimer();
+                        tracker.enableHeartBeatTimer(matomoConfig.heartBeatTime);
                     }
                     if (matomoConfig.trackAllContentImpressions) {
                         tracker.trackAllContentImpressions();
                     }
                     if (matomoConfig.trackVisibleContentImpressions) {
                         tracker.trackVisibleContentImpressions();
+                    }
+                    if (matomoConfig.hasOwnProperty('enableFormAnalytics') && !matomoConfig.enableFormAnalytics && window.Matomo && window.Matomo.FormAnalytics && typeof window.Matomo.FormAnalytics.disableFormAnalytics === 'function') {
+                        window.Matomo.FormAnalytics.disableFormAnalytics();
+                    }
+                    if (matomoConfig.hasOwnProperty('enableMediaAnalytics') && !matomoConfig.enableMediaAnalytics && window.Matomo && window.Matomo.MediaAnalytics && typeof window.Matomo.MediaAnalytics.disableMediaAnalytics === 'function') {
+                        window.Matomo.MediaAnalytics.disableMediaAnalytics();
                     }
                 }
 
@@ -207,7 +263,7 @@
                 var possiblyUpdatedMatomoUrl = getMatomoUrlFromConfig(matomoConfig);
                 if (possiblyUpdatedMatomoUrl && lastMatomoUrl !== possiblyUpdatedMatomoUrl) {
                     // might change each time this method is called
-                    tracker.setTrackerUrl(possiblyUpdatedMatomoUrl + matomoConfig.trackingEndpoint);
+                    tracker.setTrackerUrl(possiblyUpdatedMatomoUrl + trackingEndpoint);
                     lastIdSite = possiblyUpdatedMatomoUrl;
                 }
 
@@ -217,7 +273,7 @@
                     var dimIndex;
                     for (dimIndex = 0; dimIndex < matomoConfig.customDimensions.length; dimIndex++) {
                         var dimension = matomoConfig.customDimensions[dimIndex];
-                        if (dimension && TagManager.utils.isObject(dimension) && dimension.index && dimension.hasOwnProperty('value')) {
+                        if (dimension && TagManager.utils.isObject(dimension) && dimension.index && (dimension.value || dimension.value === null)) {
                             tracker.setCustomDimension(dimension.index, dimension.value);
                         }
                     }
@@ -235,11 +291,16 @@
                         if (customUrl) {
                             tracker.setCustomUrl(customUrl);
                         }
+
+                        if (parameters.get('isEcommerceView')) {
+                            tracker.setEcommerceView(parameters.get('productSKU'), parameters.get('productName'), parameters.get('categoryName'), parameters.get('price'));
+                        }
+
                         tracker.trackPageView();
                     } else if (trackingType === 'event') {
                         tracker.trackEvent(parameters.get('eventCategory'), parameters.get('eventAction'), parameters.get('eventName'), parameters.get('eventValue'));
                     } else if (trackingType === 'goal') {
-                        tracker.trackGoal(parameters.get('idGoal'));
+                        tracker.trackGoal(parameters.get('idGoal'), parameters.get('goalCustomRevenue'));
                     }
                 }
             });
@@ -259,7 +320,8 @@
             }
 
             var matomoUrl = getMatomoUrlFromConfig(matomoConfig);
-            loadTracker(matomoUrl, matomoConfig.jsEndpoint);
+            var jsEndpoint = matomoConfig.jsEndpoint == 'custom' ? matomoConfig.jsEndpointCustom : matomoConfig.jsEndpoint;
+            loadTracker(matomoUrl, jsEndpoint);
         };
     };
 })();

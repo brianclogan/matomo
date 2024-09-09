@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\CoreHome\Columns;
 
 use Piwik\Columns\DimensionMetricFactory;
@@ -18,7 +19,7 @@ class VisitLastActionQuarter extends VisitDimension
     protected $columnName = 'visit_last_action_time';
     protected $type = self::TYPE_DATETIME;
     protected $segmentName = 'visitEndServerQuarter';
-    protected $nameSingular = 'VisitTime_ColumnVisitEndServerQuarter';
+    protected $nameSingular = 'VisitTime_ColumnVisitEndUTCQuarter';
     protected $sqlSegment = 'QUARTER(log_visit.visit_last_action_time)';
     protected $acceptValues = '1, 2, 3, 4';
 

@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\API;
 
 use Exception;
@@ -15,6 +16,7 @@ use Piwik\DataTable\Row;
 use Piwik\DataTable;
 use Piwik\Period\Range;
 use Piwik\Plugins\API\API;
+use Piwik\Url;
 
 /**
  * Base class for manipulating data tables.
@@ -169,8 +171,10 @@ abstract class DataTableManipulator
 
             if (empty($meta)) {
                 throw new Exception(sprintf(
-                    "The DataTable cannot be manipulated: Metadata for report %s.%s could not be found. You can define the metadata in a hook, see example at: https://developer.matomo.org/api-reference/events#apigetreportmetadata",
-                    $this->apiModule, $this->apiMethod
+                    "The DataTable cannot be manipulated: Metadata for report %s.%s could not be found. You can define the metadata in a hook, see example at: %s",
+                    $this->apiModule,
+                    $this->apiMethod,
+                    Url::addCampaignParametersToMatomoLink('https://developer.matomo.org/api-reference/events#apigetreportmetadata')
                 ));
             }
 
@@ -203,6 +207,15 @@ abstract class DataTableManipulator
         $response = new ResponseBuilder($format = 'original', $request);
         $response->disableSendHeader();
         $dataTable = $response->getResponse($dataTable, $apiModule, $method);
+
+        // save API method name so it can be used by filters
+        if ($dataTable instanceof DataTable\DataTableInterface) {
+            $dataTable->filter(function (DataTable $table) use ($apiModule, $method) {
+                $table->setMetadata('apiModule', $apiModule);
+                $table->setMetadata('apiMethod', $method);
+            });
+        }
+
         return $dataTable;
     }
 }

@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\DBStats;
 
 use Piwik\Common;
@@ -33,7 +34,7 @@ class API extends \Piwik\Plugin\API
      * Gets some general information about this Matomo installation, including the count of
      * websites tracked, the count of users and the total space used by the database.
      *
-     * 
+     *
      * @return array Contains the website count, user count and total space used by the database.
      */
     public function getGeneralInformation()
@@ -88,9 +89,9 @@ class API extends \Piwik\Plugin\API
         foreach ($this->metadataProvider->getAllTablesStatus() as $status) {
             if ($this->isNumericArchiveTable($status['Name'])) {
                 $rowToAddTo = & $rows['metric_data'];
-            } else if ($this->isBlobArchiveTable($status['Name'])) {
+            } elseif ($this->isBlobArchiveTable($status['Name'])) {
                 $rowToAddTo = & $rows['report_data'];
-            } else if ($this->isTrackerTable($status['Name'])) {
+            } elseif ($this->isTrackerTable($status['Name'])) {
                 $rowToAddTo = & $rows['tracker_data'];
             } else {
                 $rowToAddTo = & $rows['other_data'];
@@ -139,7 +140,12 @@ class API extends \Piwik\Plugin\API
 
         $dataTable = $this->getMetricDataSummary();
 
-        $dataTable->filter('GroupBy', array('label', function($tableName) { return $this->getArchiveTableYear($tableName); }));
+        $dataTable->filter('GroupBy', array(
+            'label',
+            function ($tableName) {
+                return $this->getArchiveTableYear($tableName);
+            }
+        ));
 
         return $dataTable;
     }
@@ -168,7 +174,12 @@ class API extends \Piwik\Plugin\API
 
         $dataTable = $this->getReportDataSummary();
 
-        $dataTable->filter('GroupBy', array('label', function($tableName) { return $this->getArchiveTableYear($tableName); }));
+        $dataTable->filter('GroupBy', array(
+            'label',
+            function ($tableName) {
+                return $this->getArchiveTableYear($tableName);
+            }
+        ));
 
         return $dataTable;
     }

@@ -1,10 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Updater\Migration\Db;
 
 /**
@@ -24,5 +26,4 @@ class AddPrimaryKey extends Sql
 
         parent::__construct($sql, array(static::ERROR_CODE_DUPLICATE_KEY, static::ERROR_CODE_DUPLICATE_PRIMARY_KEY, static::ERROR_CODE_KEY_COLUMN_NOT_EXISTS));
     }
-
 }

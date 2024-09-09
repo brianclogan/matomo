@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\Live;
@@ -28,6 +28,11 @@ use Piwik\Updater\Migration\Db as DbMigration;
 class Model
 {
     /**
+     * @internal for tests only
+     */
+    public $queryAndWhereSleepTestsOnly = false;
+
+    /**
      * @param $idSite
      * @param $period
      * @param $date
@@ -48,7 +53,8 @@ class Model
         }
 
         // If no other filter, only look at the last 24 hours of stats
-        if (empty($visitorId)
+        if (
+            empty($visitorId)
             && empty($limit)
             && empty($offset)
             && empty($period)
@@ -116,6 +122,43 @@ class Model
         return $foundVisits;
     }
 
+    /**
+     * Return the most recent date time of any visit for the given idSite
+     * If period / date are provided the method return the most recent date time within that period
+     *
+     * @param $idSite
+     * @param $period
+     * @param $date
+     * @return string
+     * @throws Exception
+     */
+    public function getMostRecentVisitsDateTime($idSite, $period = null, $date = null): string
+    {
+        $readerDb = Db::getReader();
+
+        [$where, $bind] = $this->getIdSitesWhereClause($idSite, Common::prefixTable('log_visit'));
+
+        [$dateStart, $dateEnd] = $this->getStartAndEndDate($idSite, $period, $date);
+
+        if (!empty($dateStart)) {
+            $where .= ' AND visit_last_action_time >= ?';
+            $bind[] = $dateStart;
+        }
+
+        if (!empty($dateEnd)) {
+            $where .= ' AND visit_last_action_time <= ?';
+            $bind[] = $dateEnd;
+        }
+
+        $dateTime = $readerDb->fetchOne(sprintf(
+            'SELECT visit_last_action_time from %s WHERE %s ORDER BY visit_last_action_time DESC LIMIT 1',
+            Common::prefixTable('log_visit'),
+            $where
+        ), $bind);
+
+        return $dateTime ?: '';
+    }
+
     private function executeLogVisitsQuery($sql, $bind, $segment, $dateStart, $dateEnd, $minTimestamp, $limit)
     {
         $readerDb = Db::getReader();
@@ -123,32 +166,34 @@ class Model
             $visits = $readerDb->fetchAll($sql, $bind);
         } catch (Exception $e) {
             $this->handleMaxExecutionTimeError($readerDb, $e, $segment, $dateStart, $dateEnd, $minTimestamp, $limit, ['sql' => $sql, 'bind' => $bind,]);
-	        throw $e;
+            throw $e;
         }
         return $visits;
     }
 
-	/**
-	 * @param \Piwik\Tracker\Db|\Piwik\Db\AdapterInterface|\Piwik\Db $readerDb
-	 * @param Exception $e
-	 * @param $segment
-	 * @param $dateStart
-	 * @param $dateEnd
-	 * @param $minTimestamp
-	 * @param $limit
-	 * @param $parameters
-	 *
-	 * @throws MaxExecutionTimeExceededException
-	 */
+    /**
+     * @param \Piwik\Tracker\Db|\Piwik\Db\AdapterInterface|\Piwik\Db $readerDb
+     * @param Exception $e
+     * @param $segment
+     * @param $dateStart
+     * @param $dateEnd
+     * @param $minTimestamp
+     * @param $limit
+     * @param $parameters
+     *
+     * @throws MaxExecutionTimeExceededException
+     */
     public static function handleMaxExecutionTimeError($readerDb, $e, $segment, $dateStart, $dateEnd, $minTimestamp, $limit, $parameters)
     {
-	    // we also need to check for the 'maximum statement execution time exceeded' text as the query might be
-	    // aborted at different stages and we can't really know all the possible codes at which it may be aborted etc
-	    $isMaxExecutionTimeError = $readerDb->isErrNo($e, DbMigration::ERROR_CODE_MAX_EXECUTION_TIME_EXCEEDED_QUERY_INTERRUPTED)
-	                               || $readerDb->isErrNo($e, DbMigration::ERROR_CODE_MAX_EXECUTION_TIME_EXCEEDED_SORT_ABORTED)
-	                               || strpos($e->getMessage(), 'maximum statement execution time exceeded') !== false;
+        // we also need to check for the 'maximum statement execution time exceeded' text as the query might be
+        // aborted at different stages and we can't really know all the possible codes at which it may be aborted etc
+        $isMaxExecutionTimeError = $readerDb->isErrNo($e, DbMigration::ERROR_CODE_MAX_EXECUTION_TIME_EXCEEDED_QUERY_INTERRUPTED)
+                                   || $readerDb->isErrNo($e, DbMigration::ERROR_CODE_MAX_EXECUTION_TIME_EXCEEDED_SORT_ABORTED)
+                                   || $readerDb->isErrNo($e, DbMigration::ERROR_CODE_MAX_STATEMENT_TIME_EXCEEDED_QUERY_INTERRUPTED)
+                                   || strpos($e->getMessage(), 'maximum statement execution time exceeded') !== false
+                                   || strpos($e->getMessage(), 'max_statement_time exceeded') !== false;
 
-	    if (false === $isMaxExecutionTimeError) {
+        if (false === $isMaxExecutionTimeError) {
             return;
         }
 
@@ -227,7 +272,8 @@ class Model
 
         $queries = [];
         $hasStartEndDateMoreThanOneDayInBetween = $virtualDateStart && $virtualDateStart->addDay(1)->isEarlier($virtualDateEnd);
-        if ($limit
+        if (
+            $limit
             && $hasStartEndDateMoreThanOneDayInBetween
         ) {
             if (strtolower($filterSortOrder) !== 'asc') {
@@ -371,6 +417,11 @@ class Model
         );
     }
 
+    private function shouldQuerySleepInTests()
+    {
+        return $this->queryAndWhereSleepTestsOnly && defined('PIWIK_TEST_MODE') && PIWIK_TEST_MODE;
+    }
+
     private function getLastMinutesCounterForQuery($idSite, $lastMinutes, $segment, $select, $from, $where)
     {
         $lastMinutes = (int)$lastMinutes;
@@ -394,11 +445,31 @@ class Model
         $bind[] = $startDate->toString('Y-m-d H:i:s');
 
         $where = $whereIdSites . "AND " . $where;
+        if ($this->shouldQuerySleepInTests()) {
+            $where = ' SLEEP(1)';
+        }
 
         $segment = new Segment($segment, $idSite, $startDate, $endDate = null);
         $query   = $segment->getSelectQuery($select, $from, $where, $bind);
 
-        $numVisitors = Db::getReader()->fetchOne($query['sql'], $query['bind']);
+        if ($this->shouldQuerySleepInTests()) {
+            $query['bind'] = [];
+        }
+
+        $query['sql'] = trim($query['sql']);
+        if (0 === stripos($query['sql'], 'SELECT')) {
+            $query['sql'] = 'SELECT /* Live.getCounters */' . mb_substr($query['sql'], strlen('SELECT'));
+        }
+
+        $query['sql'] = DbHelper::addMaxExecutionTimeHintToQuery($query['sql'], $this->getLiveQueryMaxExecutionTime());
+
+        $readerDb = Db::getReader();
+        try {
+            $numVisitors = $readerDb->fetchOne($query['sql'], $query['bind']);
+        } catch (Exception $e) {
+            $this->handleMaxExecutionTimeError($readerDb, $e, $segment->getOriginalString(), $startDate, Date::now(), null, 0, $query);
+            throw $e;
+        }
 
         return $numVisitors;
     }
@@ -460,15 +531,35 @@ class Model
         $orderBy = "MAX(log_visit.visit_last_action_time) $orderByDir";
         $groupBy = "log_visit.idvisitor";
 
+        if ($this->shouldQuerySleepInTests()) {
+            $where = ' SLEEP(1)';
+            $visitLastActionTimeCondition = 'SLEEP(1)';
+        }
+
         $segment = new Segment($segment, $idSite, $dateOneDayAgo, $dateOneDayInFuture);
         $queryInfo = $segment->getSelectQuery($select, $from, $where, $whereBind, $orderBy, $groupBy);
 
-        $sql = "SELECT sub.idvisitor, sub.visit_last_action_time FROM ({$queryInfo['sql']}) as sub
+        $sql = "SELECT /* Live.queryAdjacentVisitorId */ sub.idvisitor, sub.visit_last_action_time FROM ({$queryInfo['sql']}) as sub
                  WHERE $visitLastActionTimeCondition
                  LIMIT 1";
         $bind = array_merge($queryInfo['bind'], array($visitLastActionTime));
 
-        $visitorId = Db::getReader()->fetchOne($sql, $bind);
+        if ($this->shouldQuerySleepInTests()) {
+            $bind = [];
+        }
+
+        $sql = DbHelper::addMaxExecutionTimeHintToQuery($sql, $this->getLiveQueryMaxExecutionTime());
+
+        $readerDb = Db::getReader();
+        try {
+            $visitorId = $readerDb->fetchOne($sql, $bind);
+        } catch (Exception $e) {
+            $this->handleMaxExecutionTimeError($readerDb, $e, $segment->getOriginalString(), Date::now(), Date::now(), null, 1, [
+                'sql' => $sql, 'bind' => $bind
+            ]);
+            throw $e;
+        }
+
         if (!empty($visitorId)) {
             $visitorId = bin2hex($visitorId);
         }
@@ -529,7 +620,10 @@ class Model
 
         if (!$visitorId) {
             // for now let's not apply when looking for a specific visitor
-            $innerQuery['sql'] = DbHelper::addMaxExecutionTimeHintToQuery($innerQuery['sql'], Config::getInstance()->General['live_query_max_execution_time']);
+            $innerQuery['sql'] = DbHelper::addMaxExecutionTimeHintToQuery(
+                $innerQuery['sql'],
+                $this->getLiveQueryMaxExecutionTime()
+            );
         }
 
         return array($innerQuery['sql'], $bind);
@@ -574,7 +668,8 @@ class Model
                 }
             } else {
                 $processedDate = Date::factory($date);
-                if ($date == 'today'
+                if (
+                    $date == 'today'
                     || $date == 'now'
                     || $processedDate->toString() == Date::factory('now', $currentTimezone)->toString()
                 ) {
@@ -590,7 +685,8 @@ class Model
                 $dateStart = $now;
             }
 
-            if (!in_array($date, array('now', 'today', 'yesterdaySameTime'))
+            if (
+                !in_array($date, array('now', 'today', 'yesterdaySameTime'))
                 && strpos($date, 'last') === false
                 && strpos($date, 'previous') === false
                 && Date::factory($dateString)->toString('Y-m-d') != Date::factory('now', $currentTimezone)->toString()
@@ -640,7 +736,6 @@ class Model
         if (!empty($startDate)) {
             $where[] = "log_visit.visit_last_action_time >= ?";
             $whereBind[] = $startDate->toString('Y-m-d H:i:s');
-
         }
 
         if (!empty($endDate)) {
@@ -655,5 +750,10 @@ class Model
             $where = false;
         }
         return array($whereBind, $where);
+    }
+
+    private function getLiveQueryMaxExecutionTime()
+    {
+        return Config::getInstance()->General['live_query_max_execution_time'];
     }
 }

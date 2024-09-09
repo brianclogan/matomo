@@ -1,16 +1,17 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
-  <div class="card" ref="root">
+  <div :class="{ card: true, 'card-with-image': !!this.imageUrl }" ref="root">
     <div class="card-content">
       <h2
         v-if="contentTitle && !actualFeature && !helpUrl && !actualHelpText"
         class="card-title"
-      >{{ contentTitle }}</h2>
+      >{{ decode(contentTitle) }}</h2>
       <h2
         v-if="contentTitle && (actualFeature || helpUrl || actualHelpText)"
         class="card-title"
@@ -20,12 +21,15 @@
           :help-url="helpUrl"
           :inline-help="actualHelpText"
         >
-          {{ contentTitle }}
+          {{ decode(contentTitle) }}
         </EnrichedHeadline>
       </h2>
       <div ref="content">
         <slot />
       </div>
+    </div>
+    <div class="card-image hide-on-med-and-down" v-if="imageUrl">
+      <img :src="imageUrl" :alt="actualImageAltText" />
     </div>
   </div>
 </template>
@@ -33,6 +37,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import EnrichedHeadline from '../EnrichedHeadline/EnrichedHeadline.vue';
+import Matomo from '../Matomo/Matomo';
 
 let adminContent: HTMLElement|null = null;
 
@@ -45,6 +50,8 @@ export default defineComponent({
     helpUrl: String,
     helpText: String,
     anchor: String,
+    imageUrl: String,
+    imageAltText: String,
   },
   components: {
     EnrichedHeadline,
@@ -53,6 +60,7 @@ export default defineComponent({
     return {
       actualFeature: this.feature,
       actualHelpText: this.helpText,
+      actualImageAltText: this.imageAltText ? this.imageAltText : this.contentTitle,
     };
   },
   watch: {
@@ -96,7 +104,7 @@ export default defineComponent({
     }
 
     if (contentTopPosition || contentTopPosition === 0) {
-      const parents = root.closest('[piwik-widget-loader]') as HTMLElement;
+      const parents = root.closest('.widgetLoader') as HTMLElement;
 
       // when shown within the widget loader, we need to get the offset of that element
       // as the widget loader might be still shown. Would otherwise not position correctly
@@ -109,6 +117,11 @@ export default defineComponent({
         root.style.marginTop = '0';
       }
     }
+  },
+  methods: {
+    decode(s: string) {
+      return Matomo.helper.htmlDecode(s);
+    },
   },
 });
 </script>

@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\CustomDimensions\Commands;
@@ -12,10 +12,6 @@ namespace Piwik\Plugins\CustomDimensions\Commands;
 use Piwik\Plugin\ConsoleCommand;
 use Piwik\Plugins\CustomDimensions\CustomDimensions;
 use Piwik\Plugins\CustomDimensions\Dao\LogTable;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  */
@@ -27,8 +23,10 @@ class Info extends ConsoleCommand
         $this->setDescription('Get information about currently installed Custom Dimensions');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function doExecute(): int
     {
+        $output = $this->getOutput();
+
         foreach (CustomDimensions::getScopes() as $scope) {
             $tracking = new LogTable($scope);
             $output->writeln(sprintf('%s Custom Dimensions available in scope "%s"', $tracking->getNumInstalledIndexes(), $scope));
@@ -56,6 +54,7 @@ class Info extends ConsoleCommand
             $output->writeln('<error>We found an error, Custom Dimensions in scope "conversion" are not correctly installed. Execute the following command to repair it:</error>');
             $output->writeln(sprintf('<comment>./console customdimensions:add-custom-dimension --scope=%s --count=%d</comment>', CustomDimensions::SCOPE_CONVERSION, $numVisit - $numConversions));
         }
-    }
 
+        return self::SUCCESS;
+    }
 }

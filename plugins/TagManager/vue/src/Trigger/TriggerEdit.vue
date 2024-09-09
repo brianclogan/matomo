@@ -57,6 +57,17 @@
               :inline-help="translate('TagManager_TriggerNameHelp')"
             />
           </div>
+          <div>
+            <Field
+              uicontrol="textarea"
+              name="description"
+              :model-value="trigger.description"
+              @update:model-value="trigger.description = $event; setValueHasChanged()"
+              :maxlength="1000"
+              :title="translate('General_Description')"
+              :inline-help="translate('TagManager_TriggerDescriptionHelp')"
+            />
+          </div>
           <div
             class="form-group row"
             v-show="trigger.typeMetadata?.parameters?.length"
@@ -84,11 +95,19 @@
           </div>
           <div v-show="trigger.typeMetadata?.hasAdvancedSettings">
             <div class="form-group row multiple">
+              <div class="col s12 input-field m6">
+                <p>
+                  {{ translate('TagManager_TriggerConditionsHelp') }}
+                </p>
+              </div>
+              <div class="col s12 input-field m6">
+                <div class="form-help">
+                  <span class="inline-help" v-html="$sanitize(triggerInlineHelpText)">
+                  </span>
+                </div>
+              </div>
               <div class="col s12 m12">
                 <div>
-                  <p>
-                    {{ translate('TagManager_TriggerConditionsHelp') }}
-                  </p>
                   <div
                     v-for="(condition, index) in trigger.conditions"
                     :key="index"
@@ -228,7 +247,7 @@ import {
   NotificationType,
   NotificationsStore,
   clone,
-  MatomoUrl,
+  MatomoUrl, externalLink,
 } from 'CoreHome';
 import { Field, GroupedSettings, SaveButton } from 'CorePluginsAdmin';
 import TriggersStore from './Triggers.store';
@@ -245,6 +264,7 @@ interface Option {
   key: string;
   value: string;
   group: string;
+  tooltip: string;
 }
 
 interface TriggerEditState {
@@ -308,6 +328,8 @@ export default defineComponent({
   },
   emits: ['changeTrigger'],
   created() {
+    AvailableComparisonsStore.init();
+
     AjaxHelper.fetch<ContainerVariableCategory[]>({
       method: 'TagManager.getAvailableContainerVariables',
       filter_limit: '-1',
@@ -321,6 +343,7 @@ export default defineComponent({
             key: v.id,
             value: v.name,
             group: category.name,
+            tooltip: v.description,
           });
         });
       });
@@ -469,6 +492,7 @@ export default defineComponent({
       this.trigger = {
         idsite: parseInt(`${Matomo.idSite}`, 10),
         name: TriggersStore.suggestNameForType(triggerTemplate.name) || '',
+        description: '',
         type: triggerTemplate.id,
         idcontainerversion: this.idContainerVersion,
         conditions: [],
@@ -539,11 +563,14 @@ export default defineComponent({
 
           setTimeout(() => {
             const createdX = translate('TagManager_CreatedX', translate('TagManager_Trigger'));
-            const wantToRedeploy = translate(
-              'TagManager_WantToDeployThisChangeCreateVersion',
-              '<a href="" class="createNewVersionLink">',
-              '</a>',
-            );
+            let wantToRedeploy = '';
+            if (this.hasPublishCapability()) {
+              wantToRedeploy = translate(
+                'TagManager_WantToDeployThisChangeCreateVersion',
+                '<a class="createNewVersionLink">',
+                '</a>',
+              );
+            }
 
             this.showNotification(`${createdX} ${wantToRedeploy}`, 'success');
           }, 200);
@@ -587,11 +614,14 @@ export default defineComponent({
         });
 
         const updatedAt = translate('TagManager_UpdatedX', translate('TagManager_Trigger'));
-        const wantToDeploy = translate(
-          'TagManager_WantToDeployThisChangeCreateVersion',
-          '<a href="" class="createNewVersionLink">',
-          '</a>',
-        );
+        let wantToDeploy = '';
+        if (this.hasPublishCapability()) {
+          wantToDeploy = translate(
+            'TagManager_WantToDeployThisChangeCreateVersion',
+            '<a class="createNewVersionLink">',
+            '</a>',
+          );
+        }
 
         this.showNotification(`${updatedAt} ${wantToDeploy}`, 'success');
       }).finally(() => {
@@ -607,6 +637,9 @@ export default defineComponent({
         }
       }
       return { comparison: 'equals', actual, expected: '' };
+    },
+    hasPublishCapability() {
+      return Matomo.hasUserCapability('tagmanager_write') && Matomo.hasUserCapability('tagmanager_use_custom_templates');
     },
   },
   computed: {
@@ -637,6 +670,13 @@ export default defineComponent({
       return translate(
         'TagManager_UseCustomTemplateCapabilityRequired',
         translate('TagManager_CapabilityUseCustomTemplates'),
+      );
+    },
+    triggerInlineHelpText() {
+      return translate(
+        'TagManager_TriggerConditionsHelpText',
+        externalLink('https://matomo.org/faq/tag-manager/create-a-trigger-to-track-interactions-on-all-nested-elements/'),
+        '</a>',
       );
     },
     availableComparisons() {

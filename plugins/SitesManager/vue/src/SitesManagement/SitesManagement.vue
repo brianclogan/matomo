@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -12,7 +13,7 @@
           v-show="availableTypes.length"
         >
           <EnrichedHeadline
-            :help-url="'https://matomo.org/docs/manage-websites/'"
+            :help-url="externalRawLink('https://matomo.org/docs/manage-websites/')"
             :feature-name="translate('SitesManager_WebsitesManagement')"
           >
             {{ headlineText }}
@@ -26,7 +27,7 @@
 
           <span v-show="hasSuperUserAccess">
             <br/>
-            <span v-html="superUserAccessMessage"></span>
+            <span v-html="$sanitize(superUserAccessMessage)"></span>
         </span>
         </p>
       </div>
@@ -63,7 +64,7 @@
     </div>
 
     <MatomoDialog v-model="showAddSiteDialog">
-      <div class="ui-confirm">
+      <div class="ui-confirm add-site-dialog">
         <div>
           <h2>{{ translate('SitesManager_ChooseMeasurableTypeHeadline') }}</h2>
 
@@ -75,7 +76,6 @@
                 :key="type.id"
                 :title="type.description"
                 class="modal-close btn"
-                style="margin-left: 20px;"
                 @click="addSite(type.id);"
                 aria-disabled="false"
               >
@@ -205,6 +205,10 @@ export default defineComponent({
     };
   },
   created() {
+    TimezoneStore.init();
+    SiteTypesStore.init();
+    GlobalSettingsStore.init();
+
     this.isLoadingInitialEntities = true;
     Promise.all([
       SiteTypesStore.fetchAvailableTypes(),
@@ -443,8 +447,6 @@ export default defineComponent({
       if (isNew && this.totalNumberOfSites !== null) {
         this.totalNumberOfSites += 1;
       }
-
-      console.log('here?');
 
       this.isSiteBeingEdited = false;
     },

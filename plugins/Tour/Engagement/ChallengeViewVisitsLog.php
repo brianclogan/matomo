@@ -1,14 +1,16 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Tour\Engagement;
 
 use Piwik\Piwik;
+use Piwik\Url;
 
 class ChallengeViewVisitsLog extends Challenge
 {
@@ -29,8 +31,6 @@ class ChallengeViewVisitsLog extends Challenge
 
     public function getUrl()
     {
-        return 'https://matomo.org/docs/real-time/#visits-log';
+        return Url::addCampaignParametersToMatomoLink('https://matomo.org/faq/reports/the-visits-log-report/');
     }
-
-
 }

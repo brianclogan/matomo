@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Settings\Storage\Backend;
 
 /**
@@ -13,7 +14,6 @@ namespace Piwik\Settings\Storage\Backend;
  */
 interface BackendInterface
 {
-
     /**
      * Get an id that identifies the current storage. Eg `Plugin_$pluginName_Settings` could be a storage id
      * for plugin settings. It's kind of like a cache key and the value will be actually used for this by a cache

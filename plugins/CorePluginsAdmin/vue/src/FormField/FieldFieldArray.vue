@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -12,7 +13,9 @@
       :name="name"
       :model-value="modelValue"
       @update:modelValue="onValueUpdate($event)"
+      :model-modifiers="modelModifiers"
       :field="uiControlAttributes.field"
+      :rows="uiControlAttributes.rows"
     />
   </div>
 </template>
@@ -29,6 +32,7 @@ export default defineComponent({
     name: String,
     title: String,
     modelValue: null,
+    modelModifiers: Object,
     uiControlAttributes: Object,
   },
   inheritAttrs: false,

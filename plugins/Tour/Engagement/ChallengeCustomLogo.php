@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Tour\Engagement;
 
 use Piwik\Piwik;
@@ -45,7 +46,7 @@ class ChallengeCustomLogo extends Challenge
         return 'custom_logo';
     }
 
-    public function isCompleted()
+    public function isCompleted(string $login)
     {
         if (!isset($this->completed)) {
             $logo = new CustomLogo();
@@ -58,5 +59,4 @@ class ChallengeCustomLogo extends Challenge
     {
         return 'index.php' . Url::getCurrentQueryStringWithParametersModified(array('module' => 'CoreAdminHome', 'action' => 'generalSettings', 'widget' => false)) . '#/#useCustomLogo';
     }
-
 }

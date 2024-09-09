@@ -1,14 +1,14 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Container;
 
-use DI\Container;
 use DI\ContainerBuilder;
 use Piwik\Application\Kernel\GlobalSettingsProvider;
 use Piwik\Application\Kernel\PluginList;
@@ -44,7 +44,7 @@ class ContainerFactory
     /**
      * @param PluginList $pluginList
      * @param GlobalSettingsProvider $settings
-     * @param string[] $environment Optional environment configs to load.
+     * @param string[] $environments Optional environment configs to load.
      * @param array[] $definitions
      */
     public function __construct(PluginList $pluginList, GlobalSettingsProvider $settings, array $environments = array(), array $definitions = array())
@@ -60,9 +60,9 @@ class ContainerFactory
      * @throws \Exception
      * @return Container
      */
-    public function create()
+    public function create(): Container
     {
-        $builder = new ContainerBuilder();
+        $builder = new ContainerBuilder(Container::class);
 
         $builder->useAnnotations(false);
 
@@ -86,8 +86,10 @@ class ContainerFactory
         }
 
         // User config
-        if (file_exists(PIWIK_USER_PATH . '/config/config.php')
-            && !in_array('test', $this->environments, true)) {
+        if (
+            file_exists(PIWIK_USER_PATH . '/config/config.php')
+            && !in_array('test', $this->environments, true)
+        ) {
             $builder->addDefinitions(PIWIK_USER_PATH . '/config/config.php');
         }
 
@@ -97,6 +99,7 @@ class ContainerFactory
             }
         }
 
+        /** @var Container $container */
         $container = $builder->build();
         $container->set('Piwik\Application\Kernel\PluginList', $this->pluginList);
         $container->set('Piwik\Application\Kernel\GlobalSettingsProvider', $this->settings);
@@ -156,7 +159,7 @@ class ContainerFactory
      *
      * @return bool
      */
-    private function shouldSortPlugins()
+    private function shouldSortPlugins(): bool
     {
         return isset($GLOBALS['MATOMO_SORT_PLUGINS']) && is_callable($GLOBALS['MATOMO_SORT_PLUGINS']);
     }
@@ -170,7 +173,7 @@ class ContainerFactory
         return call_user_func($GLOBALS['MATOMO_SORT_PLUGINS'], $plugins);
     }
 
-    private function isDevelopmentModeEnabled()
+    private function isDevelopmentModeEnabled(): bool
     {
         $section = $this->settings->getSection('Development');
         return (bool) @$section['enabled']; // TODO: code redundancy w/ Development. hopefully ok for now.

@@ -1,19 +1,19 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\DevicesDetection;
 
+use DeviceDetector\ClientHints;
 use DeviceDetector\DeviceDetector;
 use Piwik\Common;
-use Piwik\Db;
 use Piwik\Piwik;
 use Piwik\Plugin\ControllerAdmin;
-use Piwik\Plugin\Report;
 use Piwik\View;
 
 class Controller extends \Piwik\Plugin\Controller
@@ -27,11 +27,13 @@ class Controller extends \Piwik\Plugin\Controller
         ControllerAdmin::setBasicVariablesAdminView($view);
 
         $userAgent = Common::getRequestVar('ua', $_SERVER['HTTP_USER_AGENT'], 'string');
+        $clientHints = Common::getRequestVar('clienthints', '', 'json');
 
-        $uaParser = new DeviceDetector($userAgent);
+        $uaParser = new DeviceDetector($userAgent, is_array($clientHints) ? ClientHints::factory($clientHints) : null);
         $uaParser->parse();
 
         $view->userAgent           = $userAgent;
+        $view->clientHints         = $clientHints;
         $view->bot_info            = $uaParser->getBot();
         $view->browser_name        = $uaParser->getClient('name');
         $view->browser_short_name  = $uaParser->getClient('short_name');
@@ -46,7 +48,7 @@ class Controller extends \Piwik\Plugin\Controller
         $view->os_family_logo      = getOsFamilyLogo($view->os_family);
         $view->os_version          = $uaParser->getOs('version');
         $view->device_type         = getDeviceTypeLabel($uaParser->getDeviceName());
-        $view->device_type_logo    = getDeviceTypeLogo($uaParser->getDeviceName());
+        $view->device_type_logo    = getDeviceTypeLogo($uaParser->getDevice());
         $view->device_model        = $uaParser->getModel();
         $view->device_brand        = getDeviceBrandLabel($uaParser->getBrand());
         $view->device_brand_logo   = getBrandLogo($view->device_brand);
@@ -111,7 +113,7 @@ class Controller extends \Piwik\Plugin\Controller
                 $deviceTypes = \DeviceDetector\Parser\Device\AbstractDeviceParser::getAvailableDeviceTypes();
 
                 foreach ($deviceTypes as $name => $id) {
-                    $list[$name] = getDeviceTypeLogo($name);
+                    $list[$name] = getDeviceTypeLogo($id);
                 }
                 break;
         }

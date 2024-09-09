@@ -1,25 +1,23 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\UserCountry;
 
 use Matomo\Cache\Cache;
 use Matomo\Cache\Transient;
 use Piwik\Common;
-use Piwik\Config\GeneralConfig;
 use Piwik\Container\StaticContainer;
 use Piwik\DataAccess\RawLogDao;
 use Matomo\Network\IPUtils;
-use Piwik\Plugins\UserCountry\LocationProvider\DefaultProvider;
 use Piwik\Plugins\UserCountry\LocationProvider\DisabledProvider;
-use Piwik\Tracker\TrackerConfig;
 use Piwik\Tracker\Visit;
-use Psr\Log\LoggerInterface;
+use Piwik\Log\LoggerInterface;
 
 require_once PIWIK_INCLUDE_PATH . "/plugins/UserCountry/LocationProvider.php";
 
@@ -41,7 +39,7 @@ require_once PIWIK_INCLUDE_PATH . "/plugins/UserCountry/LocationProvider.php";
  */
 class VisitorGeolocator
 {
-    const LAT_LONG_COMPARE_EPSILON = 0.0001;
+    public const LAT_LONG_COMPARE_EPSILON = 0.0001;
 
     /**
      * @var string[]
@@ -84,9 +82,13 @@ class VisitorGeolocator
      */
     protected $logger;
 
-    public function __construct(LocationProvider $provider = null, LocationProvider $backupProvider = null, Cache $locationCache = null,
-                                RawLogDao $dao = null, LoggerInterface $logger = null)
-    {
+    public function __construct(
+        LocationProvider $provider = null,
+        LocationProvider $backupProvider = null,
+        Cache $locationCache = null,
+        RawLogDao $dao = null,
+        LoggerInterface $logger = null
+    ) {
         if ($provider === null) {
             // note: Common::getCurrentLocationProviderId() uses the tracker cache, which is why it's used here instead
             // of accessing the option table
@@ -103,13 +105,14 @@ class VisitorGeolocator
         $this->backupProvider = $backupProvider ?: $this->getDefaultProvider();
         $this->locationCache = $locationCache ?: self::getDefaultLocationCache();
         $this->dao = $dao ?: new RawLogDao();
-        $this->logger = $logger ?: StaticContainer::get('Psr\Log\LoggerInterface');
+        $this->logger = $logger ?: StaticContainer::get(LoggerInterface::class);
     }
 
     public function getLocation($userInfo, $useClassCache = true)
     {
         $userInfoKey = md5(implode(',', $userInfo));
-        if ($useClassCache
+        if (
+            $useClassCache
             && $this->locationCache->contains($userInfoKey)
         ) {
             return $this->locationCache->fetch($userInfoKey);
@@ -290,7 +293,8 @@ class VisitorGeolocator
 
     private function areLocationPropertiesEqual($locationKey, $locationPropertyValue, $existingPropertyValue)
     {
-        if (($locationKey == LocationProvider::LATITUDE_KEY
+        if (
+            ($locationKey == LocationProvider::LATITUDE_KEY
              || $locationKey == LocationProvider::LONGITUDE_KEY)
             && $existingPropertyValue != 0
         ) {

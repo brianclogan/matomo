@@ -1,18 +1,18 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Tracker\Db\Pdo;
 
 use Exception;
 use PDO;
 use PDOException;
 use PDOStatement;
-use Piwik\Config;
 use Piwik\Tracker\Db;
 use Piwik\Tracker\Db\DbException;
 
@@ -27,13 +27,13 @@ class Mysql extends Db
      */
     protected $connection = null;
     protected $dsn;
-    protected $username;
-    protected $password;
+    private $username;
+    private $password;
     protected $charset;
 
     protected $mysqlOptions = array();
 
-    
+
     protected $activeTransaction = false;
 
     /**
@@ -62,7 +62,6 @@ class Mysql extends Db
 
 
         if (isset($dbInfo['enable_ssl']) && $dbInfo['enable_ssl']) {
-
             if (!empty($dbInfo['ssl_key'])) {
                 $this->mysqlOptions[PDO::MYSQL_ATTR_SSL_KEY] = $dbInfo['ssl_key'];
             }
@@ -82,7 +81,6 @@ class Mysql extends Db
                 $this->mysqlOptions[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
             }
         }
-
     }
 
     public function __destruct()
@@ -108,26 +106,32 @@ class Mysql extends Db
         $this->mysqlOptions[PDO::MYSQL_ATTR_FOUND_ROWS] = true;
         $this->mysqlOptions[PDO::ATTR_ERRMODE] = PDO::ERRMODE_EXCEPTION;
 
-        $this->connection = @new PDO($this->dsn, $this->username, $this->password, $this->mysqlOptions);
-
-        // we may want to setAttribute(PDO::ATTR_TIMEOUT ) to a few seconds (default is 60) in case the DB is locked
-        // the matomo.php would stay waiting for the database... bad!
-        // we delete the password from this object "just in case" it could be printed
-        $this->password = '';
-
-        /*
-         * Lazy initialization via MYSQL_ATTR_INIT_COMMAND depends
-         * on mysqlnd support, PHP version, and OS.
-         * see ZF-7428 and http://bugs.php.net/bug.php?id=47224
-         */
-        if (!empty($this->charset)) {
-            $sql = "SET NAMES '" . $this->charset . "'";
-            $this->connection->exec($sql);
+        try {
+            $this->establishConnection();
+        } catch (Exception $e) {
+            if ($this->isMysqlServerHasGoneAwayError($e)) {
+                // mysql may return a MySQL server has gone away error when trying to establish the connection.
+                // in that case we want to retry establishing the connection once after a short sleep
+                $this->reconnect($e);
+            } else {
+                throw $e;
+            }
         }
 
         if (self::$profiling && isset($timer)) {
             $this->recordQueryProfile('connect', $timer);
         }
+    }
+
+    /**
+     * @internal  tests only
+     * @param Exception $e
+     * @return bool
+     */
+    public function isMysqlServerHasGoneAwayError(Exception $e)
+    {
+        return $this->isErrNo($e, \Piwik\Updater\Migration\Db::ERROR_CODE_MYSQL_SERVER_HAS_GONE_AWAY)
+                || stripos($e->getMessage(), 'MySQL server has gone away') !== false;
     }
 
     /**
@@ -214,6 +218,57 @@ class Mysql extends Db
      */
     public function query($query, $parameters = array())
     {
+        try {
+            return $this->executeQuery($query, $parameters);
+        } catch (Exception $e) {
+            $isSelectQuery = stripos(trim($query), 'select ') === 0;
+
+            if (
+                $isSelectQuery
+                && !$this->activeTransaction
+                && $this->isMysqlServerHasGoneAwayError($e)
+            ) {
+                // mysql may return a MySQL server has gone away error when trying to execute the query
+                // in that case we want to retry establishing the connection once after a short sleep
+                // we're only retrying SELECT queries to prevent updating or inserting records twice for some reason
+                // when transactions are used, then we just want it to fail as we'd be only writing partial data
+                $this->reconnect($e);
+                return $this->executeQuery($query, $parameters);
+            } else {
+                $message = $e->getMessage() . " In query: $query Parameters: " . var_export($parameters, true);
+                throw new DbException("Error query: " . $message, (int) $e->getCode());
+            }
+        }
+    }
+
+    /**
+     * @internal for tests only
+     * @param Exception $e
+     * @throws Exception
+     */
+    public function reconnect(Exception $e)
+    {
+        $this->disconnect();
+        usleep(100 * 1000); // wait for 100ms
+        try {
+            $this->establishConnection();
+        } catch (Exception $exceptionReconnect) {
+            // forward the original exception so we get a better stack trace of where this error happens
+            // and what happened originally
+            throw $e;
+        }
+    }
+
+    /**
+     * Executes a query, using optional bound parameters.
+     *
+     * @param string $query Query
+     * @param array|string $parameters Parameters to bind array('idsite'=> 1)
+     * @return PDOStatement|bool  PDOStatement or false if failed
+     * @throws DbException if an exception occurred
+     */
+    private function executeQuery($query, $parameters = array())
+    {
         if (is_null($this->connection)) {
             return false;
         }
@@ -283,7 +338,20 @@ class Mysql extends Db
             return;
         }
 
-        if ($this->connection->beginTransaction()) {
+        try {
+            $success = $this->connection->beginTransaction();
+        } catch (Exception $e) {
+            if ($this->isMysqlServerHasGoneAwayError($e)) {
+                // mysql may return a MySQL server has gone away error when trying begin transaction, in that case we
+                // want to retry this once
+                $this->reconnect($e);
+                $success = $this->connection->beginTransaction();
+            } else {
+                throw $e;
+            }
+        }
+
+        if ($success) {
             $this->activeTransaction = uniqid();
             return $this->activeTransaction;
         }
@@ -324,6 +392,24 @@ class Mysql extends Db
 
         if (!$this->connection->rollBack()) {
             throw new DbException("Rollback failed");
+        }
+    }
+
+    private function establishConnection(): void
+    {
+        $this->connection = @new PDO($this->dsn, $this->username, $this->password, $this->mysqlOptions);
+
+        // we may want to setAttribute(PDO::ATTR_TIMEOUT ) to a few seconds (default is 60) in case the DB is locked
+        // the matomo.php would stay waiting for the database... bad!
+
+        /*
+         * Lazy initialization via MYSQL_ATTR_INIT_COMMAND depends
+         * on mysqlnd support, PHP version, and OS.
+         * see ZF-7428 and http://bugs.php.net/bug.php?id=47224
+         */
+        if (!empty($this->charset)) {
+            $sql = "SET NAMES '" . $this->charset . "'";
+            $this->connection->exec($sql);
         }
     }
 }

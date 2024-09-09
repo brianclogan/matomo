@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -21,6 +22,7 @@
           :model-value="item"
           :options="field.availableValues"
           @update:modelValue="onEntryChange($event, index)"
+          :model-modifiers="field.modelModifiers"
           :placeholder="' '"
           :uicontrol="field.uiControl"
           :title="field.title"
@@ -52,6 +54,7 @@ export default defineComponent({
     modelValue: Array,
     name: String,
     field: Object,
+    rows: String,
   },
   components: {
     Field,
@@ -68,7 +71,8 @@ export default defineComponent({
   methods: {
     checkEmptyModelValue(newValue?: unknown[]) {
       // make sure there is always an empty new value
-      if (!newValue || !newValue.length || newValue.slice(-1)[0] !== '') {
+      if ((!newValue || !newValue.length || newValue.slice(-1)[0] !== '')
+        && (!this.rows || (this.modelValue || []).length < parseInt(this.rows, 10))) {
         this.$emit('update:modelValue', [...(newValue || []), '']);
       }
     },

@@ -1,9 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\Login;
@@ -57,7 +58,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         return $this->makeSetting('whitelisteBruteForceIps', array(), FieldConfig::TYPE_ARRAY, function (FieldConfig $field) {
             $field->title = Piwik::translate('Login_SettingBruteForceWhitelistIp');
             $field->uiControl = FieldConfig::UI_CONTROL_TEXTAREA;
-            $field->description = Piwik::translate('Login_HelpIpRange', array('1.2.3.4/24', '1.2.3.*', '1.2.*.*')) . ' '. Piwik::translate('Login_NotAllowListTakesPrecendence');
+            $field->description = Piwik::translate('Login_HelpIpRange', array('1.2.3.4/24', '1.2.3.*', '1.2.*.*')) . ' ' . Piwik::translate('Login_NotAllowListTakesPrecendence');
             $field->validators[] = new IpRanges();
             $field->transform = function ($value) {
                 if (empty($value)) {
@@ -66,6 +67,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
 
                 $ips = array_map('trim', $value);
                 $ips = array_filter($ips, 'strlen');
+                $ips = array_values($ips);
                 return $ips;
             };
         });
@@ -76,7 +78,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         return $this->makeSetting('blacklistedBruteForceIps', array(), FieldConfig::TYPE_ARRAY, function (FieldConfig $field) {
             $field->title = Piwik::translate('Login_SettingBruteForceBlacklistIp');
             $field->uiControl = FieldConfig::UI_CONTROL_TEXTAREA;
-            $field->description = Piwik::translate('Login_HelpIpRange', array('1.2.3.4/24', '1.2.3.*', '1.2.*.*')) . ' '. Piwik::translate('Login_NotAllowListTakesPrecendence');
+            $field->description = Piwik::translate('Login_HelpIpRange', array('1.2.3.4/24', '1.2.3.*', '1.2.*.*')) . ' ' . Piwik::translate('Login_NotAllowListTakesPrecendence');
             $field->validators[] = new IpRanges();
             $field->transform = function ($value) {
                 if (empty($value)) {
@@ -85,6 +87,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
 
                 $ips = array_map('trim', $value);
                 $ips = array_filter($ips, 'strlen');
+                $ips = array_values($ips);
                 return $ips;
             };
         });

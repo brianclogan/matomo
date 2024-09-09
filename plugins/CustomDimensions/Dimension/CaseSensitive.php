@@ -1,15 +1,15 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\CustomDimensions\Dimension;
 
-use \Exception;
+use Exception;
 
 class CaseSensitive
 {
@@ -27,5 +27,4 @@ class CaseSensitive
             throw new Exception("Invalid value '$caseSensitive' for 'caseSensitive' specified. Allowed values: '0' or '1'");
         }
     }
-
 }

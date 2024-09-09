@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\DevicePlugins\Reports;
 
 use Piwik\Piwik;
@@ -34,7 +35,6 @@ class GetPlugin extends Base
         $this->getBasicDevicePluginsDisplayProperties($view);
 
         $view->config->addTranslations(array(
-            'label'                => $this->dimension->getName(),
             'nb_visits_percentage' =>
             str_replace(' ', '&nbsp;', Piwik::translate('General_ColumnPercentageVisits'))
         ));
@@ -53,5 +53,4 @@ class GetPlugin extends Base
         $view->requestConfig->filter_limit       = count(DevicePlugins::getAllPluginColumns());
         $view->requestConfig->totals             = 0;
     }
-
 }

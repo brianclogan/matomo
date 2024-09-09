@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 use Exception;
@@ -23,10 +24,7 @@ use Piwik\CronArchive\QueueConsumer;
 use Piwik\CronArchive\SharedSiteIds;
 use Piwik\CronArchive\StopArchiverException;
 use Piwik\DataAccess\ArchiveSelector;
-use Piwik\DataAccess\ArchiveTableCreator;
-use Piwik\DataAccess\ArchiveWriter;
 use Piwik\DataAccess\Model;
-use Piwik\DataAccess\RawLogDao;
 use Piwik\Exception\UnexpectedWebsiteFoundException;
 use Piwik\Metrics\Formatter;
 use Piwik\Period\Factory as PeriodFactory;
@@ -37,7 +35,7 @@ use Piwik\Plugins\Monolog\Processor\ExceptionToTextProcessor;
 use Piwik\Plugins\SitesManager\API as APISitesManager;
 use Piwik\Plugins\UsersManager\API as APIUsersManager;
 use Piwik\Plugins\UsersManager\UserPreferences;
-use Psr\Log\LoggerInterface;
+use Piwik\Log\LoggerInterface;
 
 /**
  * ./console core:archive runs as a cron and is a useful tool for general maintenance,
@@ -46,35 +44,35 @@ use Psr\Log\LoggerInterface;
 class CronArchive
 {
     // the url can be set here before the init, and it will be used instead of --url=
-    const CRON_INVALIDATION_TIME_OPTION_NAME = 'CronArchive.lastInvalidationTime';
+    public const CRON_INVALIDATION_TIME_OPTION_NAME = 'CronArchive.lastInvalidationTime';
 
     public static $url = false;
 
-    const TABLES_WITH_INVALIDATED_ARCHIVES = 'CronArchive.getTablesWithInvalidatedArchives';
-    const TABLES_WITH_INVALIDATED_ARCHIVES_TTL = 3600;
+    public const TABLES_WITH_INVALIDATED_ARCHIVES = 'CronArchive.getTablesWithInvalidatedArchives';
+    public const TABLES_WITH_INVALIDATED_ARCHIVES_TTL = 3600;
 
     // Max parallel requests for a same site's segments
-    const MAX_CONCURRENT_API_REQUESTS = 3;
+    public const MAX_CONCURRENT_API_REQUESTS = 3;
 
     // force-timeout-for-periods default (1 hour)
-    const SECONDS_DELAY_BETWEEN_PERIOD_ARCHIVES = 3600;
+    public const SECONDS_DELAY_BETWEEN_PERIOD_ARCHIVES = 3600;
 
     // Flag to know when the archive cron is calling the API
-    const APPEND_TO_API_REQUEST = '&trigger=archivephp';
+    public const APPEND_TO_API_REQUEST = '&trigger=archivephp';
 
     // Flag used to record timestamp in Option::
-    const OPTION_ARCHIVING_FINISHED_TS = "LastCompletedFullArchiving";
+    public const OPTION_ARCHIVING_FINISHED_TS = "LastCompletedFullArchiving";
 
     // Name of option used to store starting timestamp
-    const OPTION_ARCHIVING_STARTED_TS = "LastFullArchivingStartTime";
+    public const OPTION_ARCHIVING_STARTED_TS = "LastFullArchivingStartTime";
 
     // Show only first N characters from Piwik API output in case of errors
-    const TRUNCATE_ERROR_MESSAGE_SUMMARY = 6000;
+    public const TRUNCATE_ERROR_MESSAGE_SUMMARY = 6000;
 
     // By default, we only process the current week/month/year at most once an hour
     private $todayArchiveTimeToLive;
 
-    private $allWebsites = array();
+    private $allWebsites = [];
 
     /**
      * @var FixedSiteIds|SharedSiteIds
@@ -92,11 +90,11 @@ class CronArchive
     private $model;
 
     private $lastSuccessRunTimestamp = false;
-    private $errors = array();
+    private $errors = [];
 
     private $apiToInvalidateArchivedReport;
 
-    const NO_ERROR = "no error";
+    public const NO_ERROR = "no error";
 
     public $testmode = false;
 
@@ -106,7 +104,7 @@ class CronArchive
      *
      * @var int[]
      */
-    public $shouldArchiveSpecifiedSites = array();
+    public $shouldArchiveSpecifiedSites = [];
 
     public $shouldSkipSpecifiedSites = [];
 
@@ -156,7 +154,7 @@ class CronArchive
     public $concurrentRequestsPerWebsite = false;
 
     /**
-     * The number of concurrent archivers to run at once max.
+     * The number of concurrent archivers to run at once max. Default 3
      *
      * @var int|false
      */
@@ -239,7 +237,7 @@ class CronArchive
      */
     public function __construct(LoggerInterface $logger = null)
     {
-        $this->logger = $logger ?: StaticContainer::get('Psr\Log\LoggerInterface');
+        $this->logger = $logger ?: StaticContainer::get(LoggerInterface::class);
         $this->formatter = new Formatter();
 
         $this->invalidator = StaticContainer::get('Piwik\Archive\ArchiveInvalidator');
@@ -249,8 +247,6 @@ class CronArchive
         $this->model = StaticContainer::get(Model::class);
 
         $this->periodIdsToLabels = array_flip(Piwik::$idPeriods);
-
-        $this->rawLogDao = new RawLogDao();
 
         $this->supportsAsync = $this->makeCliMulti()->supportsAsync();
         $this->cliMultiRequestParser = new RequestParser($this->supportsAsync);
@@ -281,7 +277,7 @@ class CronArchive
                 $self->runScheduledTasks();
                 $self->end();
             } catch (StopArchiverException $e) {
-                $this->logger->info("Archiving stopped by stop archiver exception");
+                $this->logger->info("Archiving stopped by stop archiver exception" . $e->getMessage());
             }
         });
     }
@@ -295,7 +291,7 @@ class CronArchive
          *
          * @param CronArchive $this
          */
-        Piwik::postEvent('CronArchive.init.start', array($this));
+        Piwik::postEvent('CronArchive.init.start', [$this]);
 
         SettingsServer::setMaxExecutionTime(0);
 
@@ -321,7 +317,8 @@ class CronArchive
         $this->allWebsites = $websitesIds;
         $this->websiteIdArchiveList = $this->makeWebsiteIdArchiveList($websitesIds);
 
-        if (method_exists($this->websiteIdArchiveList, 'isContinuingPreviousRun') &&
+        if (
+            method_exists($this->websiteIdArchiveList, 'isContinuingPreviousRun') &&
             $this->websiteIdArchiveList->isContinuingPreviousRun()
         ) {
             $this->logger->info("- Continuing ongoing archiving run by pulling from shared idSite queue.");
@@ -348,7 +345,7 @@ class CronArchive
     {
         $pid = Common::getProcessId();
 
-        $timer = new Timer;
+        $timer = new Timer();
 
         $this->logSection("START");
         $this->logger->info("Starting Matomo reports archiving...");
@@ -374,8 +371,17 @@ class CronArchive
 
         $countOfProcesses = $this->getMaxConcurrentApiRequests();
 
-        $queueConsumer = new QueueConsumer($this->logger, $this->websiteIdArchiveList, $countOfProcesses, $pid,
-            $this->model, $this->segmentArchiving, $this, $this->cliMultiRequestParser, $this->archiveFilter);
+        $queueConsumer = new QueueConsumer(
+            $this->logger,
+            $this->websiteIdArchiveList,
+            $countOfProcesses,
+            $pid,
+            $this->model,
+            $this->segmentArchiving,
+            $this,
+            $this->cliMultiRequestParser,
+            $this->archiveFilter
+        );
 
         $queueConsumer->setMaxSitesToProcess($this->maxSitesToProcess);
 
@@ -422,12 +428,9 @@ class CronArchive
         $this->logger->info("Processed $numArchivesFinished archives.");
         $this->logger->info("Total API requests: {$this->requests}");
 
-        $this->logger->info("done: " .
-            $this->requests . " req, " . round($timer->getTimeMs()) . " ms, " .
-            (empty($this->errors)
+        $this->logger->info("done: " . $this->requests . " req, " . round($timer->getTimeMs()) . " ms, " . (empty($this->errors)
                 ? self::NO_ERROR
-                : (count($this->errors) . " errors."))
-        );
+                : (count($this->errors) . " errors.")));
 
         $this->logger->info($timer->__toString());
     }
@@ -454,7 +457,17 @@ class CronArchive
 
             $dateStr = $archive['period'] == Range::PERIOD_ID ? ($archive['date1'] . ',' . $archive['date2']) : $archive['date1'];
             $period = PeriodFactory::build($this->periodIdsToLabels[$archive['period']], $dateStr);
-            $params = new Parameters(new Site($idSite), $period, new Segment($segment, [$idSite], $period->getDateStart(), $period->getDateEnd()));
+            $site = new Site($idSite);
+            $params = new Parameters(
+                $site,
+                $period,
+                new Segment(
+                    $segment,
+                    [$idSite],
+                    $period->getDateTimeStart()->setTimezone($site->getTimezone()),
+                    $period->getDateTimeEnd()->setTimezone($site->getTimezone())
+                )
+            );
 
             if (!empty($plugin)) {
                 $params->setRequestedPlugin($plugin);
@@ -515,8 +528,14 @@ class CronArchive
             $visitsForPeriod = $this->getVisitsFromApiResponse($stats);
 
 
-            $this->logArchiveJobFinished($url, $timers[$index], $visitsForPeriod,
-              $archivesBeingQueried[$index]['plugin'], $archivesBeingQueried[$index]['report'], !$checkInvalid);
+            $this->logArchiveJobFinished(
+                $url,
+                $timers[$index],
+                $visitsForPeriod,
+                $archivesBeingQueried[$index]['plugin'],
+                $archivesBeingQueried[$index]['report'],
+                !$checkInvalid
+            );
 
 
             $this->deleteInvalidatedArchives($archivesBeingQueried[$index]);
@@ -556,8 +575,10 @@ class CronArchive
         $url = $this->makeRequestUrl($url);
 
         if (!empty($segment)) {
-            $shouldSkipToday = $this->archiveFilter->isSkipSegmentsForToday() && !$this->wasSegmentChangedRecently($segment,
-                $this->segmentArchiving->getAllSegments());
+            $shouldSkipToday = $this->archiveFilter->isSkipSegmentsForToday() && !$this->wasSegmentChangedRecently(
+                $segment,
+                $this->segmentArchiving->getAllSegments()
+            );
 
             if ($shouldSkipToday) {
                 $url .= '&skipArchiveSegmentToday=1';
@@ -582,7 +603,7 @@ class CronArchive
 
         $message = $wasSkipped ? "Skipped Archiving website" : "Archived website";
 
-        $this->logger->info($message." id {$params['idSite']}, period = {$params['period']}, date = "
+        $this->logger->info($message . " id {$params['idSite']}, period = {$params['period']}, date = "
             . "{$params['date']}, segment = '" . (isset($params['segment']) ? urldecode(urldecode($params['segment'])) : '') . "', "
             . ($plugin ? "plugin = $plugin, " : "") . ($report ? "report = $report, " : "") . "$visits visits found. $timer");
     }
@@ -602,7 +623,7 @@ class CronArchive
          *
          * @param CronArchive $this
          */
-        Piwik::postEvent('CronArchive.end', array($this));
+        Piwik::postEvent('CronArchive.end', [$this]);
 
         if (empty($this->errors)) {
             // No error -> Logs the successful script execution until completion
@@ -706,7 +727,7 @@ class CronArchive
     public function logError($m)
     {
         if (!defined('PIWIK_ARCHIVE_NO_TRUNCATE')) {
-            $m = str_replace(array("\n", "\t"), " ", $m);
+            $m = str_replace(["\n", "\t"], " ", $m);
             if (mb_strlen($m) > self::TRUNCATE_ERROR_MESSAGE_SUMMARY) {
                 $numCharactersKeepFromEnd = 100;
                 $m = mb_substr($m, 0, self::TRUNCATE_ERROR_MESSAGE_SUMMARY - $numCharactersKeepFromEnd)
@@ -730,7 +751,7 @@ class CronArchive
         if (empty($response)) {
             $message .= "The response was empty. This usually means a server error. A solution to this error is generally to increase the value of 'memory_limit' in your php.ini file. ";
 
-            if($this->supportsAsync) {
+            if ($this->supportsAsync) {
                 $message .= " For more information and the error message please check in your PHP CLI error log file. As this core:archive command triggers PHP processes over the CLI, you can find where PHP CLI logs are stored by running this command: php -i | grep error_log";
             } else {
                 $message .= " For more information and the error message please check your web server's error Log file. As this core:archive command triggers PHP processes over HTTP, you can find the error message in your Matomo's web server error logs. ";
@@ -745,7 +766,8 @@ class CronArchive
 
     private function checkResponse($response, $url)
     {
-        if (empty($response)
+        if (
+            empty($response)
             || stripos($response, 'error') !== false
         ) {
             return $this->logNetworkError($url, $response);
@@ -781,7 +803,7 @@ class CronArchive
          *
          * @param array $websiteIds The list of website IDs to launch the archiving process for.
          */
-        Piwik::postEvent('CronArchive.filterWebsiteIds', array(&$websiteIds));
+        Piwik::postEvent('CronArchive.filterWebsiteIds', [&$websiteIds]);
     }
 
     /**
@@ -870,7 +892,7 @@ class CronArchive
 
             $this->logger->debug('  Invalidating custom date range ({date}) for site {idSite}', ['idSite' => $idSiteToInvalidate, 'date' => $date]);
 
-            $this->invalidateWithSegments($idSiteToInvalidate, $date, 'range', $_forceInvalidateNonexistant = true);
+            $this->invalidateWithSegments($idSiteToInvalidate, $date, 'range', $_forceInvalidateNonexistent = true);
         }
 
         $this->setInvalidationTime();
@@ -904,7 +926,7 @@ class CronArchive
         $this->invalidateWithSegments([$idSite], $date->toString(), 'day', false, $doNotIncludeTtlInExistingArchiveCheck = $isYesterday);
     }
 
-    private function invalidateWithSegments($idSites, $date, $period, $_forceInvalidateNonexistant = false, $doNotIncludeTtlInExistingArchiveCheck = false)
+    private function invalidateWithSegments($idSites, $date, $period, $_forceInvalidateNonexistent = false, $doNotIncludeTtlInExistingArchiveCheck = false)
     {
         if ($date instanceof Date) {
             $date = $date->toString();
@@ -921,21 +943,45 @@ class CronArchive
         }
 
         foreach ($idSites as $idSite) {
-            $params = new Parameters(new Site($idSite), $periodObj, new Segment('', [$idSite], $periodObj->getDateStart(), $periodObj->getDateEnd()));
+            $site = new Site($idSite);
+            $params = new Parameters(
+                $site,
+                $periodObj,
+                new Segment(
+                    '',
+                    [$idSite],
+                    $periodObj->getDateTimeStart()->setTimezone($site->getTimezone()),
+                    $periodObj->getDateTimeEnd()->setTimezone($site->getTimezone())
+                )
+            );
             if ($this->canWeSkipInvalidatingBecauseThereIsAUsablePeriod($params, $doNotIncludeTtlInExistingArchiveCheck)) {
                 $this->logger->debug('  Found usable archive for {archive}, skipping invalidation.', ['archive' => $params]);
             } else {
-                $this->getApiToInvalidateArchivedReport()->invalidateArchivedReports($idSite, $date, $period, $segment = false, $cascadeDown = false,
-                    $_forceInvalidateNonexistant);
+                $this->getApiToInvalidateArchivedReport()->invalidateArchivedReports(
+                    $idSite,
+                    $date,
+                    $period,
+                    $segment = false,
+                    $cascadeDown = false,
+                    $_forceInvalidateNonexistent
+                );
             }
 
             foreach ($this->segmentArchiving->getAllSegmentsToArchive($idSite) as $segmentDefinition) {
-
                // check if the segment is available
                 if (!$this->isSegmentAvailable($segmentDefinition, [$idSite])) {
                     continue;
                 }
-                $params = new Parameters(new Site($idSite), $periodObj, new Segment($segmentDefinition, [$idSite], $periodObj->getDateStart(), $periodObj->getDateEnd()));
+                $params = new Parameters(
+                    $site,
+                    $periodObj,
+                    new Segment(
+                        $segmentDefinition,
+                        [$idSite],
+                        $periodObj->getDateTimeStart()->setTimezone($site->getTimezone()),
+                        $periodObj->getDateTimeEnd()->setTimezone($site->getTimezone())
+                    )
+                );
                 if ($this->canWeSkipInvalidatingBecauseThereIsAUsablePeriod($params, $doNotIncludeTtlInExistingArchiveCheck)) {
                     $this->logger->debug('  Found usable archive for {archive}, skipping invalidation.', ['archive' => $params]);
                 } else {
@@ -956,8 +1002,14 @@ class CronArchive
                         }
                     }
 
-                    $this->getApiToInvalidateArchivedReport()->invalidateArchivedReports($idSite, $date, $period, $segmentDefinition,
-                        $cascadeDown = false, $_forceInvalidateNonexistant);
+                    $this->getApiToInvalidateArchivedReport()->invalidateArchivedReports(
+                        $idSite,
+                        $date,
+                        $period,
+                        $segmentDefinition,
+                        $cascadeDown = false,
+                        $_forceInvalidateNonexistent
+                    );
                 }
             }
         }
@@ -975,7 +1027,7 @@ class CronArchive
         try {
             new Segment($segmentDefinition, $idSites);
         } catch (\Exception $e) {
-            $this->logger->info("Segment '".$segmentDefinition."' is not a supported segment");
+            $this->logger->info("Segment '" . $segmentDefinition . "' is not a supported segment");
             return false;
         }
         return true;
@@ -1000,10 +1052,13 @@ class CronArchive
             Date::now()->subSeconds(Rules::getPeriodArchiveTimeToLiveDefault($params->getPeriod()->getLabel()));
 
         // empty plugins param since we only check for an 'all' archive
-        list($idArchive, $visits, $visitsConverted, $ignore, $tsArchived) = ArchiveSelector::getArchiveIdAndVisits($params, $minArchiveProcessedTime, $includeInvalidated = $isPeriodIncludesToday);
+        $archiveInfo = ArchiveSelector::getArchiveIdAndVisits($params, $minArchiveProcessedTime, $includeInvalidated = $isPeriodIncludesToday);
+        $idArchive = $archiveInfo['idArchives'];
+        $tsArchived = $archiveInfo['tsArchived'];
 
         // day has changed since the archive was created, we need to reprocess it
-        if ($isYesterday
+        if (
+            $isYesterday
             && !empty($idArchive)
             && Date::factory($tsArchived)->toString() != $today->toString()
         ) {
@@ -1050,15 +1105,25 @@ class CronArchive
             }
 
             // period is disabled in API
-            if (!PeriodFactory::isPeriodEnabledForAPI($label)
+            if (
+                !PeriodFactory::isPeriodEnabledForAPI($label)
                 || PeriodFactory::isAnyLowerPeriodDisabledForAPI($label)
             ) {
                 continue;
             }
 
-            // archive is for week that is over two months, we don't need to care about the month
-            if ($label == 'month'
+            // archive is for a week that is over two months, we don't need to care about the month
+            if (
+                $label == 'month'
                 && Date::factory($archiveToProcess['date1'])->toString('m') != Date::factory($archiveToProcess['date2'])->toString('m')
+            ) {
+                continue;
+            }
+
+            // archive is for a week that is over two years, we don't need to care about the year
+            if (
+                $label == 'year'
+                && Date::factory($archiveToProcess['date1'])->toString('y') != Date::factory($archiveToProcess['date2'])->toString('y')
             ) {
                 continue;
             }
@@ -1163,7 +1228,7 @@ class CronArchive
         $this->logger->info("- Reports for today will be processed at most every " . $this->todayArchiveTimeToLive
             . " seconds. You can change this value in Matomo UI > Settings > General Settings.");
 
-        foreach (array('week', 'month', 'year', 'range') as $period) {
+        foreach (['week', 'month', 'year', 'range'] as $period) {
             $ttl = Rules::getPeriodArchiveTimeToLiveDefault($period);
 
             if (!empty($ttl) && $ttl !== $this->todayArchiveTimeToLive) {
@@ -1235,7 +1300,7 @@ class CronArchive
         }
 
         if (empty($cache[$idSite])) {
-            $cache[$idSite] = array();
+            $cache[$idSite] = [];
         }
 
         $customRanges = array_filter(Config::getInstance()->General['archiving_custom_ranges']);
@@ -1253,15 +1318,15 @@ class CronArchive
      */
     private function loadCustomDateRangeToPreProcess()
     {
-        $customDateRangesToProcessForSites = array();
+        $customDateRangesToProcessForSites = [];
 
         // For all users who have selected this website to load by default,
         // we load the default period/date that will be loaded for this user
         // and make sure it's pre-archived
-        $allUsersPreferences = APIUsersManager::getInstance()->getAllUsersPreferences(array(
+        $allUsersPreferences = APIUsersManager::getInstance()->getAllUsersPreferences([
             APIUsersManager::PREFERENCE_DEFAULT_REPORT_DATE,
             APIUsersManager::PREFERENCE_DEFAULT_REPORT
-        ));
+        ]);
 
         foreach ($allUsersPreferences as $userLogin => $userPreferences) {
             if (!isset($userPreferences[APIUsersManager::PREFERENCE_DEFAULT_REPORT_DATE])) {
@@ -1275,10 +1340,12 @@ class CronArchive
                 continue;
             }
 
-            if (isset($userPreferences[APIUsersManager::PREFERENCE_DEFAULT_REPORT])
-                && is_numeric($userPreferences[APIUsersManager::PREFERENCE_DEFAULT_REPORT])) {
+            if (
+                isset($userPreferences[APIUsersManager::PREFERENCE_DEFAULT_REPORT])
+                && is_numeric($userPreferences[APIUsersManager::PREFERENCE_DEFAULT_REPORT])
+            ) {
                 // If user selected one particular website ID
-                $idSites = array($userPreferences[APIUsersManager::PREFERENCE_DEFAULT_REPORT]);
+                $idSites = [$userPreferences[APIUsersManager::PREFERENCE_DEFAULT_REPORT]];
             } else {
                 // If user selected "All websites" or some other random value, we pre-process all websites that they have access to
                 $idSites = APISitesManager::getInstance()->getSitesIdWithAtLeastViewAccess($userLogin);
@@ -1361,21 +1428,28 @@ class CronArchive
     private function hasReachedMaxConcurrentArchivers()
     {
         $cliMulti = $this->makeCliMulti();
+
+        if ($this->maxConcurrentArchivers == "-1") {
+            return false;
+        }
+
         if ($this->maxConcurrentArchivers && $cliMulti->supportsAsync()) {
             $numRunning = 0;
             $processes = Process::getListOfRunningProcesses();
             $instanceId = SettingsPiwik::getPiwikInstanceId();
 
             foreach ($processes as $process) {
-                if (strpos($process, ' core:archive') !== false &&
+                if (
+                    strpos($process, ' core:archive') !== false &&
                     strpos($process, 'console ') !== false &&
-                    (!$instanceId
-                        || strpos($process, '--matomo-domain=' . $instanceId) !== false
-                        || strpos($process, '--matomo-domain="' . $instanceId . '"') !== false
-                        || strpos($process, '--matomo-domain=\'' . $instanceId . "'") !== false
-                        || strpos($process, '--piwik-domain=' . $instanceId) !== false
-                        || strpos($process, '--piwik-domain="' . $instanceId . '"') !== false
-                        || strpos($process, '--piwik-domain=\'' . $instanceId . "'") !== false)) {
+                    (!$instanceId ||
+                        strpos($process, '--matomo-domain=' . $instanceId) !== false ||
+                        strpos($process, '--matomo-domain="' . $instanceId . '"') !== false ||
+                        strpos($process, '--matomo-domain=\'' . $instanceId . "'") !== false ||
+                        strpos($process, '--piwik-domain=' . $instanceId) !== false ||
+                        strpos($process, '--piwik-domain="' . $instanceId . '"') !== false ||
+                        strpos($process, '--piwik-domain=\'' . $instanceId . "'") !== false)
+                ) {
                     $numRunning++;
                 }
             }
@@ -1420,7 +1494,7 @@ class CronArchive
             return new FixedSiteIds($websitesIds);
         }
 
-        if (!empty($this->shouldArchiveSpecifiedSites)) {
+        if (!empty($this->shouldArchiveSpecifiedSites) || !SharedSiteIds::isSupported()) {
             $this->logger->info("- Will process specified sites: " . implode(', ', $websitesIds));
             return new FixedSiteIds($websitesIds);
         }

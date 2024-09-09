@@ -1,21 +1,23 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Mail;
 
+use PHPMailer\PHPMailer\Exception as PHPMailerException;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use Piwik\Config;
 use Piwik\Container\StaticContainer;
+use Piwik\Exception\DI\DependencyException;
+use Piwik\Exception\DI\NotFoundException;
 use Piwik\Mail;
 use Piwik\Piwik;
-use Piwik\Version;
 
 class Transport
 {
@@ -24,12 +26,22 @@ class Transport
      *
      * @param Mail $mail
      * @return bool
-     * @throws \DI\NotFoundException
-     * @throws \PHPMailer\PHPMailer\Exception
+     * @throws DependencyException
+     * @throws PHPMailerException
+     * @throws NotFoundException
      */
     public function send(Mail $mail)
     {
         $phpMailer = new PHPMailer(true);
+
+        //check self-signed config in mail
+        $phpMailer->SMTPOptions = [
+            'ssl' => [
+                'verify_peer'       => (int)Config::getInstance()->mail['ssl_verify_peer'],
+                'verify_peer_name'  => (int)Config::getInstance()->mail['ssl_verify_peer_name'],
+                'allow_self_signed' => Config::getInstance()->mail['ssl_disallow_self_signed'] == "1" ? 0 : 1,
+            ],
+        ];
 
         PHPMailer::$validator = 'pcre8';
         $phpMailer->CharSet = PHPMailer::CHARSET_UTF8;
@@ -111,7 +123,8 @@ class Transport
     {
         $mailConfig = Config::getInstance()->mail;
 
-        if (empty($mailConfig['host'])
+        if (
+            empty($mailConfig['host'])
             || $mailConfig['transport'] != 'smtp'
         ) {
             return;

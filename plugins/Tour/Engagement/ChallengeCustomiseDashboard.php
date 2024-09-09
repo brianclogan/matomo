@@ -1,15 +1,17 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Tour\Engagement;
 
 use Piwik\Piwik;
 use Piwik\Plugins\Tour\Dao\DataFinder;
+use Piwik\Url;
 
 class ChallengeCustomiseDashboard extends Challenge
 {
@@ -43,10 +45,9 @@ class ChallengeCustomiseDashboard extends Challenge
         return 'customise_dashboard';
     }
 
-    public function isCompleted()
+    public function isCompleted(string $login)
     {
         if (!isset($this->completed)) {
-            $login = Piwik::getCurrentUserLogin();
             $this->completed = $this->finder->hasAddedOrCustomisedDashboard($login);
         }
         return $this->completed;
@@ -54,8 +55,6 @@ class ChallengeCustomiseDashboard extends Challenge
 
     public function getUrl()
     {
-        return 'https://matomo.org/docs/piwik-tour/#dashboard-widgets';
+        return Url::addCampaignParametersToMatomoLink('https://matomo.org/faq/dashboards/create-dashboards-and-customise-widgets-and-layout/');
     }
-
-
 }

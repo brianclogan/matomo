@@ -1,17 +1,16 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Archive;
 
 use Piwik\DataTable;
 use Piwik\DataTable\Row;
-use Piwik\Period;
 use Piwik\Segment;
 use Piwik\Site;
 
@@ -23,8 +22,8 @@ use Piwik\Site;
  */
 class DataTableFactory
 {
-    const TABLE_METADATA_SEGMENT_INDEX = 'segment';
-    const TABLE_METADATA_SEGMENT_PRETTY_INDEX = 'segmentPretty';
+    public const TABLE_METADATA_SEGMENT_INDEX = 'segment';
+    public const TABLE_METADATA_SEGMENT_PRETTY_INDEX = 'segmentPretty';
 
     /**
      * @see DataCollection::$dataNames.
@@ -88,8 +87,8 @@ class DataTableFactory
      */
     private $defaultRow;
 
-    const TABLE_METADATA_SITE_INDEX = 'site';
-    const TABLE_METADATA_PERIOD_INDEX = 'period';
+    public const TABLE_METADATA_SITE_INDEX = 'site';
+    public const TABLE_METADATA_PERIOD_INDEX = 'period';
 
     /**
      * Constructor.
@@ -177,7 +176,8 @@ class DataTableFactory
         if (empty($resultIndices)) {
             // for numeric data, if there's no index (and thus only 1 site & period in the query),
             // we want to display every queried metric name
-            if (empty($index)
+            if (
+                empty($index)
                 && $this->isNumericDataType()
             ) {
                 $index = $this->defaultRow;
@@ -392,7 +392,8 @@ class DataTableFactory
      */
     private function setSubtables($dataTable, $blobRow, $treeLevel = 0)
     {
-        if ($this->maxSubtableDepth
+        if (
+            $this->maxSubtableDepth
             && $treeLevel >= $this->maxSubtableDepth
         ) {
             // unset the subtables so DataTableManager doesn't throw
@@ -501,7 +502,8 @@ class DataTableFactory
             // ensure that the PHP renderer outputs 0 when only one column is queried.
             // w/o this code, an empty array would be created, and other parts of Piwik
             // would break.
-            if (count($this->dataNames) == 1
+            if (
+                count($this->dataNames) == 1
                 && $this->isNumericDataType()
             ) {
                 $name = reset($this->dataNames);
@@ -549,13 +551,11 @@ class DataTableFactory
                 if (!empty($row)) {
                     $tables[$range]->addRow(new Row(array(
                         Row::COLUMNS  => $row,
-                        Row::METADATA => $rowMeta)
-                    ));
+                        Row::METADATA => $rowMeta)));
                 } elseif ($isNumeric) {
                     $tables[$range]->addRow(new Row(array(
                         Row::COLUMNS  => $this->defaultRow,
-                        Row::METADATA => $rowMeta)
-                    ));
+                        Row::METADATA => $rowMeta)));
                 }
             }
         }
@@ -575,7 +575,6 @@ class DataTableFactory
         $this->setPrettySegmentMetadata($table);
 
         foreach ($index as $idsite => $row) {
-
             $meta = array();
             if (isset($row[DataCollection::METADATA_CONTAINER_ROW_KEY])) {
                 $meta = $row[DataCollection::METADATA_CONTAINER_ROW_KEY];
@@ -585,13 +584,11 @@ class DataTableFactory
             if (!empty($row)) {
                 $table->addRow(new Row(array(
                     Row::COLUMNS  => $row,
-                    Row::METADATA => $meta)
-                ));
+                    Row::METADATA => $meta)));
             } elseif ($isNumeric) {
                 $table->addRow(new Row(array(
                     Row::COLUMNS  => $this->defaultRow,
-                    Row::METADATA => $meta)
-                ));
+                    Row::METADATA => $meta)));
             }
         }
 

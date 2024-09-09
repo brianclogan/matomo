@@ -1,17 +1,16 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\DBStats\Reports;
 
 use Piwik\Piwik;
 use Piwik\Plugin\ViewDataTable;
-use Piwik\Plugins\CoreVisualizations\Visualizations\Graph;
-use Piwik\Plugins\CoreVisualizations\Visualizations\HtmlTable;
 
 /**
  * Shows a datatable that displays how many occurrences there are of each individual
@@ -21,7 +20,6 @@ use Piwik\Plugins\CoreVisualizations\Visualizations\HtmlTable;
  */
 class GetIndividualMetricsSummary extends Base
 {
-
     protected function init()
     {
         $this->name = Piwik::translate('General_Metrics');
@@ -30,13 +28,16 @@ class GetIndividualMetricsSummary extends Base
     public function configureView(ViewDataTable $view)
     {
         $this->addBaseDisplayProperties($view);
-        $this->addPresentationFilters($view, $addTotalSizeColumn = false, $addPercentColumn = false,
-            $sizeColumns = array('estimated_size'));
+        $this->addPresentationFilters(
+            $view,
+            $addTotalSizeColumn = false,
+            $addPercentColumn = false,
+            $sizeColumns = array('estimated_size')
+        );
 
         $view->requestConfig->filter_sort_order = 'asc';
         $view->config->addTranslation('label', Piwik::translate('General_Metric'));
 
         $this->setIndividualSummaryFooterMessage($view);
     }
-
 }

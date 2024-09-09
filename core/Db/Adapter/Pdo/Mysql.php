@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Db\Adapter\Pdo;
 
 use Exception;
@@ -29,7 +30,7 @@ class Mysql extends Zend_Db_Adapter_Pdo_Mysql implements AdapterInterface
      *
      * @param array|Zend_Config $config database configuration
      */
-    
+
     // this is used for indicate TransactionLevel Cache
     public $supportsUncommitted;
 
@@ -55,13 +56,21 @@ class Mysql extends Zend_Db_Adapter_Pdo_Mysql implements AdapterInterface
             if (!empty($config['ssl_cipher'])) {
                 $config['driver_options'][PDO::MYSQL_ATTR_SSL_CIPHER] = $config['ssl_cipher'];
             }
-            if (!empty($config['ssl_no_verify'])
+            if (
+                !empty($config['ssl_no_verify'])
                 && defined('PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT')
             ) {
                 $config['driver_options'][PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
             }
         }
         parent::__construct($config);
+    }
+
+    public function closeConnection()
+    {
+        $this->cachePreparedStatement = [];
+
+        parent::closeConnection();
     }
 
     /**
@@ -91,18 +100,29 @@ class Mysql extends Zend_Db_Adapter_Pdo_Mysql implements AdapterInterface
         return $this->_connection;
     }
 
-    protected function _connect()
+    protected function _connect() // phpcs:ignore PSR2.Methods.MethodDeclaration.Underscore
     {
         if ($this->_connection) {
             return;
         }
 
-        parent::_connect();
+        $sql = 'SET sql_mode = "' . Db::SQL_MODE . '"';
 
-        // MYSQL_ATTR_USE_BUFFERED_QUERY will use more memory when enabled
-        // $this->_connection->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
-
-        $this->_connection->exec('SET sql_mode = "' . Db::SQL_MODE . '"');
+        try {
+            parent::_connect();
+            $this->_connection->exec($sql);
+        } catch (Exception $e) {
+            if ($this->isErrNo($e, \Piwik\Updater\Migration\Db::ERROR_CODE_MYSQL_SERVER_HAS_GONE_AWAY)) {
+                // mysql may return a MySQL server has gone away error when trying to establish the connection.
+                // in that case we want to retry establishing the connection once after a short sleep
+                $this->_connection = null; // we need to unset, otherwise parent connect won't retry
+                usleep(400 * 1000);
+                parent::_connect();
+                $this->_connection->exec($sql);
+            } else {
+                throw $e;
+            }
+        }
     }
 
     /**
@@ -116,6 +136,7 @@ class Mysql extends Zend_Db_Adapter_Pdo_Mysql implements AdapterInterface
     /**
      * Return default port.
      *
+     * @deprecated Use Schema::getDefaultPortForSchema instead
      * @return int
      */
     public static function getDefaultPort()
@@ -167,7 +188,8 @@ class Mysql extends Zend_Db_Adapter_Pdo_Mysql implements AdapterInterface
         $clientVersion = $this->getClientVersion();
 
         // incompatible change to DECIMAL implementation in 5.0.3
-        if (version_compare($serverVersion, '5.0.3') >= 0
+        if (
+            version_compare($serverVersion, '5.0.3') >= 0
             && version_compare($clientVersion, '5.0.3') < 0
         ) {
             throw new Exception(Piwik::translate('General_ExceptionIncompatibleClientServerVersions', array('MySQL', $clientVersion, $serverVersion)));
@@ -321,7 +343,7 @@ class Mysql extends Zend_Db_Adapter_Pdo_Mysql implements AdapterInterface
      * if unix_socket is set since setting both causes unexpected behaviour
      * @see http://php.net/manual/en/ref.pdo-mysql.connection.php
      */
-    protected function _dsn()
+    protected function _dsn() // phpcs:ignore PSR2.Methods.MethodDeclaration.Underscore
     {
         if (!empty($this->_config['unix_socket'])) {
             unset($this->_config['host']);

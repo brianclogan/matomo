@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -13,8 +14,8 @@
 
     <div id="image-tracking-code-options">
 
-      <p v-html="imageTrackingIntro"></p>
-      <p v-html="imageTrackingIntro3"></p>
+      <p v-html="$sanitize(imageTrackingIntro)"></p>
+      <p v-html="$sanitize(imageTrackingIntro3)"></p>
 
       <!-- website -->
       <Field
@@ -76,7 +77,9 @@
         <h3>{{ translate('CoreAdminHome_ImageTrackingLink') }}</h3>
 
         <div id="image-tracking-text">
-          <pre v-select-on-focus="{}" v-text="trackingCode" ref="trackingCode"></pre>
+          <div>
+            <pre v-copy-to-clipboard="{}" v-text="trackingCode" ref="trackingCode"></pre>
+          </div>
         </div>
       </div>
     </div>
@@ -91,8 +94,9 @@ import {
   AjaxHelper,
   SiteRef,
   Site,
-  SelectOnFocus,
+  CopyToClipboard,
   debounce,
+  externalRawLink,
 } from 'CoreHome';
 import { Field } from 'CorePluginsAdmin';
 
@@ -140,7 +144,7 @@ export default defineComponent({
     Field,
   },
   directives: {
-    SelectOnFocus,
+    CopyToClipboard,
   },
   data(): ImageTrackingCodeGeneratorState {
     return {
@@ -293,7 +297,7 @@ export default defineComponent({
       return `${first} ${second}`;
     },
     imageTrackingIntro3() {
-      const link = 'https://matomo.org/docs/tracking-api/reference/';
+      const link = externalRawLink('https://matomo.org/docs/tracking-api/reference/');
       return translate(
         'CoreAdminHome_ImageTrackingIntro3',
         `<a href="${link}" rel="noreferrer noopener" target="_blank">`,
@@ -302,5 +306,4 @@ export default defineComponent({
     },
   },
 });
-
 </script>

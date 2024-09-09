@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\DeviceDetector;
 
 use Piwik\Cache as PiwikCache;
@@ -61,7 +62,7 @@ class DeviceDetectorCache implements \DeviceDetector\Cache\CacheInterface
      * @throws \Exception
      * @return bool  True if the entry was successfully stored
      */
-    public function save($id, $content, $ttl=0): bool
+    public function save($id, $content, $ttl = 0): bool
     {
         if (empty($id)) {
             return false;

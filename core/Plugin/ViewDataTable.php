@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugin;
 
 use Piwik\API\Request;
@@ -143,7 +144,7 @@ use Piwik\ViewDataTable\RequestConfig as VizRequest;
  */
 abstract class ViewDataTable implements ViewInterface
 {
-    const ID = '';
+    public const ID = '';
 
     /**
      * DataTable loaded from the API for this ViewDataTable.
@@ -216,11 +217,13 @@ abstract class ViewDataTable implements ViewInterface
                     if (!$relatedReport) {
                         continue;
                     }
-                    
+
                     $relatedReportName = $relatedReport->getName();
 
-                    $this->config->addRelatedReport($relatedReport->getModule() . '.' . $relatedReport->getAction(),
-                                                    $relatedReportName);
+                    $this->config->addRelatedReport(
+                        $relatedReport->getModule() . '.' . $relatedReport->getAction(),
+                        $relatedReportName
+                    );
                 }
             }
 
@@ -232,6 +235,11 @@ abstract class ViewDataTable implements ViewInterface
             $processedMetrics = $report->getProcessedMetrics();
             if (!empty($processedMetrics)) {
                 $this->config->addTranslations($processedMetrics);
+            }
+
+            $dimension = $report->getDimension();
+            if (!empty($dimension)) {
+                $this->config->addTranslations(['label' => $dimension->getName()]);
             }
 
             $this->config->title = $report->getName();
@@ -273,7 +281,8 @@ abstract class ViewDataTable implements ViewInterface
         // the exclude low population threshold value is sometimes obtained by requesting data.
         // to avoid issuing unnecessary requests when display properties are determined by metadata,
         // we allow it to be a closure.
-        if (isset($this->requestConfig->filter_excludelowpop_value)
+        if (
+            isset($this->requestConfig->filter_excludelowpop_value)
             && $this->requestConfig->filter_excludelowpop_value instanceof \Closure
         ) {
             $function = $this->requestConfig->filter_excludelowpop_value;
@@ -515,7 +524,8 @@ abstract class ViewDataTable implements ViewInterface
         $period = Common::getRequestVar('period', null, 'string', $requestArray);
         $idSite = Common::getRequestVar('idSite', null, 'string', $requestArray);
 
-        if (Period::isMultiplePeriod($date, $period)
+        if (
+            Period::isMultiplePeriod($date, $period)
             || strpos($idSite, ',') !== false
             || $idSite == 'all'
         ) {
@@ -567,7 +577,7 @@ abstract class ViewDataTable implements ViewInterface
     public function throwWhenSettingNonOverridableParameter($overrideParams)
     {
         $nonOverridableParams = $this->getNonOverridableParams($overrideParams);
-        if(count($nonOverridableParams) > 0) {
+        if (count($nonOverridableParams) > 0) {
             throw new \Exception(sprintf(
                 "Setting parameters %s is not allowed. Please report this bug to the Matomo team.",
                 implode(" and ", $nonOverridableParams)
@@ -607,7 +617,8 @@ abstract class ViewDataTable implements ViewInterface
      */
     public function isComparing()
     {
-        if (!$this->supportsComparison()
+        if (
+            !$this->supportsComparison()
             || $this->config->disable_comparison
         ) {
             return false;

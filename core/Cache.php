@@ -1,18 +1,18 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 use Piwik\Container\StaticContainer;
 
 class Cache
 {
-
     /**
      * This can be considered as the default cache to use in case you don't know which one to pick. It does not support
      * the caching of any objects though. Only boolean, numbers, strings and arrays are supported. Whenever you request
@@ -82,12 +82,10 @@ class Cache
 
         switch ($type) {
             case 'file':
-
                 $options = array('directory' => StaticContainer::get('path.cache'));
                 break;
 
             case 'chained':
-
                 foreach ($options['backends'] as $backend) {
                     $options[$backend] = self::getOptions($backend);
                 }
@@ -95,7 +93,6 @@ class Cache
                 break;
 
             case 'redis':
-
                 if (!empty($options['timeout'])) {
                     $options['timeout'] = (float)Common::forceDotAsSeparatorForDecimalPoint($options['timeout']);
                 }

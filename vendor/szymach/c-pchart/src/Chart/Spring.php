@@ -74,6 +74,21 @@ class Spring
      */
     public $AutoComputeFreeZone = false;
 
+    /**
+     * @var int|float
+     */
+    private $MagneticForceA;
+
+    /**
+     * @var int|float
+     */
+    private $MagneticForceR;
+
+    /**
+     * @var int|float
+     */
+    private $RingSize;
+
     public function __construct()
     {
         /* Set nodes defaults */
@@ -661,7 +676,7 @@ class Spring
                             if ($Force > 1) {
                                 $this->Data[$Key]["Vectors"][] = [
                                     "Type"  => "R",
-                                    "Angle" => $Angle % 360,
+                                    "Angle" => ((int) $Angle) % 360,
                                     "Force" => $Force
                                 ];
                             }
@@ -690,7 +705,7 @@ class Spring
                             if ($Force > 1) {
                                 $this->Data[$Key]["Vectors"][] = [
                                     "Type"  => "A",
-                                    "Angle" => $Angle % 360,
+                                    "Angle" => ((int) $Angle) % 360,
                                     "Force" => $Force
                                 ];
                             }

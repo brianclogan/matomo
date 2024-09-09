@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 use DateTime;
@@ -23,7 +24,7 @@ class Cookie
     /**
      * Don't create a cookie bigger than 1k
      */
-    const MAX_COOKIE_SIZE = 1024;
+    public const MAX_COOKIE_SIZE = 1024;
 
     /**
      * The name of the cookie
@@ -42,6 +43,11 @@ class Cookie
      * @var string
      */
     protected $path = '';
+
+    /**
+     * @var string
+     */
+    protected $keyStore = false;
 
     /**
      * Restrict cookie to a domain (or subdomains)
@@ -71,7 +77,7 @@ class Cookie
     /**
      * The character used to separate the tuple name=value in the cookie
      */
-    const VALUE_SEPARATOR = ':';
+    public const VALUE_SEPARATOR = ':';
 
     /**
      * Instantiate a new Cookie object and tries to load the cookie content if the cookie
@@ -216,7 +222,8 @@ class Cookie
     {
         $signature = substr($content, -40);
 
-        if (substr($content, -43, 3) === self::VALUE_SEPARATOR . '_=' &&
+        if (
+            substr($content, -43, 3) === self::VALUE_SEPARATOR . '_=' &&
             ($signature === sha1(substr($content, 0, -40) . SettingsPiwik::getSalt()))
         ) {
             // strip trailing: VALUE_SEPARATOR '_=' signature"
@@ -239,9 +246,11 @@ class Cookie
         $cookieStr = $this->extractSignedContent($_COOKIE[$this->name]);
         $isSigned = !empty($cookieStr);
 
-        if ($cookieStr === false
+        if (
+            $cookieStr === false
             && !empty($_COOKIE[$this->name])
-            && strpos($_COOKIE[$this->name], '=') !== false) {
+            && strpos($_COOKIE[$this->name], '=') !== false
+        ) {
             // cookie was set since Matomo 4
             $cookieStr = $_COOKIE[$this->name];
         }
@@ -290,7 +299,7 @@ class Cookie
         $cookieStrArr = [];
 
         foreach ($this->value as $name => $value) {
-            if (!is_numeric($value) && !is_string($value))  {
+            if (!is_numeric($value) && !is_string($value)) {
                 throw new \Exception('Only strings and numbers can be used in cookies. Value is of type ' . gettype($value));
             } elseif (!is_numeric($value)) {
                 $value = base64_encode($value);
@@ -403,7 +412,7 @@ class Cookie
     public function __toString()
     {
         $str  = 'COOKIE ' . $this->name . ', rows count: ' . count($this->value) . ', cookie size = ' . strlen($this->generateContentString()) . " bytes, ";
-        $str .= 'path: ' . $this->path. ', expire: ' . $this->expire . "\n";
+        $str .= 'path: ' . $this->path . ', expire: ' . $this->expire . "\n";
         $str .= var_export($this->value, $return = true);
 
         return $str;
@@ -456,7 +465,7 @@ class Cookie
             } else {
                 $userAgent = Http::getUserAgent();
                 $ddFactory = StaticContainer::get(\Piwik\DeviceDetector\DeviceDetectorFactory::class);
-                $deviceDetector = $ddFactory->makeInstance($userAgent);
+                $deviceDetector = $ddFactory->makeInstance($userAgent, Http::getClientHintsFromServerVariables());
                 $deviceDetector->parse();
 
                 $browserFamily = \DeviceDetector\Parser\Client\Browser::getBrowserFamily($deviceDetector->getClient('short_name'));
@@ -479,12 +488,11 @@ class Cookie
         $expireTime = new DateTime();
         if (is_null($time) || (is_int($time) && $time < 0)) {
             $expireTime->modify("+2 years");
-        } else if (is_int($time)) {
+        } elseif (is_int($time)) {
             $expireTime->setTimestamp($time);
-        } else if (!$expireTime->modify($time)) {
+        } elseif (!$expireTime->modify($time)) {
             $expireTime->modify("+2 years");
         }
         return $expireTime->format(DateTime::COOKIE);
-
     }
 }

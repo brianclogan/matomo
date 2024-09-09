@@ -4,8 +4,8 @@
  * DataTable UI class for JqplotGraph/StackedBarEvolution.
  *
  * @link http://www.jqplot.com
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 (function ($, require) {
@@ -199,7 +199,12 @@
             }
 
             // make sure percent axes don't go above 100%
-            if (axis.tickOptions.formatString.substring(2, 3) == '%' && maxCrossDataSets > 100) {
+            if (
+              axis.tickOptions
+              && axis.tickOptions.formatString
+              && axis.tickOptions.formatString.substring(2, 3) == '%'
+              && maxCrossDataSets > 100
+            ) {
                 maxCrossDataSets = 100;
             }
 

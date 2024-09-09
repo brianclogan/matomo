@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Settings\Storage\Backend;
@@ -87,7 +87,7 @@ class PluginSettingsTable extends BaseSettingsTable
 
         $table = $this->getTableName();
         $lockKey = $this->getStorageId();
-        $this->lock->execute($lockKey, function() use ($valuesKeep, $table, $columns) {
+        $this->lock->execute($lockKey, function () use ($valuesKeep, $table, $columns) {
             $this->delete();
             // No values = nothing to save
             if (!empty($valuesKeep)) {

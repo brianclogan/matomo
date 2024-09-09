@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
  * @link    https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Live;
 
 use Piwik\API\Request;
@@ -23,6 +24,11 @@ use Piwik\View;
 
 class VisitorDetails extends VisitorDetailsAbstract
 {
+    /**
+     * @var array<int, array<string>>
+     */
+    private $cachedAdditionalSiteUrls = [];
+
     public function extendVisitorDetails(&$visitor)
     {
         $idSite     = $this->getIdSite();
@@ -31,7 +37,7 @@ class VisitorDetails extends VisitorDetailsAbstract
         $currency   = $website->getCurrency();
         $currencies = APISitesManager::getInstance()->getCurrencySymbols();
 
-        $visitor += array(
+        $visitor += [
             'idSite'              => $idSite,
             'idVisit'             => $this->getIdVisit(),
             'visitIp'             => $this->getIp(),
@@ -49,7 +55,7 @@ class VisitorDetails extends VisitorDetailsAbstract
             'visitServerHour'     => $this->getVisitServerHour(),
             'lastActionTimestamp' => $this->getTimestampLastAction(),
             'lastActionDateTime'  => $this->getDateTimeLastAction(),
-        );
+        ];
 
         $visitor['siteCurrency']         = $currency;
         $visitor['siteCurrencySymbol']   = @$currencies[$visitor['siteCurrency']];
@@ -70,6 +76,10 @@ class VisitorDetails extends VisitorDetailsAbstract
 
     public function renderAction($action, $previousAction, $visitorDetails)
     {
+        if (empty($action['type'])) {
+            return;
+        }
+
         switch ($action['type']) {
             case 'ecommerceOrder':
             case 'ecommerceAbandonedCart':
@@ -93,16 +103,16 @@ class VisitorDetails extends VisitorDetailsAbstract
             return;
         }
 
-        $sitesModel = new \Piwik\Plugins\SitesManager\Model();
-
-        if (isset($action['type']) && $action['type'] == 'outlink' && isset($action['url'])) {
+        if (isset($action['type']) && in_array($action['type'], ['outlink', 'download']) && isset($action['url'])) {
             $action['url'] = html_entity_decode($action['url'], ENT_QUOTES, "UTF-8");
         }
 
+        $idSite = $this->getIdSite();
+
         $view                 = new View($template);
         $view->sendHeadersWhenRendering = false;
-        $view->mainUrl        = trim(Site::getMainUrlFor($this->getIdSite()));
-        $view->additionalUrls = $sitesModel->getAliasSiteUrlsFromId($this->getIdSite());
+        $view->mainUrl        = trim(Site::getMainUrlFor($idSite));
+        $view->additionalUrls = $this->getAdditionalUrlsForSite($idSite);
         $view->action         = $action;
         $view->previousAction = $previousAction;
         $view->visitInfo      = $visitorDetails;
@@ -121,6 +131,7 @@ class VisitorDetails extends VisitorDetailsAbstract
     public function renderVisitorDetails($visitorDetails)
     {
         $view            = new View('@Live/_visitorDetails.twig');
+        $view->isProfileEnabled = Live::isVisitorProfileEnabled();
         $view->sendHeadersWhenRendering = false;
         $view->visitInfo = $visitorDetails;
         return [[ 0, $view->render() ]];
@@ -129,12 +140,13 @@ class VisitorDetails extends VisitorDetailsAbstract
     public function renderIcons($visitorDetails)
     {
         $view          = new View('@Live/_visitorLogIcons.twig');
+        $view->isProfileEnabled = Live::isVisitorProfileEnabled();
         $view->sendHeadersWhenRendering = false;
         $view->visitor = $visitorDetails;
         return $view->render();
     }
 
-    function getVisitorId()
+    public function getVisitorId()
     {
         if (isset($this->details['idvisitor'])) {
             return bin2hex($this->details['idvisitor']);
@@ -142,17 +154,17 @@ class VisitorDetails extends VisitorDetailsAbstract
         return false;
     }
 
-    function getVisitServerHour()
+    public function getVisitServerHour()
     {
         return date('G', strtotime($this->details['visit_last_action_time']));
     }
 
-    function getServerDate()
+    public function getServerDate()
     {
         return date('Y-m-d', strtotime($this->details['visit_last_action_time']));
     }
 
-    function getIp()
+    public function getIp()
     {
         if (isset($this->details['location_ip'])) {
             return IPUtils::binaryToStringIP($this->details['location_ip']);
@@ -160,17 +172,17 @@ class VisitorDetails extends VisitorDetailsAbstract
         return null;
     }
 
-    function getIdVisit()
+    public function getIdVisit()
     {
         return $this->details['idvisit'];
     }
 
-    function getIdSite()
+    public function getIdSite()
     {
         return isset($this->details['idsite']) ? $this->details['idsite'] : Common::getRequestVar('idSite');
     }
 
-    function getFingerprint()
+    public function getFingerprint()
     {
         if (isset($this->details['config_id'])) {
             return bin2hex($this->details['config_id']);
@@ -178,12 +190,12 @@ class VisitorDetails extends VisitorDetailsAbstract
         return false;
     }
 
-    function getTimestampLastAction()
+    public function getTimestampLastAction()
     {
         return strtotime($this->details['visit_last_action_time']);
     }
 
-    function getDateTimeLastAction()
+    public function getDateTimeLastAction()
     {
         return date('Y-m-d H:i:s', strtotime($this->details['visit_last_action_time']));
     }
@@ -205,19 +217,21 @@ class VisitorDetails extends VisitorDetailsAbstract
 
     public function finalizeProfile($visits, &$profile)
     {
-        $formatter                           = new Formatter();
+        $site = new Site($this->getIdSite());
+        $formatter = new Formatter();
+
         $profile['totalVisitDurationPretty'] = $formatter->getPrettyTimeFromSeconds($profile['totalVisitDuration'], true);
 
-        $rows                        = $visits->getRows();
-
+        $rows = $visits->getRows();
         $firstVisit = $profile['visit_first'];
+
         if (count($rows) >= Config::getInstance()->General['live_visitor_profile_max_visits_to_aggregate']) {
             $firstVisit = $this->fetchFirstVisit();
         }
 
         $profile['userId']           = $visits->getLastRow()->getColumn('userId');
-        $profile['firstVisit']       = $this->getVisitorProfileVisitSummary($firstVisit);
-        $profile['lastVisit']        = $this->getVisitorProfileVisitSummary($profile['visit_last']);
+        $profile['firstVisit']       = $this->getVisitorProfileVisitSummary($firstVisit, $site);
+        $profile['lastVisit']        = $this->getVisitorProfileVisitSummary($profile['visit_last'], $site);
         $profile['visitsAggregated'] = count($rows);
     }
 
@@ -242,21 +256,21 @@ class VisitorDetails extends VisitorDetailsAbstract
      * @param DataTable\Row $visit
      * @return array
      */
-    private function getVisitorProfileVisitSummary($visit)
+    private function getVisitorProfileVisitSummary($visit, Site $site): array
     {
-        $today = Date::today();
+        $today = Date::factory('today', $site->getTimezone());
+        $firstActionTimestamp = $visit->getColumn('firstActionTimestamp');
+        $firstActionDate = Date::factory($firstActionTimestamp, $site->getTimezone());
 
-        $serverDate = $visit->getColumn('firstActionTimestamp');
-        return array(
-            'date'            => $serverDate,
-            'prettyDate'      => Date::factory($serverDate)->getLocalized(Date::DATE_FORMAT_LONG),
-            'daysAgo'         => (int)Date::secondsToDays($today->getTimestamp() - Date::factory($serverDate)->getTimestamp()),
+        return [
+            'date'            => $firstActionTimestamp,
+            'prettyDate'      => $firstActionDate->getLocalized(Date::DATE_FORMAT_LONG),
+            'daysAgo'         => (int) Date::secondsToDays($today->getTimestamp() - $firstActionDate->getTimestamp()),
             'referrerType'    => $visit->getColumn('referrerType'),
             'referrerUrl'     => $visit->getColumn('referrerUrl') ?: '',
             'referralSummary' => self::getReferrerSummaryForVisit($visit),
-        );
+        ];
     }
-
 
     /**
      * Returns a summary for a visit's referral.
@@ -267,7 +281,8 @@ class VisitorDetails extends VisitorDetailsAbstract
     public static function getReferrerSummaryForVisit($visit)
     {
         $referrerType = $visit->getColumn('referrerType');
-        if ($referrerType === false
+        if (
+            $referrerType === false
             || $referrerType == 'direct'
         ) {
             return Piwik::translate('Referrers_DirectEntry');
@@ -277,7 +292,8 @@ class VisitorDetails extends VisitorDetailsAbstract
             $referrerName = $visit->getColumn('referrerName');
 
             $keyword = $visit->getColumn('referrerKeyword');
-            if ($keyword !== false
+            if (
+                $keyword !== false
                 && $keyword != APIReferrers::getKeywordNotDefinedString()
             ) {
                 $referrerName .= ' (' . $keyword . ')';
@@ -286,7 +302,6 @@ class VisitorDetails extends VisitorDetailsAbstract
         }
 
         if ($referrerType == 'campaign') {
-
             $summary = Piwik::translate('Referrers_ColumnCampaign') . ': ' . $visit->getColumn('referrerName');
             $keyword = $visit->getColumn('referrerKeyword');
             if (!empty($keyword)) {
@@ -297,5 +312,22 @@ class VisitorDetails extends VisitorDetailsAbstract
         }
 
         return $visit->getColumn('referrerName');
+    }
+
+    /**
+     * @return array<int, array<string>>
+     */
+    private function getAdditionalUrlsForSite(int $idSite): array
+    {
+        if (isset($this->cachedAdditionalSiteUrls[$idSite])) {
+            return $this->cachedAdditionalSiteUrls[$idSite];
+        }
+
+        $sitesModel = new \Piwik\Plugins\SitesManager\Model();
+        $additionalSiteUrls = $sitesModel->getAliasSiteUrlsFromId($idSite);
+
+        $this->cachedAdditionalSiteUrls[$idSite] = $additionalSiteUrls;
+
+        return $additionalSiteUrls;
     }
 }

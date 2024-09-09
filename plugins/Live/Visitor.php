@@ -1,34 +1,32 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Live;
 
 use Piwik\Cache;
 use Piwik\CacheId;
 use Piwik\Config;
 use Piwik\DataTable\Filter\ColumnDelete;
-use Piwik\Date;
-use Piwik\Metrics\Formatter;
 use Piwik\Plugin;
 use Piwik\Piwik;
 use Piwik\Plugins\Live\Visualizations\VisitorLog;
-use Piwik\Tracker\GoalManager;
 
 class Visitor implements VisitorInterface
 {
     private $details = array();
 
-    function __construct($visitorRawData)
+    public function __construct($visitorRawData)
     {
         $this->details = $visitorRawData;
     }
 
-    function getAllVisitorDetails()
+    public function getAllVisitorDetails()
     {
         $visitor = array();
 
@@ -117,7 +115,7 @@ class Visitor implements VisitorInterface
         return Plugin\Manager::getInstance()->findComponents('VisitorDetails', 'Piwik\Plugins\Live\VisitorDetailsAbstract');
     }
 
-    function getVisitorId()
+    public function getVisitorId()
     {
         if (isset($this->details['idvisitor'])) {
             return bin2hex($this->details['idvisitor']);
@@ -164,8 +162,10 @@ class Visitor implements VisitorInterface
         //       ==> also update API/API.php getSuggestedValuesForSegment(), the $segmentsNeedActionsInfo array
 
         // flatten visit custom variables
-        if (!empty($visitorDetailsArray['customVariables'])
-            && is_array($visitorDetailsArray['customVariables'])) {
+        if (
+            !empty($visitorDetailsArray['customVariables'])
+            && is_array($visitorDetailsArray['customVariables'])
+        ) {
             foreach ($visitorDetailsArray['customVariables'] as $thisCustomVar) {
                 $visitorDetailsArray = array_merge($visitorDetailsArray, $thisCustomVar);
             }
@@ -199,7 +199,6 @@ class Visitor implements VisitorInterface
         // Flatten Page Titles/URLs
         $count = 1;
         foreach ($visitorDetailsArray['actionDetails'] as $action) {
-
             // API.getSuggestedValuesForSegment
             $flattenForActionType = array(
                 'outlink' => 'outlinkUrl',
@@ -207,16 +206,18 @@ class Visitor implements VisitorInterface
                 'event' => 'eventUrl',
                 'action' => 'pageUrl'
             );
-            foreach($flattenForActionType as $actionType => $flattenedKeyPrefix) {
-                if (!empty($action['url'])
-                    && $action['type'] == $actionType) {
+            foreach ($flattenForActionType as $actionType => $flattenedKeyPrefix) {
+                if (
+                    !empty($action['url'])
+                    && $action['type'] == $actionType
+                ) {
                     $flattenedKeyName = $flattenedKeyPrefix . ColumnDelete::APPEND_TO_COLUMN_NAME_TO_KEEP . $count;
                     $visitorDetailsArray[$flattenedKeyName] = $action['url'];
                 }
             }
 
             $flatten = array( 'pageTitle', 'siteSearchKeyword', 'eventCategory', 'eventAction', 'eventName', 'eventValue');
-            foreach($flatten as $toFlatten) {
+            foreach ($flatten as $toFlatten) {
                 if (!empty($action[$toFlatten])) {
                     $flattenedKeyName = $toFlatten . ColumnDelete::APPEND_TO_COLUMN_NAME_TO_KEEP . $count;
                     $visitorDetailsArray[$flattenedKeyName] = $action[$toFlatten];
@@ -283,7 +284,7 @@ class Visitor implements VisitorInterface
 
         foreach ($actionDetails as $actionIdx => &$actionDetail) {
             $actionDetail =& $actionDetails[$actionIdx];
-            $nextAction = isset($actionDetails[$actionIdx+1]) ? $actionDetails[$actionIdx+1] : null;
+            $nextAction = isset($actionDetails[$actionIdx + 1]) ? $actionDetails[$actionIdx + 1] : null;
 
             foreach ($visitorDetailsManipulators as $instance) {
                 $instance->extendActionDetails($actionDetail, $nextAction, $visitorDetailsArray);
@@ -314,5 +315,4 @@ class Visitor implements VisitorInterface
 
         return $actions;
     }
-
 }

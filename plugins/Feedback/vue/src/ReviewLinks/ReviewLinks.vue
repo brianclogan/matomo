@@ -1,13 +1,28 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
   <div class="requestReview">
     <p>{{ translate('Feedback_PleaseLeaveExternalReviewForMatomo') }}</p><br><br>
     <div class="review-links">
+      <div class="review-link">
+        <a
+          href="https://www.softwarereviews.com/6g24l"
+          target="_blank"
+        >
+          <div class="image">
+            <img
+              loading="lazy"
+              src="plugins/Feedback/images/softwarereviews.svg"
+            />
+          </div>
+          <div class="link">Software Reviews</div>
+        </a>
+      </div>
       <div class="review-link">
         <a
           href="https://www.capterra.com/p/182627/Matomo-Analytics/"

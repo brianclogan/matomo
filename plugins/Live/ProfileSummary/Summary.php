@@ -1,18 +1,18 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
  * @link    https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Live\ProfileSummary;
 
 use Piwik\API\Request;
 use Piwik\Common;
 use Piwik\Piwik;
 use Piwik\View;
-use Piwik\Plugins\Goals\API as APIGoals;
 
 /**
  * Class Summary

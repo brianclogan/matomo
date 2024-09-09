@@ -1,22 +1,23 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\PagePerformance\Reports;
 
 use Piwik\EventDispatcher;
 use Piwik\Piwik;
 use Piwik\Plugin\ViewDataTable;
 use Piwik\Plugins\CoreVisualizations\Visualizations\Sparklines;
-use Piwik\Plugins\Installation\View;
 use Piwik\Plugins\PagePerformance\Metrics;
 use Piwik\Plugins\PagePerformance\Visualizations\JqplotGraph\StackedBarEvolution;
 use Piwik\Plugins\PagePerformance\Visualizations\PerformanceColumns;
 use Piwik\Report\ReportWidgetFactory;
+use Piwik\Url;
 use Piwik\Widget\WidgetsList;
 
 class Get extends \Piwik\Plugin\Report
@@ -32,7 +33,7 @@ class Get extends \Piwik\Plugin\Report
 
         $this->name = Piwik::translate('PagePerformance_Overview');
         $this->documentation = Piwik::translate('PagePerformance_OverviewDocumentation');
-        $this->onlineGuideUrl = 'https://matomo.org/faq/how-to/how-do-i-see-page-performance-reports/';
+        $this->onlineGuideUrl = Url::addCampaignParametersToMatomoLink('https://matomo.org/faq/how-to/how-do-i-see-page-performance-reports/');
         $this->processedMetrics = Metrics::getAllPagePerformanceMetrics();
         $this->metrics = Metrics::getAllPagePerformanceMetrics();
     }
@@ -80,7 +81,8 @@ class Get extends \Piwik\Plugin\Report
 
     public function configureView(ViewDataTable $view)
     {
-        if ($view->isViewDataTableId(Sparklines::ID)
+        if (
+            $view->isViewDataTableId(Sparklines::ID)
             && $view instanceof Sparklines
         ) {
             $this->addSparklineColumns($view);

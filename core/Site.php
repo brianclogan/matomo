@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik;
@@ -41,7 +41,7 @@ use Piwik\Plugins\SitesManager\API;
  */
 class Site
 {
-    const DEFAULT_SITE_TYPE = "website";
+    public const DEFAULT_SITE_TYPE = "website";
 
     private static $intProperties = [
         'idsite',
@@ -438,7 +438,7 @@ class Site
         }
         $validIds = array();
         foreach ($ids as $id) {
-            $id = trim($id);
+            $id = is_string($id) ? trim($id) : $id;
             if (!empty($id) && is_numeric($id) && $id > 0) {
                 $validIds[] = $id;
             }

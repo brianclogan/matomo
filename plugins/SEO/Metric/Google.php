@@ -1,9 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\SEO\Metric;
@@ -11,14 +12,14 @@ namespace Piwik\Plugins\SEO\Metric;
 use Piwik\Http;
 use Piwik\NumberFormatter;
 use Piwik\Piwik;
-use Psr\Log\LoggerInterface;
+use Piwik\Log\LoggerInterface;
 
 /**
  * Retrieves Google PageRank.
  */
 class Google implements MetricsProvider
 {
-    const SEARCH_URL = 'https://www.google.com/search?hl=en&q=site%3A';
+    public const SEARCH_URL = 'https://www.google.com/search?hl=en&q=site%3A';
 
     /**
      * @var LoggerInterface
@@ -60,6 +61,4 @@ class Google implements MetricsProvider
             new Metric('google-index', 'SEO_Google_IndexedPages', $pageCount, $logo, null, null, $suffix),
         );
     }
-
-
 }

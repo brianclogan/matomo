@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 use Exception;
@@ -13,7 +14,7 @@ use Piwik\CliMulti\Process;
 use Piwik\Container\StaticContainer;
 use Piwik\Intl\Data\Provider\LanguageDataProvider;
 use Piwik\Intl\Data\Provider\RegionDataProvider;
-use Piwik\Plugins\UserCountry\LocationProvider\DefaultProvider;
+use Piwik\Log\LoggerInterface;
 use Piwik\Tracker\Cache as TrackerCache;
 
 /**
@@ -24,21 +25,27 @@ use Piwik\Tracker\Cache as TrackerCache;
 class Common
 {
     // constants used to map the referrer type to an integer in the log_visit table
-    const REFERRER_TYPE_DIRECT_ENTRY = 1;
-    const REFERRER_TYPE_SEARCH_ENGINE = 2;
-    const REFERRER_TYPE_WEBSITE = 3;
-    const REFERRER_TYPE_CAMPAIGN = 6;
-    const REFERRER_TYPE_SOCIAL_NETWORK = 7;
+    public const REFERRER_TYPE_DIRECT_ENTRY = 1;
+    public const REFERRER_TYPE_SEARCH_ENGINE = 2;
+    public const REFERRER_TYPE_WEBSITE = 3;
+    public const REFERRER_TYPE_CAMPAIGN = 6;
+    public const REFERRER_TYPE_SOCIAL_NETWORK = 7;
 
     // Flag used with htmlspecialchar. See php.net/htmlspecialchars.
-    const HTML_ENCODING_QUOTE_STYLE = ENT_QUOTES;
+    public const HTML_ENCODING_QUOTE_STYLE = ENT_QUOTES;
 
     public static $isCliMode = null;
+
+    /**
+     * Filled and used during tests only
+     * @var array
+     */
+    public static $headersSentInTests = [];
 
     /*
      * Database
      */
-    const LANGUAGE_CODE_INVALID = 'xx';
+    public const LANGUAGE_CODE_INVALID = 'xx';
 
     /**
      * Hashes a string into an integer which should be very low collision risks
@@ -70,13 +77,13 @@ class Common
     /**
      * Returns an array containing the prefixed table names of every passed argument.
      *
-     * @param string ... The table names to prefix, ie "log_visit"
+     * @param string ...$tables The table names to prefix, ie "log_visit"
      * @return array The prefixed names in an array.
      */
-    public static function prefixTables()
+    public static function prefixTables(...$tables)
     {
         $result = array();
-        foreach (func_get_args() as $table) {
+        foreach ($tables as $table) {
             $result[] = self::prefixTable($table);
         }
         return $result;
@@ -98,7 +105,8 @@ class Common
         if (is_null($prefixTable)) {
             $prefixTable = Config::getInstance()->database['tables_prefix'];
         }
-        if (empty($prefixTable)
+        if (
+            empty($prefixTable)
             || strpos($table, $prefixTable) !== 0
         ) {
             return $table;
@@ -132,11 +140,11 @@ class Common
             return self::$isCliMode;
         }
 
-        if(PHP_SAPI === 'cli'){
+        if (PHP_SAPI === 'cli') {
             return true;
         }
 
-        if(self::isPhpCgiType() && (!isset($_SERVER['REMOTE_ADDR']) || empty($_SERVER['REMOTE_ADDR']))){
+        if (self::isPhpCgiType() && (!isset($_SERVER['REMOTE_ADDR']) || empty($_SERVER['REMOTE_ADDR']))) {
             return true;
         }
 
@@ -188,7 +196,7 @@ class Common
      * @return string
      * @deprecated since 4.4 - directly use mb_substr instead
      */
-    public static function mb_substr($string, $start, $length = null)
+    public static function mb_substr($string, $start, $length = null) // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps
     {
         return mb_substr($string, $start, $length, 'UTF-8');
     }
@@ -211,7 +219,7 @@ class Common
             if (Process::isMethodDisabled('getmypid')) {
                 $pid = Common::getRandomInt(12);
             } else {
-                $pid = getmypid();
+                $pid = \getmypid();
             }
         }
 
@@ -227,7 +235,7 @@ class Common
      * @return int
      * @deprecated since 4.4 - directly use mb_strlen instead
      */
-    public static function mb_strlen($string)
+    public static function mb_strlen($string) // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps
     {
         return mb_strlen($string, 'UTF-8');
     }
@@ -241,7 +249,7 @@ class Common
      * @return string
      * @deprecated since 4.4 - directly use mb_strtolower instead
      */
-    public static function mb_strtolower($string)
+    public static function mb_strtolower($string) // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps
     {
         return mb_strtolower($string, 'UTF-8');
     }
@@ -255,7 +263,7 @@ class Common
      * @return string
      * @deprecated since 4.4 - directly use mb_strtoupper instead
      */
-    public static function mb_strtoupper($string)
+    public static function mb_strtoupper($string) // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps
     {
         return mb_strtoupper($string, 'UTF-8');
     }
@@ -278,9 +286,9 @@ class Common
         }
 
         $result = "\0";
-        $stringA^= $stringB;
+        $stringA ^= $stringB;
         for ($i = 0; $i < strlen($stringA); $i++) {
-            $result|= $stringA[$i];
+            $result |= $stringA[$i];
         }
 
         return $result === "\0";
@@ -294,7 +302,7 @@ class Common
      * @param bool $rethrow Whether to rethrow exceptions or not.
      * @return mixed
      */
-    public static function safe_unserialize($string, $allowedClasses = [], $rethrow = false)
+    public static function safe_unserialize($string, $allowedClasses = [], $rethrow = false)  // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps
     {
         try {
             // phpcs:ignore Generic.PHP.ForbiddenFunctions
@@ -304,7 +312,7 @@ class Common
                 throw $e;
             }
 
-            $logger = StaticContainer::get('Psr\Log\LoggerInterface');
+            $logger = StaticContainer::get(LoggerInterface::class);
             $logger->debug('Unable to unserialize a string: {exception} (string = {string})', [
                 'exception' => $e,
                 'string' => $string,
@@ -362,7 +370,8 @@ class Common
 
                 $value[$newKey] = self::sanitizeInputValues($value[$newKey], $alreadyStripslashed);
             }
-        } elseif (!is_null($value)
+        } elseif (
+            !is_null($value)
             && !is_bool($value)
         ) {
             throw new Exception("The value to escape has not a supported type. Value = " . var_export($value, true));
@@ -488,6 +497,8 @@ class Common
      * @throws Exception If the request parameter doesn't exist and there is no default value, or if the request parameter
      *                   exists but has an incorrect type.
      * @return mixed The sanitized request parameter.
+     * @see Request::getParameter()
+     * @deprecated Use Request class instead, which will return raw values instead.
      * @api
      */
     public static function getRequestVar($varName, $varDefault = null, $varType = null, $requestArrayToUse = null)
@@ -497,6 +508,7 @@ class Common
         }
 
         $varDefault = self::sanitizeInputValues($varDefault);
+
         if ($varType === 'int') {
             // settype accepts only integer
             // 'int' is simply a shortcut for 'integer'
@@ -504,7 +516,8 @@ class Common
         }
 
         // there is no value $varName in the REQUEST so we try to use the default value
-        if (empty($varName)
+        if (
+            empty($varName)
             || !isset($requestArrayToUse[$varName])
             || (!is_array($requestArrayToUse[$varName])
                 && strlen($requestArrayToUse[$varName]) === 0
@@ -513,7 +526,8 @@ class Common
             if (is_null($varDefault)) {
                 throw new Exception("The parameter '$varName' isn't set in the Request, and a default value wasn't provided.");
             } else {
-                if (!is_null($varType)
+                if (
+                    !is_null($varType)
                     && in_array($varType, array('string', 'integer', 'array'))
                 ) {
                     settype($varDefault, $varType);
@@ -527,11 +541,14 @@ class Common
         // we deal w/ json differently
         if ($varType === 'json') {
             $value = $requestArrayToUse[$varName];
-            $value = json_decode($value, $assoc = true);
-            return self::sanitizeInputValues($value, $alreadyStripslashed = true);
+            if (is_string($value)) {
+                $value = json_decode($value, $assoc = true);
+            }
+            return self::sanitizeInputValues($value, true);
         }
 
         $value = self::sanitizeInputValues($requestArrayToUse[$varName]);
+
         if (isset($varType)) {
             $ok = false;
 
@@ -547,10 +564,14 @@ class Common
                     $ok = true;
                 }
             } elseif ($varType === 'float') {
-                $valueToCompare = (string)(float)$value;
-                $valueToCompare = Common::forceDotAsSeparatorForDecimalPoint($valueToCompare);
+                $valueToCompare = Common::forceDotAsSeparatorForDecimalPoint($value);
 
-                if ($value == $valueToCompare) {
+                // Simplified regex for float without support for underscore notation
+                // will match:  1.234, 1.2e3, 7E-10
+                // won't match: 1_234.567
+                $floatRegex = "/^[+-]?((([0-9]+)|(([0-9]+)?\.([0-9]+))|(([0-9]+)\.([0-9]+)?))([eE][+-]?([0-9]+))?)$/";
+
+                if (preg_match($floatRegex, $valueToCompare)) {
                     $ok = true;
                 }
             } elseif ($varType === 'array') {
@@ -565,8 +586,8 @@ class Common
             if ($ok === false) {
                 if ($varDefault === null) {
                     throw new Exception("The parameter '$varName' doesn't have a correct type, and a default value wasn't provided.");
-                } // we return the default value with the good type set
-                else {
+                } else {
+                    // we return the default value with the good type set
                     settype($varDefault, $varType);
                     return $varDefault;
                 }
@@ -575,38 +596,6 @@ class Common
         }
 
         return $value;
-    }
-
-    /**
-     * Replaces lbrace with an encoded entity to prevent angular from parsing the content
-     *
-     * @deprecated Will be removed, once the vue js migration is done
-     *
-     * @param $string
-     * @return array|string|string[]|null
-     */
-    public static function fixLbrace($string)
-    {
-        $chars = array('{', '&#x7B;', '&#123;', '&lcub;', '&lbrace;', '&#x0007B;');
-
-        static $search;
-        static $replace;
-
-        if (!isset($search)) {
-            $search = array_map(function ($val) { return $val . $val; }, $chars);
-        }
-        if (!isset($replace)) {
-            $replace = array_map(function ($val) { return $val . '&#8291;' . $val; }, $chars);
-        }
-
-        $replacedString = is_null($string) ? $string : str_replace($search, $replace, $string);
-
-        // try to replace characters until there are no changes
-        if ($string !== $replacedString) {
-            return self::fixLbrace($replacedString);
-        }
-
-        return $string;
     }
 
     /*
@@ -716,7 +705,8 @@ class Common
      */
     public static function convertVisitorIdToBin($id)
     {
-        if (strlen($id) !== Tracker::LENGTH_HEX_ID_STRING
+        if (
+            strlen($id) !== Tracker::LENGTH_HEX_ID_STRING
             || @bin2hex(self::hex2bin($id)) != $id
         ) {
             throw new Exception("visitorId is expected to be a " . Tracker::LENGTH_HEX_ID_STRING . " hex char string");
@@ -748,7 +738,7 @@ class Common
     }
 
     /**
-     * Returns a human readable error message in case an error occcurred during the last json encode/decode.
+     * Returns a human readable error message in case an error occurred during the last json encode/decode.
      * Returns an empty string in case there was no error.
      *
      * @return string
@@ -845,7 +835,7 @@ class Common
         );
 
         if (is_null($browserLang)) {
-            $browserLang = self::sanitizeInputValues(@$_SERVER['HTTP_ACCEPT_LANGUAGE']);
+            $browserLang = self::sanitizeInputValues($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '');
             if (empty($browserLang) && self::isPhpCliMode()) {
                 $browserLang = @getenv('LANG');
             }
@@ -931,7 +921,7 @@ class Common
     }
 
     /**
-     * Returns the language and region string, based only on the Browser 'accepted language' information.
+     * Returns the language string, based only on the Browser 'accepted language' information.
      * * The language tag is defined by ISO 639-1
      *
      * @param string $browserLanguage Browser's accepted language header
@@ -940,8 +930,8 @@ class Common
      */
     public static function extractLanguageCodeFromBrowserLanguage($browserLanguage, $validLanguages = array())
     {
-        $validLanguages = self::checkValidLanguagesIsSet($validLanguages);
         $languageRegionCode = self::extractLanguageAndRegionCodeFromBrowserLanguage($browserLanguage, $validLanguages);
+        $validLanguages = self::checkValidLanguagesIsSet($validLanguages);
 
         if (strlen($languageRegionCode) === 2) {
             $languageCode = $languageRegionCode;
@@ -960,14 +950,15 @@ class Common
      * * The region tag is defined by ISO 3166-1
      *
      * @param string $browserLanguage Browser's accepted language header
-     * @param array $validLanguages array of valid language codes. Note that if the array includes "fr" then it will consider all regional variants of this language valid, such as "fr-ca" etc.
-     * @return string 2 letter ISO 639 code 'es' (Spanish) or if found, includes the region as well: 'es-ar'
+     * @param array $validLanguages array of valid language/region codes.
+     * @return string 2-letter ISO 639 code 'es' (Spanish) or if found, includes the region as well: 'es-ar'
      */
     public static function extractLanguageAndRegionCodeFromBrowserLanguage($browserLanguage, $validLanguages = array())
     {
+        $forceRegionValidation = !empty($validLanguages);
         $validLanguages = self::checkValidLanguagesIsSet($validLanguages);
 
-        if (!preg_match_all('/(?:^|,)([a-z]{2,3})([-][a-z]{2})?/', $browserLanguage, $matches, PREG_SET_ORDER)) {
+        if (!preg_match_all('/(?:^|,)([a-z]{2,3})(?:[-][a-z]{4})?([-][a-z]{2})?/', $browserLanguage, $matches, PREG_SET_ORDER)) {
             return self::LANGUAGE_CODE_INVALID;
         }
         foreach ($matches as $parts) {
@@ -984,7 +975,8 @@ class Common
                     return $langIso639 . $regionIso3166;
                 }
 
-                if (in_array($langIso639, $validLanguages)) {
+                // if a set of valid codes was provided, we do not append the region if it was not included
+                if (in_array($langIso639, $validLanguages) && !$forceRegionValidation) {
                     return $langIso639 . $regionIso3166;
                 }
             }
@@ -1100,6 +1092,19 @@ class Common
      */
     public static function sendHeader($header, $replace = true)
     {
+        if (defined('PIWIK_TEST_MODE') && PIWIK_TEST_MODE) {
+            if (strpos($header, ':') !== false) {
+                [$headerName, $headerValue] = explode(':', $header, 2);
+            } else {
+                $headerName = $header;
+                $headerValue = '';
+            }
+
+            if (!array_key_exists($headerName, self::$headersSentInTests) || $replace) {
+                self::$headersSentInTests[$headerName] = $headerValue;
+            }
+        }
+
         // don't send header in CLI mode
         if (!Common::isPhpCliMode() and !headers_sent()) {
             header($header, $replace);
@@ -1113,6 +1118,10 @@ class Common
      */
     public static function stripHeader($name)
     {
+        if (defined('PIWIK_TEST_MODE') && PIWIK_TEST_MODE) {
+            unset(self::$headersSentInTests[$name]);
+        }
+
         // don't strip header in CLI mode
         if (!Common::isPhpCliMode() and !headers_sent()) {
             header_remove($name);
@@ -1138,6 +1147,7 @@ class Common
             401 => 'Unauthorized',
             403 => 'Forbidden',
             404 => 'Not Found',
+            429 => 'Too Many Requests',
             500 => 'Internal Server Error',
             503 => 'Service Unavailable',
         );
@@ -1149,9 +1159,11 @@ class Common
         if (strpos(PHP_SAPI, '-fcgi') === false) {
             $key = 'HTTP/1.1';
 
-            if (array_key_exists('SERVER_PROTOCOL', $_SERVER)
+            if (
+                array_key_exists('SERVER_PROTOCOL', $_SERVER)
                 && strlen($_SERVER['SERVER_PROTOCOL']) < 15
-                && strlen($_SERVER['SERVER_PROTOCOL']) > 1) {
+                && strlen($_SERVER['SERVER_PROTOCOL']) > 1
+            ) {
                 $key = $_SERVER['SERVER_PROTOCOL'];
             }
         } else {
@@ -1200,7 +1212,7 @@ class Common
             $info = var_export($info, true);
         }
 
-        $logger = StaticContainer::get('Psr\Log\LoggerInterface');
+        $logger = StaticContainer::get(LoggerInterface::class);
         if (is_array($info) || is_object($info)) {
             $out = var_export($info, true);
             $logger->debug($out);

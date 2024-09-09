@@ -1,16 +1,19 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\PagePerformance\Columns\Metrics;
 
 use Piwik\DataTable\Row;
 use Piwik\Metrics\Formatter;
 use Piwik\Piwik;
 use Piwik\Plugin\ProcessedMetric;
+use Piwik\Columns\Dimension;
 
 /**
  * The average amount of time it took loading a page completely. Calculated as:
@@ -46,7 +49,8 @@ class AveragePageLoadTime extends ProcessedMetric
 
     public function format($value, Formatter $formatter)
     {
-        if ($formatter instanceof Formatter\Html
+        if (
+            $formatter instanceof Formatter\Html
             && !$value
         ) {
             return '-';
@@ -59,5 +63,10 @@ class AveragePageLoadTime extends ProcessedMetric
     {
         return ['avg_time_network', 'avg_time_server', 'avg_time_transfer',
                 'avg_time_dom_processing', 'avg_time_dom_completion', 'avg_time_on_load'];
+    }
+
+    public function getSemanticType(): ?string
+    {
+        return Dimension::TYPE_DURATION_S;
     }
 }

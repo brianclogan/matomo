@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Tracker;
@@ -20,7 +20,6 @@ use Piwik\UrlHelper;
 
 class PageUrl
 {
-
     /**
      * Map URL prefixes to integers.
      * @see self::normalizeUrl(), self::reconstructNormalizedUrl()
@@ -87,9 +86,12 @@ class PageUrl
         $website = TrackerCache::getCacheWebsiteAttributes($idSite);
         $excludedParameters = self::getExcludedParametersFromWebsite($website);
 
-        $parametersToExclude = array_merge($excludedParameters,
-                                           self::getUrlParameterNamesToExcludeFromUrl(),
-                                           $campaignTrackingParameters);
+        $parametersToExclude = array_merge(
+            ['ignore_referrer', 'ignore_referer'],
+            $excludedParameters,
+            self::getUrlParameterNamesToExcludeFromUrl(),
+            $campaignTrackingParameters
+        );
 
         /**
          * Triggered before setting the action url in Piwik\Tracker\Action so plugins can register
@@ -149,7 +151,8 @@ class PageUrl
     {
         // if we should discard the url fragment for this site, return an empty string as
         // the processed url fragment
-        if ($idSite !== false
+        if (
+            $idSite !== false
             && PageUrl::shouldRemoveURLFragmentFor($idSite)
         ) {
             return '';
@@ -242,8 +245,10 @@ class PageUrl
         if (is_string($value)) {
             $decoded = urldecode($value);
             try {
-                if (function_exists('mb_check_encoding')
-                    && @mb_check_encoding($decoded, $encoding)) {
+                if (
+                    function_exists('mb_check_encoding')
+                    && @mb_check_encoding($decoded, $encoding)
+                ) {
                     $value = urlencode(mb_convert_encoding($decoded, 'UTF-8', $encoding));
                 }
             } catch (\Error $e) {
@@ -287,7 +292,8 @@ class PageUrl
         if (function_exists('mb_check_encoding')) {
             // if query params are encoded w/ non-utf8 characters (due to browser bug or whatever),
             // encode to UTF-8.
-            if (is_string($encoding) &&
+            if (
+                is_string($encoding) &&
                 strtolower($encoding) !== 'utf-8'
             ) {
                 Common::printDebug("Encoding page URL query parameters to $encoding.");
@@ -423,7 +429,8 @@ class PageUrl
     public static function urldecodeValidUtf8($value)
     {
         $value = urldecode($value);
-        if (function_exists('mb_check_encoding')
+        if (
+            function_exists('mb_check_encoding')
             && !@mb_check_encoding($value, 'utf-8')
         ) {
             return urlencode($value);

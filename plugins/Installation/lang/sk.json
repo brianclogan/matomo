@@ -50,7 +50,7 @@
         "SystemCheckExtensions": "Ostatné požadované rozšírenia",
         "SystemCheckFileIntegrity": "Integrita súborov",
         "SystemCheckFunctions": "Požadované funkcie",
-        "SystemCheckGDFreeType": "GD > 2.x + Freetype (grafika)",
+        "SystemCheckGDFreeType": "GD &gt; 2.x + Freetype (grafika)",
         "SystemCheckGDHelp": "„Sparklines“ (malé grafy) nebudú fungovať.",
         "SystemCheckMemoryLimit": "Pamäťový limit",
         "SystemCheckMemoryLimitHelp": "Na webstránkach s vysokou premávkou archivačný proces bude vyžadovať viac pamäte, než je to aktuálne povolené.<br /> Pozrite si direktívu memory_limit vo vašom php.ini súbore, ak je to potrebné.",
@@ -77,7 +77,7 @@
         "TablesWarningHelp": "Vyberte si použitie už existujúcich tabuliek alebo výber čistej inštalácie s vymazaním všetkých existujúcich dát v databáze.",
         "TablesWithSameNamesFound": "Niektoré %1$s tabuľky vo vašej databáze %2$s majú rovnaké názvy, ako sa snaží vytvoriť Matomo",
         "Timezone": "Časové pásmo webovej stránky",
-        "Welcome": "Vitajte!",
+        "Welcome": "Vitajte",
         "WelcomeToCommunity": "Vitajte v Matomo komunite"
     }
 }

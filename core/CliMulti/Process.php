@@ -1,10 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\CliMulti;
 
 use Piwik\CliMulti;
@@ -23,8 +25,8 @@ use Piwik\SettingsServer;
  */
 class Process
 {
-    const PS_COMMAND = 'ps x';
-    const AWK_COMMAND = 'awk \'! /defunct/ {print $1}\'';
+    public const PS_COMMAND = 'ps x';
+    public const AWK_COMMAND = 'awk \'! /defunct/ {print $1}\'';
 
     private $finished = null;
     private $pidFile = '';
@@ -122,7 +124,7 @@ class Process
 
     public function startProcess()
     {
-        $this->writePidFileContent(getmypid());
+        $this->writePidFileContent(Common::getProcessId());
     }
 
     public function isRunning()
@@ -207,7 +209,8 @@ class Process
     {
         $reasons = [];
 
-        if (defined('PIWIK_TEST_MODE')
+        if (
+            defined('PIWIK_TEST_MODE')
             && self::isForcingAsyncProcessMode()
         ) {
             $reasons[] = 'forcing multicurl use for tests';
@@ -234,8 +237,8 @@ class Process
 
         if (!self::psExistsAndRunsCorrectly()) {
             $reasons[] = 'shell_exec(' . self::PS_COMMAND . '" 2> /dev/null") did not return a success code';
-        } else if (!$getMyPidDisabled) {
-            $pid = @getmypid();
+        } elseif (!$getMyPidDisabled) {
+            $pid = @\getmypid();
             if (empty($pid) || !in_array($pid, self::getRunningProcesses())) {
                 $reasons[] = 'could not find our pid (from getmypid()) in the output of `' . self::PS_COMMAND . '`';
             }
@@ -256,7 +259,7 @@ class Process
     private static function awkExistsAndRunsCorrectly()
     {
         $testResult = @shell_exec('echo " 537 s000 Ss 0:00.05 login -pfl theuser /bin/bash -c exec -la bash /bin/bash" | ' . self::AWK_COMMAND . ' 2>/dev/null');
-        return trim($testResult) == '537';
+        return trim($testResult ?? '') == '537';
     }
 
     private static function isSystemNotSupported()
@@ -288,6 +291,11 @@ class Process
     {
         $exec = $command . ' > /dev/null 2>&1; echo $?';
         $returnCode = @shell_exec($exec);
+
+        if (false === $returnCode || null === $returnCode) {
+            return false;
+        }
+
         $returnCode = trim($returnCode);
         return 0 == (int) $returnCode;
     }
@@ -304,15 +312,15 @@ class Process
     /**
      * @return int[] The ids of the currently running processes
      */
-     public static function getRunningProcesses()
-     {
-         $ids = explode("\n", trim(shell_exec(self::PS_COMMAND . ' 2>/dev/null | ' . self::AWK_COMMAND . ' 2>/dev/null')));
+    public static function getRunningProcesses()
+    {
+        $ids = explode("\n", trim(shell_exec(self::PS_COMMAND . ' 2>/dev/null | ' . self::AWK_COMMAND . ' 2>/dev/null') ?? ''));
 
-         $ids = array_map('intval', $ids);
-         $ids = array_filter($ids, function ($id) {
+        $ids = array_map('intval', $ids);
+        $ids = array_filter($ids, function ($id) {
             return $id > 0;
         });
 
-         return $ids;
-     }
+        return $ids;
+    }
 }

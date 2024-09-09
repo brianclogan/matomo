@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\AssetManager\UIAsset;
 
 use Exception;
@@ -39,9 +40,11 @@ class OnDiskUIAsset extends UIAsset
         $this->baseDirectory = $baseDirectory;
         $this->relativeLocation = $fileLocation;
 
-        if (!empty($relativeRootDir)
+        if (
+            !empty($relativeRootDir)
             && is_string($relativeRootDir)
-            && !Common::stringEndsWith($relativeRootDir, '/')) {
+            && !Common::stringEndsWith($relativeRootDir, '/')
+        ) {
             $relativeRootDir .= '/';
         }
 
@@ -92,14 +95,16 @@ class OnDiskUIAsset extends UIAsset
      * @param string $content
      * @throws \Exception
      */
-    public function writeContent($content)
+    public function writeContent($content): void
     {
         $this->delete();
 
-        $newFile = @fopen($this->getAbsoluteLocation(), "w");
+        $location = $this->getAbsoluteLocation();
+
+        $newFile = @fopen($location, 'w');
 
         if (!$newFile) {
-            throw new Exception("The file : " . $newFile . " can not be opened in write mode.");
+            throw new Exception('The file : ' . $location . ' can not be opened in write mode.');
         }
 
         fwrite($newFile, $content);

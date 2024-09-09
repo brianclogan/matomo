@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Installation;
 
 use Piwik\API\Request;
@@ -31,6 +32,7 @@ class Installation extends \Piwik\Plugin
     public function registerEvents()
     {
         $hooks = array(
+            'Translate.getClientSideTranslationKeys' => 'getClientSideTranslationKeys',
             'Config.NoConfigurationFile'      => 'dispatch',
             'Config.badConfigurationFile'     => 'dispatch',
             'Db.cannotConnectToDb'            => 'displayDbConnectionMessage',
@@ -38,6 +40,26 @@ class Installation extends \Piwik\Plugin
             'AssetManager.getStylesheetFiles' => 'getStylesheetFiles',
         );
         return $hooks;
+    }
+
+    public function getClientSideTranslationKeys(&$translations)
+    {
+        $translations[] = 'Installation_Legend';
+        $translations[] = 'General_Ok';
+        $translations[] = 'Installation_SystemCheckWarning';
+        $translations[] = 'Installation_SystemCheckError';
+        $translations[] = 'General_RefreshPage';
+        $translations[] = 'Installation_CopyBelowInfoForSupport';
+        $translations[] = 'Installation_CopySystemCheck';
+        $translations[] = 'Installation_DownloadSystemCheck';
+        $translations[] = 'Installation_Optional';
+        $translations[] = 'Installation_InformationalResults';
+        $translations[] = 'Installation_SystemCheck';
+        $translations[] = 'Installation_Requirements';
+        $translations[] = 'Installation_SystemCheckSummaryThereWereErrors';
+        $translations[] = 'Installation_SeeBelowForMoreInfo';
+        $translations[] = 'Installation_SystemCheckSummaryThereWereWarnings';
+        $translations[] = 'Installation_SystemCheckSummaryNoProblems';
     }
 
     public function displayDbConnectionMessage($exception = null)

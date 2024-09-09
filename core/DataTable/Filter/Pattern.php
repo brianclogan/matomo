@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\DataTable\Filter;
 
 use Piwik\DataTable;
@@ -86,7 +87,7 @@ class Pattern extends BaseFilter
             //instead search must handle
             // - negative search with -piwik
             // - exact match with ""
-            // see (?!pattern) 	A subexpression that performs a negative lookahead search, which matches the search string at any point where a string not matching pattern begins.
+            // see (?!pattern)     A subexpression that performs a negative lookahead search, which matches the search string at any point where a string not matching pattern begins.
             $value = $row->getColumn($this->columnToFilter);
             if ($value === false) {
                 $value = $row->getMetadata($this->columnToFilter);

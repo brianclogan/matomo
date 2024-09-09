@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\VisitTime\Reports;
 
 use Piwik\Common;
@@ -40,9 +41,10 @@ class GetByDayOfWeek extends Base
 
         $view->config->enable_sort = false;
         $view->config->show_footer_message = Piwik::translate('General_ReportGeneratedFrom', $this->getDateRangeForFooterMessage());
-        $view->config->addTranslation('label', $this->dimension->getName());
 
-        $view->config->disable_row_evolution = true;
+        if (property_exists($view->config, 'disable_row_evolution')) {
+            $view->config->disable_row_evolution = true;
+        }
 
         if ($view->isViewDataTableId(Graph::ID)) {
             $view->config->max_graph_elements = false;

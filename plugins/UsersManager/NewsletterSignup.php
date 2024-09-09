@@ -3,23 +3,22 @@
 /**
  * Matomo - free/libre analytics platform
  *
- * @link http://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\UsersManager;
 
 use Exception;
-use Piwik\Config;
 use Piwik\Container\StaticContainer;
 use Piwik\Http;
 use Piwik\Option;
+use Piwik\Plugins\Marketplace\Api\Client;
 use Piwik\SettingsPiwik;
-use Piwik\Url;
 
 class NewsletterSignup
 {
-    const NEWSLETTER_SIGNUP_OPTION = 'UsersManager.newsletterSignup.';
+    public const NEWSLETTER_SIGNUP_OPTION = 'UsersManager.newsletterSignup.';
 
     public static function signupForNewsletter($userLogin, $email, $matomoOrg = false, $professionalServices = false)
     {
@@ -29,7 +28,7 @@ class NewsletterSignup
             return false;
         }
 
-        $url = Config::getInstance()->General['api_service_url'];
+        $url = Client::getApiServiceUrl();
         $url .= '/1.0/subscribeNewsletter/';
 
         $params = array(

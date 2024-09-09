@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\DataTable\Filter;
 
 use Piwik\DataTable\BaseFilter;
@@ -29,6 +30,11 @@ use Piwik\Piwik;
  */
 class ReplaceSummaryRowLabel extends BaseFilter
 {
+    /**
+     * @var string|null
+     */
+    private $newLabel;
+
     /**
      * Constructor.
      *
@@ -64,8 +70,8 @@ class ReplaceSummaryRowLabel extends BaseFilter
                 $this->filter($subTable);
             }
         }
-        
-       
+
+
         $summaryRow = $table->getRowFromId(DataTable::ID_SUMMARY_ROW);
         if (!empty($summaryRow)) {
             $subTable = $summaryRow->getSubtable();

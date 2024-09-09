@@ -1,15 +1,26 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
   <div
     ref="root"
     class="periodSelector piwikSelector"
+    :class="{'periodSelector-withPrevNext': canShowMovePeriod}"
     v-expand-on-click="{ expander: 'title' }"
   >
+    <button
+      v-if="canShowMovePeriod"
+      class="move-period move-period-prev"
+      @click="movePeriod(-1)"
+      :disabled="isPeriodMoveDisabled(-1)"
+    >
+      <span class="icon-chevron-left"></span>
+    </button>
+
     <a
       ref="title"
       id="date"
@@ -20,6 +31,7 @@
       <span class="icon icon-calendar" />
       {{ currentlyViewingText }}
     </a>
+
     <div
       id="periodMore"
       class="dropdown"
@@ -155,6 +167,14 @@
         </div>
       </div>
     </div>
+    <button
+      v-if="canShowMovePeriod"
+      class="move-period move-period-next"
+      @click="movePeriod(1)"
+      :disabled="isPeriodMoveDisabled(1)"
+    >
+      <span class="icon-chevron-right"></span>
+    </button>
   </div>
 </template>
 
@@ -165,7 +185,7 @@ import DateRangePicker from '../DateRangePicker/DateRangePicker.vue';
 import PeriodDatePicker from '../PeriodDatePicker/PeriodDatePicker.vue';
 import ActivityIndicator from '../ActivityIndicator/ActivityIndicator.vue';
 import Matomo from '../Matomo/Matomo';
-import translate from '../translate';
+import { translate } from '../translate';
 import ComparisonsStore from '../Comparisons/Comparisons.store.instance';
 import useExternalPluginComponent from '../useExternalPluginComponent';
 import {
@@ -173,12 +193,15 @@ import {
   parseDate,
   Range,
   format,
+  datesAreInTheSamePeriod,
 } from '../Periods';
 import MatomoUrl from '../MatomoUrl/MatomoUrl';
 
 const Field = useExternalPluginComponent('CorePluginsAdmin', 'Field');
 
 const NBSP = Matomo.helper.htmlDecode('&nbsp;');
+
+const COMPARE_PERIOD_TYPES = ['custom', 'previousPeriod', 'previousYear'];
 
 const COMPARE_PERIOD_OPTIONS = [
   { key: 'custom', value: translate('General_Custom') },
@@ -192,7 +215,9 @@ const COMPARE_PERIOD_OPTIONS = [
   },
 ];
 
+// the date when the site was created
 const piwikMinDate = new Date(Matomo.minDateYear, Matomo.minDateMonth - 1, Matomo.minDateDay);
+// today/now
 const piwikMaxDate = new Date(Matomo.maxDateYear, Matomo.maxDateMonth - 1, Matomo.maxDateDay);
 
 function isValidDate(d: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -250,22 +275,25 @@ export default defineComponent({
   },
   mounted() {
     Matomo.on('hidePeriodSelector', () => {
-      window.$(this.$refs.root as HTMLElement).hide();
+      window.$(this.$refs.root as HTMLElement).parent('#periodString').hide();
     });
 
     // some widgets might hide the period selector using the event above, so ensure it's
     // shown again when switching the page
-    Matomo.on('piwikPageChange', () => {
-      window.$(this.$refs.root as HTMLElement).show();
+    Matomo.on('matomoPageChange', () => {
+      window.$(this.$refs.root as HTMLElement).parent('#periodString').show();
     });
-
-    this.updateSelectedValuesFromHash();
-    watch(() => MatomoUrl.parsed.value, this.updateSelectedValuesFromHash);
 
     this.isComparing = ComparisonsStore.isComparingPeriods();
     watch(() => ComparisonsStore.isComparingPeriods(), (newVal) => {
       this.isComparing = newVal;
     });
+
+    this.updateSelectedValuesFromHash();
+    watch(() => MatomoUrl.parsed.value, this.updateSelectedValuesFromHash);
+
+    this.updateComparisonValuesFromStore();
+    watch(() => ComparisonsStore.getPeriodComparisons(), this.updateComparisonValuesFromStore);
 
     window.initTopControls(); // must be called when a top control changes width
 
@@ -310,6 +338,7 @@ export default defineComponent({
       if (this.comparePeriodType === 'custom') {
         return {
           comparePeriods: ['range'],
+          comparePeriodType: 'custom',
           compareDates: [`${this.compareStartDate},${this.compareEndDate}`],
         };
       }
@@ -317,6 +346,7 @@ export default defineComponent({
       if (this.comparePeriodType === 'previousPeriod') {
         return {
           comparePeriods: [this.selectedPeriod],
+          comparePeriodType: 'previousPeriod',
           compareDates: [this.previousPeriodDateToSelectedPeriod],
         };
       }
@@ -336,12 +366,14 @@ export default defineComponent({
         if (this.selectedPeriod === 'range') {
           return {
             comparePeriods: ['range'],
+            comparePeriodType: 'previousYear',
             compareDates: [`${format(currentDateRange[0])},${format(currentDateRange[1])}`],
           };
         }
 
         return {
           comparePeriods: [this.selectedPeriod],
+          comparePeriodType: 'previousYear',
           compareDates: [format(currentDateRange[0])],
         };
       }
@@ -390,6 +422,15 @@ export default defineComponent({
 
       return format(this.dateValue!);
     },
+    isErrorDisplayed() {
+      return this.currentlyViewingText === translate('General_Error');
+    },
+    isRangeSelection() {
+      return this.periodValue === 'range';
+    },
+    canShowMovePeriod() {
+      return !this.isRangeSelection && !this.isErrorDisplayed;
+    },
   },
   methods: {
     handleZIndexPositionRelativeCompareDropdownIssue() {
@@ -429,7 +470,7 @@ export default defineComponent({
       const compareParams = this.selectedComparisonParams;
 
       let baseParams: Record<string, unknown>;
-      if (Matomo.helper.isAngularRenderingThePage()) {
+      if (Matomo.helper.isReportingPage()) {
         this.closePeriodSelector();
         baseParams = MatomoUrl.hashParsed.value;
       } else {
@@ -440,6 +481,7 @@ export default defineComponent({
       // get params without comparePeriods/compareSegments/compareDates
       const paramsWithoutCompare = { ...baseParams };
       delete paramsWithoutCompare.comparePeriods;
+      delete paramsWithoutCompare.comparePeriodType;
       delete paramsWithoutCompare.compareDates;
 
       MatomoUrl.updateLocation({
@@ -463,6 +505,46 @@ export default defineComponent({
       }
 
       this.setPiwikPeriodAndDate(this.selectedPeriod, this.dateValue!);
+    },
+    updateComparisonValuesFromStore() {
+      this.comparePeriodType = 'previousPeriod';
+      this.compareStartDate = '';
+      this.compareEndDate = '';
+
+      // first is selected period, second is period to compare to
+      const comparePeriods = ComparisonsStore.getPeriodComparisons();
+
+      if (comparePeriods.length < 2) {
+        return;
+      }
+
+      const comparePeriodType = MatomoUrl.parsed.value.comparePeriodType as string;
+
+      if (!COMPARE_PERIOD_TYPES.includes(comparePeriodType)) {
+        return;
+      }
+
+      this.comparePeriodType = comparePeriodType;
+
+      if (this.comparePeriodType !== 'custom' || comparePeriods[1].params.period !== 'range') {
+        return;
+      }
+
+      let periodObj;
+
+      try {
+        periodObj = Periods.parse(
+          comparePeriods[1].params.period,
+          comparePeriods[1].params.date,
+        ) as Range;
+      } catch {
+        return;
+      }
+
+      const [startDate, endDate] = periodObj.getDateRange();
+
+      this.compareStartDate = format(startDate);
+      this.compareEndDate = format(endDate);
     },
     updateSelectedValuesFromHash() {
       const date = MatomoUrl.parsed.value.date as string;
@@ -544,6 +626,57 @@ export default defineComponent({
       }
 
       return true;
+    },
+    movePeriod(direction: number) {
+      if (!this.canMovePeriod(direction)) {
+        return;
+      }
+
+      let newDate = new Date();
+      if (this.dateValue != null) {
+        newDate = this.dateValue;
+      }
+
+      switch (this.periodValue) {
+        case 'day':
+          newDate.setDate(newDate.getDate() + direction);
+          break;
+        case 'week':
+          newDate.setDate(newDate.getDate() + direction * 7);
+          break;
+        case 'month':
+          newDate.setMonth(newDate.getMonth() + direction);
+          break;
+        case 'year':
+          newDate.setFullYear(newDate.getFullYear() + direction);
+          break;
+        default:
+          break;
+      }
+
+      // Ensure the date is not outside the min and max dates
+      if (this.dateValue! < piwikMinDate) {
+        this.dateValue = piwikMinDate;
+      }
+      if (this.dateValue! > piwikMaxDate) {
+        this.dateValue = piwikMaxDate;
+      }
+
+      this.onApplyClicked();
+    },
+    isPeriodMoveDisabled(direction: number) {
+      // disable period move when date range is used or when we would go out of the min/max dates
+      if (this.dateValue === null) {
+        return this.isRangeSelection;
+      }
+      return this.isRangeSelection || !this.canMovePeriod(direction);
+    },
+    canMovePeriod(direction: number) {
+      if (this.dateValue === null) {
+        return false;
+      }
+      const boundaryDate = (direction === -1) ? piwikMinDate : piwikMaxDate;
+      return !datesAreInTheSamePeriod(this.dateValue!, boundaryDate, this.periodValue);
     },
   },
 });

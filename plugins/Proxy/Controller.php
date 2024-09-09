@@ -1,21 +1,20 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Proxy;
 
 use Piwik\AssetManager;
 use Piwik\AssetManager\UIAsset;
 use Piwik\Common;
 use Piwik\Exception\StylesheetLessCompileException;
-use Piwik\Piwik;
+use Piwik\Plugin\Manager;
 use Piwik\ProxyHttp;
-use Piwik\Url;
-use Piwik\UrlHelper;
 
 /**
  * Controller for proxy services
@@ -23,8 +22,7 @@ use Piwik\UrlHelper;
  */
 class Controller extends \Piwik\Plugin\Controller
 {
-    const TRANSPARENT_PNG_PIXEL = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQMAAAAl21bKAAAAA1BMVEUAAACnej3aAAAAAXRSTlMAQObYZgAAAApJREFUCNdjYAAAAAIAAeIhvDMAAAAASUVORK5CYII=';
-    const JS_MIME_TYPE = "application/javascript; charset=UTF-8";
+    public const JS_MIME_TYPE = "application/javascript; charset=UTF-8";
 
     /**
      * Output the merged CSS file.
@@ -67,40 +65,38 @@ class Controller extends \Piwik\Plugin\Controller
     }
 
     /**
+     * Output a UMD merged chunk JavaScript file.
+     * This method is called when the asset manager is enabled.
+     *
+     * @see core/AssetManager.php
+     */
+    public function getUmdJs()
+    {
+        $chunk = Common::getRequestVar('chunk');
+        $chunkFile = AssetManager::getInstance()->getMergedJavaScriptChunk($chunk);
+        $this->serveJsFile($chunkFile);
+    }
+
+    /**
+     * Output a single plugin's UMD JavaScript file.
+     * This method is called when the asset manager is enabled and when a plugin's UMD is set
+     * to be loaded on demand.
+     *
+     * @return void
+     * @throws \Exception
+     */
+    public function getPluginUmdJs()
+    {
+        $plugin = Common::getRequestVar('plugin');
+        $pluginUmdPath = Manager::getPluginDirectory($plugin) . "/vue/dist/$plugin.umd.min.js";
+        ProxyHttp::serverStaticFile($pluginUmdPath, self::JS_MIME_TYPE);
+    }
+
+    /**
      * @param UIAsset $uiAsset
      */
     private function serveJsFile($uiAsset)
     {
         ProxyHttp::serverStaticFile($uiAsset->getAbsoluteLocation(), self::JS_MIME_TYPE);
-    }
-
-    /**
-     * Validate URL against *.piwik.org domains
-     *
-     * @param string $url
-     * @return bool True if valid; false otherwise
-     */
-    public static function isPiwikUrl($url)
-    {
-        // guard for IE6 meta refresh parsing weakness (OSVDB 19029)
-        if (strpos($url, ';') !== false
-            || strpos($url, '&#59') !== false
-        ) {
-            return false;
-        }
-        if (preg_match('~^http://(qa\.|demo\.|dev\.|forum\.)?piwik.org([#?/]|$)~', $url)) {
-            return true;
-        }
-
-        if (preg_match('~^http://(qa\.|demo\.|dev\.|forum\.)?matomo.org([#?/]|$)~', $url)) {
-            return true;
-        }
-
-        // Allow clockworksms domain
-        if (strpos($url, 'http://www.clockworksms.com/') === 0) {
-            return true;
-        }
-
-        return false;
     }
 }

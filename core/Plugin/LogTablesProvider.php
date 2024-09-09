@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugin;
 
 use Piwik\Container\StaticContainer;
@@ -13,8 +14,8 @@ use Piwik\DataAccess\LogTableTemporary;
 use Piwik\Piwik;
 use Piwik\Tracker\LogTable;
 
-class LogTablesProvider {
-
+class LogTablesProvider
+{
     /**
      * @var Manager
      */
@@ -119,5 +120,4 @@ class LogTablesProvider {
 
         return $this->tablesCache;
     }
-
 }

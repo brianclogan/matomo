@@ -3,9 +3,7 @@
 /**
  * @filesource src/Resources/data/configuration.php
  *
- * All the class constants moved into a single file for compatibility
- * with the factory service class. This file is *required* for the library
- * to function.
+ * All the class constants that were previously in class files are moved here into a single file.
  */
 /**
  * pBubble
@@ -47,7 +45,7 @@ define("ABSOLUTE_MAX", 10000000000000);
 /* Replacement to the PHP null keyword */
 define("VOID", 0.123456789);
 /* Euro symbol for GD fonts */
-define("EURO_SYMBOL", utf8_encode("&#8364;"));
+define("EURO_SYMBOL", "&#8364;");
 
 /**
  * pDraw

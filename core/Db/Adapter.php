@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Db;
 
 use Zend_Db_Table;
@@ -23,7 +24,7 @@ class Adapter
      * @param bool $connect
      * @return AdapterInterface
      */
-    public static function factory($adapterName, & $dbInfos, $connect = true)
+    public static function factory($adapterName, &$dbInfos, $connect = true)
     {
         if ($connect) {
             if (isset($dbInfos['port']) && is_string($dbInfos['port']) && $dbInfos['port'][0] === '/') {
@@ -55,7 +56,7 @@ class Adapter
                 Zend_Db_Table::setDefaultAdapter($adapter);
                 // we don't want the connection information to appear in the logs
                 $adapter->resetConfig();
-            } catch(\Exception $e) {
+            } catch (\Exception $e) {
                 // we don't want certain exceptions to leak information
                 $msg = self::overriddenExceptionMessage($e->getMessage());
                 if ('' !== $msg) {
@@ -88,6 +89,7 @@ class Adapter
     /**
      * Get default port for named adapter
      *
+     * @deprecated use Schema::getDefaultPortForSchema instead
      * @param string $adapterName
      * @return int
      */
@@ -117,7 +119,7 @@ class Adapter
         foreach ($adapterNames as $adapterName) {
             $className = '\Piwik\Db\Adapter\\' . $adapterName;
             if (call_user_func(array($className, 'isEnabled'))) {
-                $adapters[strtoupper($adapterName)] = call_user_func(array($className, 'getDefaultPort'));
+                $adapters[] = strtoupper($adapterName);
             }
         }
 

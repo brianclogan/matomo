@@ -1,10 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Updater\Migration\Config;
 
 use Piwik\Config;
@@ -52,5 +54,4 @@ class Set extends Migration
         $config->{$this->section}[$this->key] = $this->value;
         $config->forceSave();
     }
-
 }

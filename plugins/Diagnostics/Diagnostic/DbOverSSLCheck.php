@@ -2,10 +2,10 @@
 
 namespace Piwik\Plugins\Diagnostics\Diagnostic;
 
-use Piwik\Common;
 use Piwik\Config;
 use Piwik\Db;
 use Piwik\Translation\Translator;
+use Piwik\Url;
 
 /**
  * Check if Piwik is connected with database through ssl.
@@ -32,7 +32,7 @@ class DbOverSSLCheck implements Diagnostic
         $label = $this->translator->translate('Installation_SystemCheckDatabaseSSL');
 
         $cipher = Db::fetchRow("show status like 'Ssl_cipher'");
-        if(!empty($cipher['Value'])) {
+        if (!empty($cipher['Value'])) {
              return array(DiagnosticResult::singleResult($label, DiagnosticResult::STATUS_OK, $this->translator->translate('Installation_SystemCheckDatabaseSSLCipher') . ': ' . $cipher['Value']));
         }
 
@@ -41,7 +41,7 @@ class DbOverSSLCheck implements Diagnostic
 
         // test ssl support
         $ssl_support = Db::fetchRow("SHOW VARIABLES LIKE 'have_ssl'");
-        if(!empty($ssl_support['Value'])) {
+        if (!empty($ssl_support['Value'])) {
             switch ($ssl_support['Value']) {
                 case 'YES':
                     $comment .= $this->translator->translate('Installation_SystemCheckDatabaseSSLOn');
@@ -55,7 +55,7 @@ class DbOverSSLCheck implements Diagnostic
             }
         }
 
-        $comment .= '<br />' . '<a target="_blank" rel="noreferrer noopener" href="https://matomo.org/faq/"> FAQ on matomo.org</a>';
+        $comment .= '<br />' . '<a target="_blank" rel="noreferrer noopener" href="' . Url::addCampaignParametersToMatomoLink('https://matomo.org/faq/') . '"> FAQ on matomo.org</a>';
 
         return array(DiagnosticResult::singleResult($label, DiagnosticResult::STATUS_WARNING, $comment));
     }

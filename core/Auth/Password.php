@@ -1,9 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Auth;
@@ -26,8 +27,8 @@ class Password
      */
     private function preferredAlgorithm()
     {
-        $passwordHashAlogrithm = Config::getInstance()->General['password_hash_algorithm'];
-        switch ($passwordHashAlogrithm) {
+        $passwordHashAlgorithm = Config::getInstance()->General['password_hash_algorithm'];
+        switch ($passwordHashAlgorithm) {
             case "default":
                 return PASSWORD_DEFAULT;
             case "bcrypt":

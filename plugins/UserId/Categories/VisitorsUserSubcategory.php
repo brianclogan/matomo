@@ -1,15 +1,17 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\UserId\Categories;
 
 use Piwik\Category\Subcategory;
 use Piwik\Piwik;
+use Piwik\Url;
 
 class VisitorsUserSubcategory extends Subcategory
 {
@@ -20,8 +22,9 @@ class VisitorsUserSubcategory extends Subcategory
 
     public function getHelp()
     {
-        return '<p>' . Piwik::translate('UserId_VisitorsUserSubcategoryHelp') . '</p>'.
-            '<p><a target="_blank" rel="noopener noreferrer" href="https://matomo.org/docs/user-id/"><span class="icon-info"></span> ' . Piwik::translate('CoreAdminHome_LearnMore') . '</a></p>';
-        ;
+        return '<p>' . Piwik::translate('UserId_VisitorsUserSubcategoryHelp') . '</p>'
+            . '<p><a target="_blank" rel="noopener noreferrer" href="'
+            . Url::addCampaignParametersToMatomoLink('https://matomo.org/docs/user-id', null, null, 'App.UserId.getUsers')
+            . '"><span class="icon-info"></span> ' . Piwik::translate('CoreAdminHome_LearnMore') . '</a></p>';
     }
 }

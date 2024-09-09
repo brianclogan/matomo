@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugin;
 
 use Piwik\CacheId;
@@ -13,8 +14,8 @@ use Piwik\Container\StaticContainer;
 use Piwik\Plugin;
 use Piwik\Cache as PiwikCache;
 use Piwik\Settings\Measurable\MeasurableSettings;
-use \Piwik\Settings\Plugin\UserSettings;
-use \Piwik\Settings\Plugin\SystemSettings;
+use Piwik\Settings\Plugin\UserSettings;
+use Piwik\Settings\Plugin\SystemSettings;
 
 /**
  * Base class of all plugin settings providers. Plugins that define their own configuration settings
@@ -211,5 +212,4 @@ class SettingsProvider
 
         return $plugin;
     }
-
 }

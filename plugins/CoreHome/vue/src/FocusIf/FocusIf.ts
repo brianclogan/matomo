@@ -1,19 +1,20 @@
 /*!
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 import { DirectiveBinding } from 'vue';
 
 interface FocusIfArgs {
   // input (provided by user)
+  focused?: boolean;
   afterFocus?: () => void;
 }
 
 function doFocusIf(el: HTMLElement, binding: DirectiveBinding<FocusIfArgs>): void {
-  if (binding.arg) {
+  if (binding.value?.focused && !binding.oldValue?.focused) {
     setTimeout(() => {
       el.focus();
 

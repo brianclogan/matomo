@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -21,7 +22,7 @@
           placeholder="Search"
           v-model="searchTerm"
           class="expandableSearch browser-default"
-          v-focus-if="showSelect"
+          v-focus-if="{ focused: showSelect }"
         />
       </div>
       <ul class="collection firstLevel">
@@ -40,8 +41,8 @@
             <span
               class="secondary-content"
               :class='{
-                "icon-arrow-right": showCategory !== options.group,
-                "icon-arrow-bottom": showCategory === options.group
+                "icon-chevron-right": showCategory !== options.group,
+                "icon-chevron-down": showCategory === options.group
               }'
             />
           </h4>
@@ -71,6 +72,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { FocusAnywhereButHere, FocusIf } from 'CoreHome';
+import AbortableModifiers from './AbortableModifiers';
 
 interface SelectValueInfo {
   key: unknown;
@@ -133,6 +135,7 @@ export function getAvailableOptions(
 export default defineComponent({
   props: {
     modelValue: [Number, String],
+    modelModifiers: Object,
     availableOptions: Array,
     title: String,
   },
@@ -182,8 +185,22 @@ export default defineComponent({
       }
     },
     onValueClicked(selectedValue: SelectValueInfo) {
-      this.$emit('update:modelValue', selectedValue.key);
       this.showSelect = false;
+
+      if (!(this.modelModifiers as AbortableModifiers)?.abortable) {
+        this.$emit('update:modelValue', selectedValue.key);
+        return;
+      }
+
+      const emitEventData = {
+        value: selectedValue.key,
+        abort() {
+          // empty (not necessary to reset anything since the DOM will not change for this UI
+          // element until modelValue does)
+        },
+      };
+
+      this.$emit('update:modelValue', emitEventData);
     },
   },
 });

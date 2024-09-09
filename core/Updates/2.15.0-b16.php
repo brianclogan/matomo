@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Updates;
@@ -15,7 +15,6 @@ use Piwik\Updates;
 
 class Updates_2_15_0_b16 extends Updates
 {
-
     public function doUpdate(Updater $updater)
     {
         $this->uninstallPlugin('LeftMenu');

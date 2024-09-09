@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -24,8 +25,8 @@
         >
           <h2>{{ translate(`Feedback_Question${question}`) }}</h2>
           <p
-            v-html="translate('Feedback_FeedbackSubtitle',
-            `<i class='icon-heart red-text'></i>`)"></p>
+            v-html="$sanitize(translate('Feedback_FeedbackSubtitle',
+            `<i class='icon-heart red-text'></i>`))"></p>
           <br/>
           <div class="messageContainer">
             <div class="error-text" v-if="errorMessage">{{ errorMessage }}</div>
@@ -33,7 +34,7 @@
           </div>
           <br/>
           <p
-            v-html="translate('Feedback_Policy',`<a rel='nofollow' href='https://matomo.org/privacy-policy/' target='_blank'>`,'</a>')"></p>
+            v-html="$sanitize(feedbackPolicy)"></p>
           <input
             type="button"
             role="validation"
@@ -51,8 +52,8 @@
           class="ui-confirm ratefeatureDialog"
         >
           <h2>{{ translate(`Feedback_ThankYou`) }}</h2>
-          <p v-html="translate('Feedback_ThankYourForFeedback',
-        `<i class='icon-heart red-text'></i>`)">
+          <p v-html="$sanitize(translate('Feedback_ThankYourForFeedback',
+        `<i class='icon-heart red-text'></i>`))">
           </p>
           <input
             type="button"
@@ -68,7 +69,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import {
-  MatomoDialog, AjaxHelper, setCookie, getCookie, translate,
+  MatomoDialog, AjaxHelper, setCookie, getCookie, translate, externalLink,
 } from 'CoreHome';
 
 const { $ } = window;
@@ -91,17 +92,25 @@ interface SendFeedbackForSurveyResponse {
 const cookieName = 'feedback-question';
 export default defineComponent({
   props: {
-    showQuestionBanner: String,
+    showQuestionBanner: Boolean,
   },
   components: {
     MatomoDialog,
   },
   computed: {
     isHidden() {
-      if (this.showQuestionBanner === '0') {
+      if (!this.showQuestionBanner) {
         return true;
       }
       return !!this.hide;
+    },
+    feedbackPolicy() {
+      return translate(
+        'Feedback_Policy',
+        /* eslint-disable prefer-template */
+        externalLink('https://matomo.org/privacy-policy/'),
+        '</a>',
+      );
     },
   },
   data(): FeedbackQuestionState {
@@ -128,7 +137,7 @@ export default defineComponent({
     },
   },
   created() {
-    if (this.showQuestionBanner !== '0') {
+    if (this.showQuestionBanner) {
       this.initQuestion();
     }
   },
@@ -170,7 +179,7 @@ export default defineComponent({
         message: this.feedbackMessage,
       }).then((res: SendFeedbackForSurveyResponse) => {
         if (res.value === 'success') {
-          $('.modal').modal('close');
+          this.showFeedbackForm = false;
           this.feedbackDone = true;
           this.hide = true;
         } else {

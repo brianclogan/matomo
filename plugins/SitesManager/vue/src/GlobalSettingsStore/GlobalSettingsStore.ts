@@ -1,8 +1,8 @@
 /*!
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 import {
@@ -10,7 +10,7 @@ import {
   readonly,
   computed,
 } from 'vue';
-import { AjaxHelper, lazyInitSingleton } from 'CoreHome';
+import { AjaxHelper } from 'CoreHome';
 import GlobalSettings from './GlobalSettings';
 
 interface GlobalSettingsStoreState {
@@ -25,6 +25,7 @@ interface SaveGlobalSettingsParams {
   excludedIps: string;
   excludedQueryParameters: string;
   excludedUserAgents: string;
+  excludedReferrers: string;
   searchKeywordParameters: string;
   searchCategoryParameters: string;
 }
@@ -39,6 +40,7 @@ class GlobalSettingsStore {
       excludedIpsGlobal: '',
       excludedQueryParametersGlobal: '',
       excludedUserAgentsGlobal: '',
+      excludedReferrersGlobal: '',
       searchKeywordParametersGlobal: '',
       searchCategoryParametersGlobal: '',
     },
@@ -48,11 +50,11 @@ class GlobalSettingsStore {
 
   readonly globalSettings = computed(() => readonly(this.privateState).globalSettings);
 
-  constructor() {
-    this.fetchGlobalSettings();
+  init() {
+    return this.fetchGlobalSettings();
   }
 
-  public saveGlobalSettings(settings: SaveGlobalSettingsParams) {
+  saveGlobalSettings(settings: SaveGlobalSettingsParams) {
     this.privateState.isLoading = true;
     return AjaxHelper.post(
       {
@@ -82,6 +84,7 @@ class GlobalSettingsStore {
         excludedIpsGlobal: response.excludedIpsGlobal || '',
         excludedQueryParametersGlobal: response.excludedQueryParametersGlobal || '',
         excludedUserAgentsGlobal: response.excludedUserAgentsGlobal || '',
+        excludedReferrersGlobal: response.excludedReferrersGlobal || '',
         searchKeywordParametersGlobal: response.searchKeywordParametersGlobal || '',
         searchCategoryParametersGlobal: response.searchCategoryParametersGlobal || '',
       };
@@ -91,4 +94,4 @@ class GlobalSettingsStore {
   }
 }
 
-export default lazyInitSingleton(GlobalSettingsStore) as GlobalSettingsStore;
+export default new GlobalSettingsStore();

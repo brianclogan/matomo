@@ -1,16 +1,16 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\DBStats\Reports;
 
 use Piwik\Piwik;
 use Piwik\Plugin\ViewDataTable;
-use Piwik\Plugins\CoreVisualizations\Visualizations\Graph;
 
 /**
  * Shows a datatable that displays the amount of space each 'admin' table takes
@@ -21,7 +21,6 @@ use Piwik\Plugins\CoreVisualizations\Visualizations\Graph;
  */
 class GetAdminDataSummary extends Base
 {
-
     protected function init()
     {
         $this->name = Piwik::translate('DBStats_OtherTables');

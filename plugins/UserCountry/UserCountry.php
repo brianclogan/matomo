@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\UserCountry;
 
 use Piwik\Config;
@@ -24,11 +25,29 @@ class UserCountry extends \Piwik\Plugin
     public function registerEvents()
     {
         return array(
+            'Translate.getClientSideTranslationKeys' => 'getClientSideTranslationKeys',
             'AssetManager.getStylesheetFiles'        => 'getStylesheetFiles',
             'AssetManager.getJavaScriptFiles'        => 'getJsFiles',
             'Tracker.setTrackerCacheGeneral'         => 'setTrackerCacheGeneral',
             'Insights.addReportToOverview'           => 'addReportToInsightsOverview',
         );
+    }
+
+    public function getClientSideTranslationKeys(&$translations)
+    {
+        $translations[] = 'General_InfoFor';
+        $translations[] = 'General_NotInstalled';
+        $translations[] = 'General_Installed';
+        $translations[] = 'General_Broken';
+        $translations[] = 'UserCountry_CurrentLocationIntro';
+        $translations[] = 'General_Refresh';
+        $translations[] = 'UserCountry_CannotLocalizeLocalIP';
+        $translations[] = 'UserCountry_NoProviders';
+        $translations[] = 'General_Disabled';
+        $translations[] = 'UserCountry_GeolocationPageDesc';
+        $translations[] = 'UserCountry_LocationProvider';
+        $translations[] = 'UserCountry_Geolocation';
+        $translations[] = 'UserCountry_DistinctCountries';
     }
 
     public function addReportToInsightsOverview(&$reports)
@@ -48,8 +67,6 @@ class UserCountry extends \Piwik\Plugin
 
     public function getJsFiles(&$jsFiles)
     {
-        $jsFiles[] = "plugins/UserCountry/angularjs/location-provider-selection/location-provider-selection.controller.js";
-        $jsFiles[] = "plugins/UserCountry/angularjs/location-provider-selection/location-provider-selection.directive.js";
     }
 
     /**
@@ -91,5 +108,4 @@ class UserCountry extends \Piwik\Plugin
     {
         return (bool) Config::getInstance()->General['enable_geolocation_admin'];
     }
-
 }

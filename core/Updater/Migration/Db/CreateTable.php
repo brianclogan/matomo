@@ -1,9 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Updater\Migration\Db;
@@ -35,10 +36,15 @@ class CreateTable extends Sql
         }
 
 
-        $sql = rtrim(sprintf('CREATE TABLE `%s` (%s) ENGINE=%s DEFAULT CHARSET=%s %s',
-          $table, implode(', ', $columns), $dbSettings->getEngine(), $dbSettings->getUsedCharset(), $dbSettings->getRowFormat()));
+        $sql = rtrim(sprintf(
+            'CREATE TABLE `%s` (%s) ENGINE=%s DEFAULT CHARSET=%s %s',
+            $table,
+            implode(', ', $columns),
+            $dbSettings->getEngine(),
+            $dbSettings->getUsedCharset(),
+            $dbSettings->getRowFormat()
+        ));
 
         parent::__construct($sql, static::ERROR_CODE_TABLE_EXISTS);
     }
-
 }

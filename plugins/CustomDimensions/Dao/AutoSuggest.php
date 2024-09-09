@@ -1,24 +1,21 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\CustomDimensions\Dao;
 
 use Piwik\API\Request;
-use Piwik\Common;
 use Piwik\DataTable;
 use Piwik\Date;
-use Piwik\Db;
 use Piwik\Plugins\CustomDimensions\Archiver;
 
 class AutoSuggest
 {
-
     /**
      * @param array $dimension
      * @param int $idSite
@@ -49,5 +46,4 @@ class AutoSuggest
 
         return $labels;
     }
-
 }

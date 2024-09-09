@@ -1,20 +1,18 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\CustomDimensions;
 
 use Piwik\Common;
-use Piwik\DataTable\Row;
-
 use Piwik\Archive;
 use Piwik\DataTable;
 use Piwik\Filesystem;
-use Piwik\Metrics;
 use Piwik\Piwik;
 use Piwik\Plugins\CustomDimensions\Dao\Configuration;
 use Piwik\Plugins\CustomDimensions\Dao\LogTable;
@@ -35,7 +33,6 @@ use Piwik\Tracker\Cache;
  */
 class API extends \Piwik\Plugin\API
 {
-
     /**
      * Fetch a report for the given idDimension. Only reports for active dimensions can be fetched. Requires at least
      * view access.
@@ -64,12 +61,10 @@ class API extends \Piwik\Plugin\API
 
         if (!empty($idSubtable) && $dataTable->getRowsCount()) {
             $parentTable = Archive::createDataTableFromArchive($record, $idSite, $period, $date, $segment);
-            foreach ($parentTable->getRows() as $row) {
-                if ($row->getIdSubDataTable() == $idSubtable) {
-                    $parentValue = $row->getColumn('label');
-                    $dataTable->filter('Piwik\Plugins\CustomDimensions\DataTable\Filter\AddSubtableSegmentMetadata', array($idDimension, $parentValue));
-                    break;
-                }
+            $row = $parentTable->getRowFromIdSubDataTable($idSubtable);
+            if ($row) {
+                $parentValue = $row->getColumn('label');
+                $dataTable->filter('Piwik\Plugins\CustomDimensions\DataTable\Filter\AddSubtableSegmentMetadata', array($idDimension, $parentValue));
             }
         } else {
             $dataTable->filter('Piwik\Plugins\CustomDimensions\DataTable\Filter\AddSegmentMetadata', array($idDimension));
@@ -207,7 +202,9 @@ class API extends \Piwik\Plugin\API
     public function getConfiguredCustomDimensionsHavingScope($idSite, $scope)
     {
         $result = $this->getConfiguredCustomDimensions($idSite);
-        $result = array_filter($result, function ($row) use ($scope) { return $row['scope'] == $scope; });
+        $result = array_filter($result, function ($row) use ($scope) {
+            return $row['scope'] == $scope;
+        });
         $result = array_values($result);
         return $result;
     }
@@ -246,7 +243,6 @@ class API extends \Piwik\Plugin\API
 
         $scopes = array();
         foreach (CustomDimensions::getPublicScopes() as $scope) {
-
             $configs = $this->getConfiguredCustomDimensionsHavingScope($idSite, $scope);
             $indexes = $this->getTracking($scope)->getInstalledIndexes();
 
@@ -292,6 +288,4 @@ class API extends \Piwik\Plugin\API
     {
         return new Configuration();
     }
-
 }
-

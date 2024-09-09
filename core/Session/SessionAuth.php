@@ -1,24 +1,22 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Session;
 
 use Piwik\Auth;
 use Piwik\AuthResult;
-use Piwik\Common;
 use Piwik\Config;
 use Piwik\Container\StaticContainer;
 use Piwik\Date;
-use Piwik\Plugins\UsersManager\Model;
 use Piwik\Plugins\UsersManager\Model as UsersModel;
 use Piwik\Session;
-use Psr\Log\LoggerInterface;
+use Piwik\Log\LoggerInterface;
 
 /**
  * Validates already authenticated sessions.
@@ -109,7 +107,8 @@ class SessionAuth implements Auth
         }
 
         $user = $userModel->getUser($userForSession);
-        if (empty($user)
+        if (
+            empty($user)
             || $user['login'] !== $userForSession // sanity check in case there's a bug in getUser()
         ) {
             return $this->makeAuthFailure();
@@ -123,9 +122,11 @@ class SessionAuth implements Auth
 
         $this->updateSessionExpireTime($sessionFingerprint);
 
-        if ($this->tokenAuth !== null
+        if (
+            $this->tokenAuth !== null
             && $this->tokenAuth !== false
-            && $this->tokenAuth !== $sessionFingerprint->getSessionTokenAuth()) {
+            && $this->tokenAuth !== $sessionFingerprint->getSessionTokenAuth()
+        ) {
             return $this->makeAuthFailure();
         }
 
@@ -211,8 +212,8 @@ class SessionAuth implements Auth
         // we update the session cookie to make sure expired session cookies are not available client side...
         $sessionCookieLifetime = Config::getInstance()->General['login_cookie_expire'];
         Session::writeCookie(
-            session_name(), 
-            session_id(), 
+            session_name(),
+            session_id(),
             time() + $sessionCookieLifetime,
             $sessionParams['path'],
             $sessionParams['domain'],
@@ -240,7 +241,8 @@ class SessionAuth implements Auth
     {
         if (Session\SaveHandler\DbTable::$wasSessionToLargeToRead) {
             StaticContainer::get(LoggerInterface::class)->warning(
-                "Too much data stored in the session so it could not be read properly. If you were logged out, this is why.");
+                "Too much data stored in the session so it could not be read properly. If you were logged out, this is why."
+            );
         }
     }
 }

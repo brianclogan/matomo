@@ -1,19 +1,23 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugin;
 
 use Exception;
 use Piwik\Access;
 use Piwik\API\Proxy;
 use Piwik\API\Request;
+use Piwik\Changes\Model as ChangesModel;
+use Piwik\Changes\UserChanges;
 use Piwik\Common;
 use Piwik\Config as PiwikConfig;
+use Piwik\Config\GeneralConfig;
 use Piwik\Container\StaticContainer;
 use Piwik\Date;
 use Piwik\Exception\NoPrivilegesException;
@@ -31,6 +35,7 @@ use Piwik\Piwik;
 use Piwik\Plugins\CoreAdminHome\CustomLogo;
 use Piwik\Plugins\CoreVisualizations\Visualizations\JqplotGraph\Evolution;
 use Piwik\Plugins\LanguagesManager\LanguagesManager;
+use Piwik\Plugins\UsersManager\Model as UsersModel;
 use Piwik\SettingsPiwik;
 use Piwik\Site;
 use Piwik\Url;
@@ -308,6 +313,11 @@ abstract class Controller
             $viewType = $this instanceof ControllerAdmin ? 'admin' : 'basic';
         }
 
+        // Set early so it is available for setGeneralVariables method calls
+        if (isset($variables['hideWhatIsNew'])) {
+            $view->hideWhatIsNew = $variables['hideWhatIsNew'];
+        }
+
         // alternatively we could check whether the templates extends either admin.twig or dashboard.twig and based on
         // that call the correct method. This will be needed once we unify Controller and ControllerAdmin see
         // https://github.com/piwik/piwik/issues/6151
@@ -396,7 +406,11 @@ abstract class Controller
     protected function getLastUnitGraph($currentModuleName, $currentControllerAction, $apiMethod)
     {
         $view = ViewDataTableFactory::build(
-            Evolution::ID, $apiMethod, $currentModuleName . '.' . $currentControllerAction, $forceDefault = true);
+            Evolution::ID,
+            $apiMethod,
+            $currentModuleName . '.' . $currentControllerAction,
+            $forceDefault = true
+        );
         $view->config->show_goals = false;
         return $view;
     }
@@ -418,14 +432,18 @@ abstract class Controller
      * @return ViewDataTable
      * @api
      */
-    protected function getLastUnitGraphAcrossPlugins($currentModuleName, $currentControllerAction, $columnsToDisplay = false,
-                                                     $selectableColumns = array(), $reportDocumentation = false,
-                                                     $apiMethod = 'API.get')
-    {
+    protected function getLastUnitGraphAcrossPlugins(
+        $currentModuleName,
+        $currentControllerAction,
+        $columnsToDisplay = false,
+        $selectableColumns = array(),
+        $reportDocumentation = false,
+        $apiMethod = 'API.get'
+    ) {
         // load translations from meta data
         $idSite = Common::getRequestVar('idSite');
-        $period = Common::getRequestVar('period');
-        $date = Common::getRequestVar('date');
+        $period = Piwik::getPeriod();
+        $date = Piwik::getDate();
         $meta = \Piwik\Plugins\API\API::getInstance()->getReportMetadata($idSite, $period, $date);
 
         $columns = array_merge($columnsToDisplay ? $columnsToDisplay : array(), $selectableColumns);
@@ -629,10 +647,10 @@ abstract class Controller
         $maxDate = Date::factory('now', $siteTimezone);
         $this->setMaxDateView($maxDate, $view);
 
-        $rawDate = Piwik::getDate();
+        $rawDate = Piwik::getDate(GeneralConfig::getConfigValue('default_day'));
         Period::checkDateFormat($rawDate);
 
-        $periodStr = Piwik::getPeriod();
+        $periodStr = Piwik::getPeriod(GeneralConfig::getConfigValue('default_period'));
 
         if ($periodStr !== 'range') {
             $date      = Date::factory($this->strDate);
@@ -713,8 +731,11 @@ abstract class Controller
         $view->hasSomeViewAccess  = Piwik::isUserHasSomeViewAccess();
         $view->isUserIsAnonymous  = Piwik::isUserIsAnonymous();
         $view->hasSuperUserAccess = Piwik::hasUserSuperUserAccess();
+        $view->disableTrackingMatomoAppLinks = PiwikConfig::getInstance()->General['disable_tracking_matomo_app_links'];
 
         if (!Piwik::isUserIsAnonymous()) {
+            $this->showWhatIsNew($view);
+
             $view->contactEmail = implode(',', Piwik::getContactEmailAddresses());
 
             // for BC only. Use contactEmail instead
@@ -753,8 +774,9 @@ abstract class Controller
 
         $pluginManager = Plugin\Manager::getInstance();
         $view->relativePluginWebDirs = (object) $pluginManager->getWebRootDirectoriesForCustomPluginDirs();
+        $view->pluginsToLoadOnDemand = $pluginManager->getPluginUmdsToLoadOnDemand();
         $view->isMultiSitesEnabled = $pluginManager->isPluginActivated('MultiSites');
-        $view->isSingleSite = Access::doAsSuperUser(function() {
+        $view->isSingleSite = Access::doAsSuperUser(function () {
             $allSites = Request::processRequest('SitesManager.getAllSitesId', [], []);
             return count($allSites) === 1;
         });
@@ -808,6 +830,33 @@ abstract class Controller
     }
 
     /**
+     * Set the template variables to show the what's new popup if appropriate
+     *
+     * @param View $view
+     * @return void
+     */
+    protected function showWhatIsNew(View $view): void
+    {
+        $view->whatisnewShow = false;
+
+        if (isset($view->hideWhatIsNew) && $view->hideWhatIsNew) {
+            return;
+        }
+
+        $model = new UsersModel();
+        $user = $model->getUser(Piwik::getCurrentUserLogin());
+        if (!$user) {
+            return;
+        }
+        $userChanges = new UserChanges($user);
+        $newChangesStatus = $userChanges->getNewChangesStatus();
+        $shownRecently = $userChanges->shownRecently();
+        if ($newChangesStatus == ChangesModel::NEW_CHANGES_EXIST && !$shownRecently) {
+            $view->whatisnewShow = true;
+        }
+    }
+
+    /**
      * Checks if the current host is valid and sets variables on the given view, including:
      *
      * - **isValidHost** - true if host is valid, false if otherwise
@@ -831,7 +880,7 @@ abstract class Controller
 
             $emailSubject = rawurlencode(Piwik::translate('CoreHome_InjectedHostEmailSubject', $invalidHost));
             $emailBody = rawurlencode(Piwik::translate('CoreHome_InjectedHostEmailBody'));
-            $superUserEmail = implode(',', Piwik::getContactEmailAddresses());
+            $superUserEmail = rawurlencode(implode(',', Piwik::getContactEmailAddresses()));
 
             $mailToUrl = "mailto:$superUserEmail?subject=$emailSubject&body=$emailBody";
             $mailLinkStart = "<a href=\"$mailToUrl\">";
@@ -861,7 +910,7 @@ abstract class Controller
                                                                                     $invalidHost,
                                                                                     '</a>',
                                                                                     "<br/><a href=\"$validUrl\">",
-                                                                                    $validHost,
+                                                                                    Common::sanitizeInputValue($validHost),
                                                                                     '</a>'
                                                                                ));
             } elseif (Piwik::isUserIsAnonymous()) {
@@ -912,7 +961,7 @@ abstract class Controller
 
         $periodValidator = new PeriodValidator();
 
-        $currentPeriod = Piwik::getPeriod();
+        $currentPeriod = Piwik::getPeriod(GeneralConfig::getConfigValue('default_period'));
         $availablePeriods = $periodValidator->getPeriodsAllowedForUI();
 
         if (! $periodValidator->isPeriodAllowedForUI($currentPeriod)) {
@@ -943,9 +992,14 @@ abstract class Controller
      * @param array $parameters Other query parameters to append to the URL.
      * @api
      */
-    public function redirectToIndex($moduleToRedirect, $actionToRedirect, $websiteId = null, $defaultPeriod = null,
-                                    $defaultDate = null, $parameters = array())
-    {
+    public function redirectToIndex(
+        $moduleToRedirect,
+        $actionToRedirect,
+        $websiteId = null,
+        $defaultPeriod = null,
+        $defaultDate = null,
+        $parameters = array()
+    ) {
         try {
             $this->doRedirectToUrl($moduleToRedirect, $actionToRedirect, $websiteId, $defaultPeriod, $defaultDate, $parameters);
         } catch (Exception $e) {
@@ -965,7 +1019,7 @@ abstract class Controller
 
         if (!Piwik::isUserIsAnonymous()) {
             $currentLogin = Piwik::getCurrentUserLogin();
-            $emails = implode(',', Piwik::getContactEmailAddresses());
+            $emails = rawurlencode(implode(',', Piwik::getContactEmailAddresses()));
             $errorMessage  = sprintf(Piwik::translate('CoreHome_NoPrivilegesAskPiwikAdmin'), $currentLogin, "<br/><a href='mailto:" . $emails . "?subject=Access to Matomo for user $currentLogin'>", "</a>");
             $errorMessage .= "<br /><br />&nbsp;&nbsp;&nbsp;<b><a href='index.php?module=" . Piwik::getLoginPluginName() . "&amp;action=logout'>&rsaquo; " . Piwik::translate('General_Logout') . "</a></b><br />";
 
@@ -1004,7 +1058,7 @@ abstract class Controller
         }
 
         if ($tokenRequest !== $tokenUser) {
-            throw new NoAccessException(Piwik::translate('General_ExceptionInvalidToken'));
+            throw new NoAccessException(Piwik::translate('General_ExceptionSecurityCheckFailed'));
         }
     }
 
@@ -1080,4 +1134,3 @@ abstract class Controller
         }
     }
 }
-

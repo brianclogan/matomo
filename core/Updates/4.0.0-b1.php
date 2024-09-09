@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Updates;
@@ -25,7 +25,6 @@ use Piwik\Plugins\PagePerformance\Columns\TimeNetwork;
 use Piwik\Plugins\PagePerformance\Columns\TimeOnLoad;
 use Piwik\Plugins\PagePerformance\Columns\TimeServer;
 use Piwik\Plugins\PagePerformance\Columns\TimeTransfer;
-use Piwik\Plugins\UsersManager\Model;
 use Piwik\Common;
 use Piwik\Config;
 use Piwik\Plugins\UserCountry\LocationProvider;
@@ -59,7 +58,7 @@ class Updates_4_0_0_b1 extends PiwikUpdates
         $migrations = [];
 
         $domain = Config::getLocalConfigPath() === Config::getDefaultLocalConfigPath() ? '' : Config::getHostname();
-        $domainArg = !empty($domain) ? "--matomo-domain=". escapeshellarg($domain) . " " : '';
+        $domainArg = !empty($domain) ? "--matomo-domain=" . escapeshellarg($domain) . " " : '';
         $toString = sprintf('./console %score:matomo4-migrate-token-auths', $domainArg);
         $custom = new CustomMigration(array(MigrateTokenAuths::class, 'migrate'), $toString);
 
@@ -269,13 +268,15 @@ class Updates_4_0_0_b1 extends PiwikUpdates
             if ($pluginManager->isPluginThirdPartyAndBogus($plugin)) {
                 $pluginDir = Manager::getPluginDirectory($plugin);
 
-                if (is_dir($pluginDir) &&
-                    file_exists($pluginDir . '/' . $plugin . '.php')
-                    && !file_exists($pluginDir . '/plugin.json')
-                    && is_writable($pluginDir)) {
+                if (
+                    is_dir($pluginDir) &&
+                    file_exists($pluginDir . '/' . $plugin . '.php') &&
+                    !file_exists($pluginDir . '/plugin.json') &&
+                    is_writable($pluginDir)
+                ) {
                     file_put_contents($pluginDir . '/plugin.json', '{
-  "name": "'.$plugin.'",
-  "description": "'.$plugin.'",
+  "name": "' . $plugin . '",
+  "description": "' . $plugin . '",
   "version": "3.14.1",
   "theme": false,
   "require": {
@@ -290,7 +291,7 @@ class Updates_4_0_0_b1 extends PiwikUpdates
   ],
   "homepage": "https:\/\/matomo.org",
   "license": "GPL v3+",
-  "keywords": ["'.$plugin.'"]
+  "keywords": ["' . $plugin . '"]
 }');
                     // otherwise cached information might be used and it won't be loaded otherwise within same request
                     $pluginObj = $pluginManager->loadPlugin($plugin);

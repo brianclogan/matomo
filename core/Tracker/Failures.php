@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Tracker;
@@ -16,12 +16,13 @@ use Piwik\Exception\UnexpectedWebsiteFoundException;
 use Piwik\Piwik;
 use Piwik\Site;
 use Piwik\Db as PiwikDb;
+use Piwik\Url;
 
 class Failures
 {
-    const CLEANUP_OLD_FAILURES_DAYS = 2;
-    const FAILURE_ID_INVALID_SITE = 1;
-    const FAILURE_ID_NOT_AUTHENTICATED = 2;
+    public const CLEANUP_OLD_FAILURES_DAYS = 2;
+    public const FAILURE_ID_INVALID_SITE = 1;
+    public const FAILURE_ID_NOT_AUTHENTICATED = 2;
 
     private $table = 'tracking_failure';
     private $tablePrefixed;
@@ -100,9 +101,11 @@ class Failures
         foreach ($params as $key => $value) {
             if (!empty($token) && $value === $token) {
                 $params[$key] = '__TOKEN_AUTH__'; // user accidentally posted the token in a wrong field
-            } elseif (!empty($value) && is_string($value)
+            } elseif (
+                !empty($value) && is_string($value)
                 && mb_strlen($value) >= 29 && mb_strlen($value) <= 36
-                && ctype_xdigit($value)) {
+                && ctype_xdigit($value)
+            ) {
                 $params[$key] = '__TOKEN_AUTH__'; // user maybe posted a token in a different field... it looks like it might be a token
             }
         }
@@ -176,12 +179,12 @@ class Failures
                 case self::FAILURE_ID_INVALID_SITE:
                     $failure['problem'] = Piwik::translate('CoreAdminHome_TrackingFailureInvalidSiteProblem');
                     $failure['solution'] = Piwik::translate('CoreAdminHome_TrackingFailureInvalidSiteSolution');
-                    $failure['solution_url'] = 'https://matomo.org/faq/how-to/faq_30838/';
+                    $failure['solution_url'] = Url::addCampaignParametersToMatomoLink('https://matomo.org/faq/how-to/faq_30838/');
                     break;
                 case self::FAILURE_ID_NOT_AUTHENTICATED:
                     $failure['problem'] = Piwik::translate('CoreAdminHome_TrackingFailureAuthenticationProblem');
                     $failure['solution'] = Piwik::translate('CoreAdminHome_TrackingFailureAuthenticationSolution');
-                    $failure['solution_url'] = 'https://matomo.org/faq/how-to/faq_30835/';
+                    $failure['solution_url'] = Url::addCampaignParametersToMatomoLink('https://matomo.org/faq/how-to/faq_30835/');
                     break;
             }
         }

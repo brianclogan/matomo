@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Events\Columns;
 
 use Piwik\Columns\Discriminator;
@@ -14,18 +15,19 @@ use Piwik\Plugin\Dimension\ActionDimension;
 use Piwik\Plugins\Events\Actions\ActionEvent;
 use Piwik\Tracker\Action;
 use Piwik\Tracker\Request;
+use Piwik\Tracker\TableLogAction;
 
 class EventName extends ActionDimension
 {
     protected $columnName = 'idaction_name';
     protected $type = self::TYPE_TEXT;
     protected $category = 'Events_Events';
-    protected $sqlFilter = '\Piwik\Tracker\TableLogAction::getIdActionFromSegment';
     protected $segmentName = 'eventName';
     protected $suggestedValuesApi = 'Events.getName';
 
     protected $nameSingular = 'Events_EventName';
     protected $namePlural = 'Events_EventNames';
+    protected $sqlFilter = [TableLogAction::class, 'getOptimizedIdActionSqlMatch'];
 
     public function getDbColumnJoin()
     {

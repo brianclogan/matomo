@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Settings\Storage\Backend;
 
 use Piwik\Concurrency\Lock;
@@ -26,7 +27,7 @@ abstract class BaseSettingsTable implements BackendInterface
     {
         $this->lock = StaticContainer::getContainer()->make(
             Lock::class,
-            array ('lockKeyStart' => 'PluginSettingsTable')
+            array ('namespace' => 'PluginSettingsTable')
         );
     }
 
@@ -37,5 +38,4 @@ abstract class BaseSettingsTable implements BackendInterface
             $this->db = Db::get();
         }
     }
-
 }

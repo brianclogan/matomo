@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 use Exception;
@@ -197,7 +198,7 @@ class DbHelper
      */
     public static function tableHasIndex($table, $indexName)
     {
-        $result = Db::get()->fetchOne('SHOW INDEX FROM '.$table.' WHERE Key_name = ?', [$indexName]);
+        $result = Db::get()->fetchOne('SHOW INDEX FROM ' . $table . ' WHERE Key_name = ?', [$indexName]);
         return !empty($result);
     }
 
@@ -286,27 +287,79 @@ class DbHelper
     }
 
     /**
-     * Adds a MAX_EXECUTION_TIME hint into a SELECT query if $limit is bigger than 1
+     * Adds a MAX_EXECUTION_TIME hint into a SELECT query if $limit is bigger than 0
      *
      * @param string $sql  query to add hint to
-     * @param int $limit  time limit in seconds
+     * @param float $limit  time limit in seconds
      * @return string
      */
-    public static function addMaxExecutionTimeHintToQuery($sql, $limit)
+    public static function addMaxExecutionTimeHintToQuery(string $sql, float $limit): string
     {
-        if ($limit <= 0) {
-            return $sql;
+        return Schema::getInstance()->addMaxExecutionTimeHintToQuery($sql, $limit);
+    }
+
+    /**
+     * Add an origin hint to the query to identify the main parameters and segment for debugging
+     *
+     * @param string        $sql        SQL query string
+     * @param string        $origin     Origin string to describe the source of the query
+     * @param Date|null     $dateStart  Start date used in the query, optional
+     * @param Date|null     $dateEnd    End date used in the query, optional
+     * @param array|null    $sites      Sites list used in the query, optional
+     * @param Segment|null  $segment    Segment, the segment hash will be added if this is set
+     *
+     * @return string   Modified SQL query string with hint added
+     */
+    public static function addOriginHintToQuery(
+        string $sql,
+        string $origin,
+        ?Date $dateStart = null,
+        ?Date $dateEnd = null,
+        ?array $sites = null,
+        ?Segment $segment = null
+    ): string {
+        $select = 'SELECT';
+        if ($origin && 0 === strpos(trim($sql), $select)) {
+            $sql = trim($sql);
+            $sql = 'SELECT /* ' . $origin . ' */' . substr($sql, strlen($select));
         }
 
-        $sql = trim($sql);
-        $pos = stripos($sql, 'SELECT');
-        if ($pos !== false) {
+        if ($dateStart !== null && $dateEnd !== null && 0 === strpos(trim($sql), $select)) {
+            $sql = trim($sql);
+            $sql = 'SELECT /* ' . $dateStart->toString() . ',' . $dateEnd->toString() . ' */' . substr($sql, strlen($select));
+        }
 
-            $timeInMs = $limit * 1000;
-            $timeInMs = (int) $timeInMs;
-            $maxExecutionTimeHint = ' /*+ MAX_EXECUTION_TIME('.$timeInMs.') */ ';
+        if ($sites && is_array($sites) && 0 === strpos(trim($sql), $select)) {
+            $sql = trim($sql);
+            $sql = 'SELECT /* ' . 'sites ' . implode(',', array_map('intval', $sites)) . ' */' . substr($sql, strlen($select));
+        }
 
-            $sql = substr_replace($sql, 'SELECT ' . $maxExecutionTimeHint, $pos, strlen('SELECT'));
+        if ($segment && !$segment->isEmpty() && 0 === strpos(trim($sql), $select)) {
+            $sql = trim($sql);
+            $sql = 'SELECT /* ' . 'segmenthash ' . $segment->getHash() . ' */' . substr($sql, strlen($select));
+        }
+
+        return $sql;
+    }
+
+    /**
+     * Add an optimizer hint to the query to set the first table used by the MySQL join execution plan
+     *
+     * https://dev.mysql.com/doc/refman/8.0/en/optimizer-hints.html#optimizer-hints-join-order
+     *
+     * @param string $sql       SQL query string
+     * @param string $prefix    Table prefix to be used as the first table in the plan
+     *
+     * @return string           Modified query string with hint added
+     */
+    public static function addJoinPrefixHintToQuery(string $sql, string $prefix): string
+    {
+        if (strpos(trim($sql), '/*+ JOIN_PREFIX(') === false) {
+            $select = 'SELECT';
+            if (0 === strpos(trim($sql), $select)) {
+                $sql = trim($sql);
+                $sql = 'SELECT /*+ JOIN_PREFIX(' . $prefix . ') */' . substr($sql, strlen($select));
+            }
         }
 
         return $sql;
@@ -325,5 +378,4 @@ class DbHelper
     {
         return (0 !== preg_match('/(^[a-zA-Z0-9]+([a-zA-Z0-9\_\.\-\+]*))$/D', $dbname));
     }
-
 }

@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Updates;
@@ -65,7 +65,8 @@ class Updates_2_0_4_b5 extends Updates
             $superUser = null;
         }
 
-        if (!empty($superUser['bridge'])
+        if (
+            !empty($superUser['bridge'])
             || empty($superUser)
             || empty($superUser['login'])
         ) {
@@ -85,8 +86,7 @@ class Updates_2_0_4_b5 extends Updates
                     'token_auth' => md5(Common::getRandomString(32)),
                     'date_registered'  => Date::now()->getDatetime(),
                     'superuser_access' => 1
-                )
-            );
+                ));
         } catch (\Exception $e) {
             echo "There was an issue, but we proceed: " . $e->getMessage();
         }

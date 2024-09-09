@@ -1,16 +1,14 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\Overlay;
 
-use Piwik\Common;
-use Piwik\Piwik;
 use Piwik\Url;
 use Piwik\UrlHelper;
 
@@ -19,7 +17,7 @@ class Overlay extends \Piwik\Plugin
     /**
      * @see \Piwik\Plugin::registerEvents
      */
-    function registerEvents()
+    public function registerEvents()
     {
         return array(
             'AssetManager.getJavaScriptFiles'        => 'getJsFiles',

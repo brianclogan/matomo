@@ -1,9 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\CustomDimensions;
@@ -89,8 +90,6 @@ class GetCustomDimension extends Report
 
         if ($view->requestConfig->idSubtable) {
             $view->config->addTranslation('label', Piwik::translate('Actions_ColumnActionURL'));
-        } elseif (!empty($this->dimension)) {
-            $view->config->addTranslation('label', $this->dimension->getName());
         }
 
         $view->requestConfig->request_parameters_to_modify['idDimension'] = $idDimension;
@@ -98,7 +97,6 @@ class GetCustomDimension extends Report
         $view->config->custom_parameters['scopeOfDimension'] = $this->scopeOfDimension;
 
         if ($this->scopeOfDimension === CustomDimensions::SCOPE_VISIT) {
-
             // Goal metrics for each custom dimension  of 'visit' scope is processed in Archiver via aggregateFromConversions
             $view->config->show_goals = true;
 
@@ -198,8 +196,6 @@ class GetCustomDimension extends Report
     public function initThisReportFromDimension($dimension)
     {
         $this->name = $dimension['name'];
-        $this->menuTitle = $this->name;
-        $this->widgetTitle = $this->name;
         $this->scopeOfDimension = $dimension['scope'];
         $this->subcategoryId = 'customdimension' . $dimension['idcustomdimension'];
         $dimensionField = CustomDimensionsRequestProcessor::buildCustomDimensionTrackingApiName($dimension);
@@ -253,5 +249,4 @@ class GetCustomDimension extends Report
 
         return $idSite;
     }
-
 }

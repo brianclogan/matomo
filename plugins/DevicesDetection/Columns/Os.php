@@ -1,16 +1,16 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\DevicesDetection\Columns;
 
 use DeviceDetector\Parser\OperatingSystem;
 use Piwik\Columns\DimensionSegmentFactory;
-use Piwik\Common;
 use Piwik\Metrics\Formatter;
 use Piwik\Piwik;
 use Piwik\Plugin\Segment;
@@ -43,7 +43,7 @@ class Os extends Base
         $segment->setNeedsMostFrequentValues(false);
         $segment->setSqlFilterValue(function ($val) {
             $oss = OperatingSystem::getAvailableOperatingSystems();
-            $oss = array_map(function($val) {
+            $oss = array_map(function ($val) {
                 return mb_strtolower($val);
             }, $oss);
             $result   = array_search(mb_strtolower($val), $oss);
@@ -55,8 +55,12 @@ class Os extends Base
             return $result;
         });
         $segment->setSuggestedValuesCallback(function ($idSite, $maxValuesToReturn, $table) {
-            return $this->sortStaticListByUsage(OperatingSystem::getAvailableOperatingSystems(), $table,
-                'operatingSystemCode', $maxValuesToReturn);
+            return $this->sortStaticListByUsage(
+                OperatingSystem::getAvailableOperatingSystems(),
+                $table,
+                'operatingSystemCode',
+                $maxValuesToReturn
+            );
         });
         $segmentsList->addSegment($dimensionSegmentFactory->createSegment($segment));
     }
@@ -79,8 +83,7 @@ class Os extends Base
      */
     public function onNewVisit(Request $request, Visitor $visitor, $action)
     {
-        $userAgent = $request->getUserAgent();
-        $parser    = $this->getUAParser($userAgent);
+        $parser    = $this->getUAParser($request->getUserAgent(), $request->getClientHints());
 
         if ($parser->isBot()) {
             $os = Settings::OS_BOT;

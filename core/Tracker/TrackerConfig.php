@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Tracker;
 
 use Piwik\Config;
@@ -32,7 +33,7 @@ class TrackerConfig
             $siteSpecificConfig = self::getSiteSpecificConfig($idSite);
             $config = array_merge($config, $siteSpecificConfig);
         }
-        return $config[$name];
+        return $config[$name] ?? null;
     }
 
     private static function getConfig()

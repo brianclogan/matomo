@@ -1,10 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\CronArchive;
 
 use Doctrine\Common\Cache\Cache;
@@ -14,14 +16,13 @@ use Piwik\Archive\ArchiveInvalidator;
 use Piwik\ArchiveProcessor\Rules;
 use Piwik\Common;
 use Piwik\Container\StaticContainer;
-use Piwik\CronArchive;
 use Piwik\Date;
 use Piwik\Db;
 use Piwik\Period\Range;
 use Piwik\Plugins\SegmentEditor\Model;
 use Piwik\Segment;
 use Piwik\Site;
-use Psr\Log\LoggerInterface;
+use Piwik\Log\LoggerInterface;
 
 /**
  * Provides URLs that initiate archiving during cron archiving for segments.
@@ -30,10 +31,10 @@ use Psr\Log\LoggerInterface;
  */
 class SegmentArchiving
 {
-    const BEGINNING_OF_TIME = 'beginning_of_time';
-    const CREATION_TIME = 'segment_creation_time';
-    const LAST_EDIT_TIME = 'segment_last_edit_time';
-    const DEFAULT_BEGINNING_OF_TIME_LAST_N_YEARS = 7;
+    public const BEGINNING_OF_TIME = 'beginning_of_time';
+    public const CREATION_TIME = 'segment_creation_time';
+    public const LAST_EDIT_TIME = 'segment_last_edit_time';
+    public const DEFAULT_BEGINNING_OF_TIME_LAST_N_YEARS = 7;
 
     /**
      * @var Model
@@ -67,23 +68,27 @@ class SegmentArchiving
      */
     private $forceArchiveAllSegments;
 
-    public function __construct($beginningOfTimeLastNInYears = self::DEFAULT_BEGINNING_OF_TIME_LAST_N_YEARS,
-                                Model $segmentEditorModel = null, Cache $segmentListCache = null, Date $now = null,
-                                LoggerInterface $logger = null)
-    {
+    public function __construct(
+        $beginningOfTimeLastNInYears = self::DEFAULT_BEGINNING_OF_TIME_LAST_N_YEARS,
+        Model $segmentEditorModel = null,
+        Cache $segmentListCache = null,
+        Date $now = null,
+        LoggerInterface $logger = null
+    ) {
         $this->processNewSegmentsFrom = StaticContainer::get('ini.General.process_new_segments_from');
         $this->beginningOfTimeLastNInYears = $beginningOfTimeLastNInYears;
         $this->segmentEditorModel = $segmentEditorModel ?: new Model();
         $this->segmentListCache = $segmentListCache ?: new Transient();
         $this->now = $now ?: Date::factory('now');
-        $this->logger = $logger ?: StaticContainer::get('Psr\Log\LoggerInterface');
+        $this->logger = $logger ?: StaticContainer::get(LoggerInterface::class);
         $this->forceArchiveAllSegments = self::getShouldForceArchiveAllSegments();
     }
 
     public function findSegmentForHash($hash, $idSite)
     {
         foreach ($this->getAllSegments() as $segment) {
-            if (!$this->isAutoArchivingEnabledFor($segment)
+            if (
+                !$this->isAutoArchivingEnabledFor($segment)
                 || !self::isSegmentForSite($segment, $idSite)
             ) {
                 continue;
@@ -118,15 +123,17 @@ class SegmentArchiving
             $this->logger->debug("process_new_segments_from set to segment_creation_time, oldest date to process is {time}", array('time' => $segmentCreatedTime));
 
             return $segmentCreatedTime;
-        } else if ($this->processNewSegmentsFrom == SegmentArchiving::LAST_EDIT_TIME) {
+        } elseif ($this->processNewSegmentsFrom == SegmentArchiving::LAST_EDIT_TIME) {
             if (empty($segmentLastEditedTime)) {
                 return null;
             }
-            $this->logger->debug("process_new_segments_from set to segment_last_edit_time, segment last edit time is {time}",
-                array('time' => $segmentLastEditedTime));
+            $this->logger->debug(
+                "process_new_segments_from set to segment_last_edit_time, segment last edit time is {time}",
+                array('time' => $segmentLastEditedTime)
+            );
 
             return $segmentLastEditedTime;
-        } else if (preg_match("/^editLast([0-9]+)$/", $this->processNewSegmentsFrom, $matches)) {
+        } elseif (preg_match("/^editLast([0-9]+)$/", $this->processNewSegmentsFrom, $matches)) {
             if (empty($segmentLastEditedTime)) {
                 return null;
             }
@@ -138,7 +145,7 @@ class SegmentArchiving
             $this->logger->debug("process_new_segments_from set to editLast{N}, oldest date to process is {time}", array('N' => $lastN, 'time' => $result));
 
             return $result;
-        } else if (preg_match("/^last([0-9]+)$/", $this->processNewSegmentsFrom, $matches)) {
+        } elseif (preg_match("/^last([0-9]+)$/", $this->processNewSegmentsFrom, $matches)) {
             if (empty($segmentCreatedTime)) {
                 return null;
             }
@@ -165,7 +172,8 @@ class SegmentArchiving
             }
 
             $earliestVisitTime = $this->getEarliestVisitTimeFor($idSite);
-            if (!empty($earliestVisitTime)
+            if (
+                !empty($earliestVisitTime)
                 && $result->isEarlier($earliestVisitTime)
             ) {
                 $result = $earliestVisitTime;
@@ -175,7 +183,14 @@ class SegmentArchiving
         }
     }
 
-    private function getCreatedTimeOfSegment($storedSegment)
+    /**
+     * Retrieve the created and last edited time as date objects from the supplied segment array
+     *
+     * @param array $storedSegment
+     *
+     * @return array
+     */
+    private function getCreatedTimeOfSegment(array $storedSegment): array
     {
         // check for an earlier ts_created timestamp
         $createdTime = empty($storedSegment['ts_created']) ? null : Date::factory($storedSegment['ts_created']);
@@ -186,9 +201,10 @@ class SegmentArchiving
         }
 
         // check for a later ts_last_edit timestamp
-        $lastEditTime = empty($storedSegment['ts_last_edit']) ? null : Date::factory($storedSegment['ts_last_edit']);
+        $lastEditTime = empty($storedSegment['ts_last_edit']) || $storedSegment['ts_last_edit'] === '0000-00-00 00:00:00'
+            ? null : Date::factory($storedSegment['ts_last_edit']);
 
-        return array($createdTime, $lastEditTime);
+        return [$createdTime, $lastEditTime];
     }
 
     private function getEarliestVisitTimeFor($idSite)

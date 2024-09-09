@@ -307,26 +307,28 @@
                 if (mutation.type === 'attributes') {
                     addedNodes = [mutation.target];
                 }
-                addedNodes.forEach(function (node) {
-                    domElements.forEach(function (element) {
-                        if (node.contains(element)) {
-                            if (blockTrigger || (onlyOncePerElement && isNodeEventTriggered(element))) {
-                                return;
+                if (addedNodes && addedNodes.length) {
+                    addedNodes.forEach(function (node) {
+                        domElements.forEach(function (element) {
+                            if (node.contains(element)) {
+                                if (blockTrigger || (onlyOncePerElement && isNodeEventTriggered(element))) {
+                                  return;
+                                }
+
+                                if (!isNodeInViewport(element) && observerIntersection && !isDynamicNodeObservedForIntersection(element)) {
+                                  observerIntersection.observe(element);
+                                  dynamicObservedNodesForIntersection.push(element);
+
+                                  return;
+                                }
+
+                                var percentVisible = Math.max(getPercentVisible(element), minPercentVisible);
+                                commonTrigger(triggerEvent, percentVisible, element);
+                                commonTriggeredNodeCheck(element);
                             }
-
-                            if (!isNodeInViewport(element) && observerIntersection && !isDynamicNodeObservedForIntersection(element)) {
-                                observerIntersection.observe(element);
-                                dynamicObservedNodesForIntersection.push(element);
-
-                                return;
-                            }
-
-                            var percentVisible = Math.max(getPercentVisible(element), minPercentVisible);
-                            commonTrigger(triggerEvent, percentVisible, element);
-                            commonTriggeredNodeCheck(element);
-                        }
+                        });
                     });
-                });
+                }
             }
         }
 
@@ -355,6 +357,7 @@
             var dom = TagManager.dom;
             triggerEvent({
                 event: 'mtm.ElementVisibility',
+                'mtm.elementVisibilityElement': node,
                 'mtm.elementVisibilityPercentage': Math.round(percentVisible * 100) / 100,
                 'mtm.elementVisibilityId': dom.getElementAttribute(node, 'id'),
                 'mtm.elementVisibilityClasses': dom.getElementClassNames(node),

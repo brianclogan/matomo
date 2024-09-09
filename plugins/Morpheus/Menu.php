@@ -1,9 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\Morpheus;
@@ -20,6 +21,7 @@ class Menu extends \Piwik\Plugin\Menu
         $menu->registerMenuIcon('CoreAdminHome_MenuDiagnostic', 'icon-admin-diagnostic');
         $menu->registerMenuIcon('CorePluginsAdmin_MenuPlatform', 'icon-admin-platform');
         $menu->registerMenuIcon('General_Settings', 'icon-admin-settings');
+        $menu->registerMenuIcon('General_Plugins', 'icon-plugin');
         $menu->registerMenuIcon('CoreAdminHome_Administration', 'icon-settings');
         $menu->registerMenuIcon('UsersManager_MenuPersonal', 'icon-user-personal');
         $menu->registerMenuIcon('CoreAdminHome_MenuSystem', 'icon-server');

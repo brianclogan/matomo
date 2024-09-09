@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 use Exception;
@@ -15,7 +16,7 @@ use Piwik\Config\ConfigNotFoundException;
 use Piwik\Container\StaticContainer;
 use Piwik\Plugin\Manager as PluginManager;
 use Piwik\Plugins\Monolog\Handler\FailureLogMessageDetector;
-use Psr\Log\LoggerInterface;
+use Piwik\Log\LoggerInterface;
 use Symfony\Bridge\Monolog\Handler\ConsoleHandler;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Command\Command;
@@ -38,7 +39,8 @@ class Console extends Application
 
         $this->environment = $environment;
 
-        $option = new InputOption('matomo-domain',
+        $option = new InputOption(
+            'matomo-domain',
             null,
             InputOption::VALUE_OPTIONAL,
             'Matomo URL (protocol and domain) eg. "http://matomo.example.org"'
@@ -46,7 +48,8 @@ class Console extends Application
 
         $this->getDefinition()->addOption($option);
 
-        $option = new InputOption('xhprof',
+        $option = new InputOption(
+            'xhprof',
             null,
             InputOption::VALUE_NONE,
             'Enable profiling with XHProf'
@@ -54,13 +57,17 @@ class Console extends Application
 
         $this->getDefinition()->addOption($option);
 
-        $option = new InputOption('ignore-warn', null, InputOption::VALUE_NONE,
-            'Return 0 exit code even if there are warning logs or error logs detected in the command output.');
+        $option = new InputOption(
+            'ignore-warn',
+            null,
+            InputOption::VALUE_NONE,
+            'Return 0 exit code even if there are warning logs or error logs detected in the command output.'
+        );
 
         $this->getDefinition()->addOption($option);
     }
 
-    public function renderException($e, $output)
+    public function renderThrowable(\Throwable $e, OutputInterface $output): void
     {
         $logHandlers = StaticContainer::get('log.handlers');
 
@@ -68,17 +75,15 @@ class Console extends Application
         foreach ($logHandlers as $handler) {
             if ($handler instanceof FingersCrossedHandler) {
                 $hasFingersCrossed = true;
-                continue;
+                break;
             }
         }
 
-        if ($hasFingersCrossed
-            && $output->getVerbosity() < OutputInterface::VERBOSITY_VERBOSE
-        ) {
+        if ($hasFingersCrossed && !$output->isVerbose()) {
             $output->setVerbosity(OutputInterface::VERBOSITY_VERBOSE);
         }
 
-        parent::renderException($e, $output);
+        parent::renderThrowable($e, $output);
     }
 
     public function doRun(InputInterface $input, OutputInterface $output)
@@ -94,6 +99,18 @@ class Console extends Application
 
             throw $ex;
         }
+    }
+
+    /**
+     * Makes parent doRun method available
+     *
+     * @param InputInterface  $input
+     * @param OutputInterface $output
+     * @return int
+     */
+    public function originDoRun(InputInterface $input, OutputInterface $output)
+    {
+        return parent::doRun($input, $output);
     }
 
     private function doRunImpl(InputInterface $input, OutputInterface $output)
@@ -132,12 +149,13 @@ class Console extends Application
             $self = $this;
             $exitCode = Access::doAsSuperUser(function () use ($input, $output, $self) {
                 return
-                    call_user_func(array($self, 'Symfony\Component\Console\Application::doRun'), $input, $output);
+                    call_user_func(array($self, 'originDoRun'), $input, $output);
             });
         }
 
         $importantLogDetector = StaticContainer::get(FailureLogMessageDetector::class);
-        if (!$input->hasParameterOption('--ignore-warn')
+        if (
+            !$input->hasParameterOption('--ignore-warn')
             && $exitCode === 0
             && $importantLogDetector->hasEncounteredImportantLog()
         ) {
@@ -156,7 +174,7 @@ class Console extends Application
             Log::warning(sprintf('Cannot add command %s, class does not extend Piwik\Plugin\ConsoleCommand', $command));
         } else {
             /** @var Command $commandInstance */
-            $commandInstance = new $command;
+            $commandInstance = new $command();
 
             // do not add the command if it already exists; this way we can add the command ourselves in tests
             if (!$this->has($commandInstance->getName())) {
@@ -290,7 +308,7 @@ class Console extends Application
         $plugins = explode(',', $plugins);
 
         $commands = array();
-        foreach($plugins as $plugin) {
+        foreach ($plugins as $plugin) {
             $instance = new Plugin($plugin);
             $commands = array_merge($commands, $instance->findMultipleComponents('Commands', 'Piwik\\Plugin\\ConsoleCommand'));
         }

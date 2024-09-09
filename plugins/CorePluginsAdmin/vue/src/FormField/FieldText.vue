@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -12,6 +13,7 @@
     :id="name"
     :name="name"
     :value="modelValueText"
+    :spellcheck="uiControl === 'password' ? false : null"
     @keydown="onKeydown($event)"
     @change="onKeydown($event)"
     v-bind="uiControlAttributes"
@@ -25,6 +27,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { debounce } from 'CoreHome';
+import AbortableModifiers from './AbortableModifiers';
 
 export default defineComponent({
   props: {
@@ -32,6 +35,7 @@ export default defineComponent({
     name: String,
     uiControlAttributes: Object,
     modelValue: [String, Number],
+    modelModifiers: Object,
     uiControl: String,
   },
   inheritAttrs: false,
@@ -65,7 +69,23 @@ export default defineComponent({
     onKeydown(event: Event) {
       const newValue = (event.target as HTMLInputElement).value;
       if (this.modelValue !== newValue) {
-        this.$emit('update:modelValue', newValue);
+        if (!(this.modelModifiers as AbortableModifiers)?.abortable) {
+          this.$emit('update:modelValue', newValue);
+          return;
+        }
+
+        const emitEventData = {
+          value: newValue,
+          abort: () => {
+            // change to previous value if the parent component did not update the model value
+            // (done manually because Vue will not notice if a value does NOT change)
+            if ((event.target as HTMLInputElement).value !== this.modelValueText) {
+              (event.target as HTMLInputElement).value = this.modelValueText;
+            }
+          },
+        };
+
+        this.$emit('update:modelValue', emitEventData);
       }
     },
   },

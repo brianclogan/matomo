@@ -1,19 +1,17 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\MultiSites;
 
 use Piwik\Common;
 use Piwik\Config;
 use Piwik\Date;
-use Piwik\Period;
-use Piwik\DataTable;
-use Piwik\DataTable\Row;
 use Piwik\Piwik;
 use Piwik\Translation\Translator;
 use Piwik\View;
@@ -42,34 +40,6 @@ class Controller extends \Piwik\Plugin\Controller
         return $this->getSitesInfo($isWidgetized = true);
     }
 
-    public function getAllWithGroups()
-    {
-        Piwik::checkUserHasSomeViewAccess();
-
-        $period  = Common::getRequestVar('period', null, 'string');
-        $date    = Common::getRequestVar('date', null, 'string');
-        $segment = Common::getRequestVar('segment', false, 'string');
-        $pattern = Common::getRequestVar('pattern', '', 'string');
-        $limit   = Common::getRequestVar('filter_limit', 0, 'int');
-        $segment = $segment ?: false;
-        $request = $_GET + $_POST;
-
-        $dashboard = new Dashboard($period, $date, $segment);
-
-        if ($pattern !== '') {
-            $dashboard->search(strtolower($pattern));
-        }
-
-        $response = array(
-            'numSites' => $dashboard->getNumSites(),
-            'totals'   => $dashboard->getTotals(),
-            'lastDate' => $dashboard->getLastDate(),
-            'sites'    => $dashboard->getSites($request, $limit)
-        );
-
-        return json_encode($response);
-    }
-
     /**
      * @throws \Piwik\NoAccessException
      */
@@ -90,7 +60,8 @@ class Controller extends \Piwik\Plugin\Controller
         $view->autoRefreshTodayReport = 0;
         // if the current date is today, or yesterday,
         // in case the website is set to UTC-12), or today in UTC+14, we refresh the page every 5min
-        if (in_array($date, array('today', date('Y-m-d'),
+        if (
+            in_array($date, array('today', date('Y-m-d'),
                                   'yesterday', Date::factory('yesterday')->toString('Y-m-d'),
                                   Date::factory('now', 'UTC+14')->toString('Y-m-d')))
         ) {

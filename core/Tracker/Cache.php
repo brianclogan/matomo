@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Tracker;
 
 use Piwik\Access;
@@ -16,8 +17,7 @@ use Piwik\Container\StaticContainer;
 use Piwik\Option;
 use Piwik\Piwik;
 use Piwik\Tracker;
-use Psr\Log\LoggerInterface;
-use function DI\object;
+use Piwik\Log\LoggerInterface;
 
 /**
  * Simple cache mechanism used in Tracker to avoid requesting settings from mysql on every request

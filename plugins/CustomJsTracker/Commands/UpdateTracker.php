@@ -1,9 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\CustomJsTracker\Commands;
@@ -11,10 +12,6 @@ namespace Piwik\Plugins\CustomJsTracker\Commands;
 use Piwik\Container\StaticContainer;
 use Piwik\Plugin\ConsoleCommand;
 use Piwik\Plugins\CustomJsTracker\TrackerUpdater;
-use Piwik\Plugins\CustomJsTracker\TrackingCode\PluginTrackerFiles;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
 
 class UpdateTracker extends ConsoleCommand
 {
@@ -22,9 +19,9 @@ class UpdateTracker extends ConsoleCommand
     {
         $this->setName('custom-piwik-js:update');
         $this->setAliases(array('custom-matomo-js:update'));
-        $this->addOption('source-file', null, InputOption::VALUE_REQUIRED, 'Absolute path to source PiwikJS file.', $this->getPathOriginalPiwikJs());
-        $this->addOption('target-file', null, InputOption::VALUE_REQUIRED, 'Absolute path to target file. Useful if your /matomo.js is not writable and you want to replace the file manually', PIWIK_DOCUMENT_ROOT . TrackerUpdater::TARGET_MATOMO_JS);
-        $this->addOption('ignore-minified', null, InputOption::VALUE_NONE, 'Ignore minified tracker files, useful during development so the original source file can be debugged');
+        $this->addRequiredValueOption('source-file', null, 'Absolute path to source PiwikJS file.', $this->getPathOriginalPiwikJs());
+        $this->addRequiredValueOption('target-file', null, 'Absolute path to target file. Useful if your /matomo.js is not writable and you want to replace the file manually', PIWIK_DOCUMENT_ROOT . TrackerUpdater::TARGET_MATOMO_JS);
+        $this->addNoValueOption('ignore-minified', null, 'Ignore minified tracker files, useful during development so the original source file can be debugged');
         $this->setDescription('Update the Javascript Tracker with plugin tracker additions');
     }
 
@@ -33,8 +30,10 @@ class UpdateTracker extends ConsoleCommand
         return PIWIK_DOCUMENT_ROOT . TrackerUpdater::ORIGINAL_PIWIK_JS;
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function doExecute(): int
     {
+        $input = $this->getInput();
+        $output = $this->getOutput();
         $sourceFile = $input->getOption('source-file');
         $targetFile = $input->getOption('target-file');
         $ignoreMinified = (bool)$input->getOption('ignore-minified');
@@ -42,6 +41,8 @@ class UpdateTracker extends ConsoleCommand
         $this->updateTracker($sourceFile, $targetFile, $ignoreMinified);
 
         $output->writeln('<info>The Javascript Tracker has been updated</info>');
+
+        return self::SUCCESS;
     }
 
     public function updateTracker($sourceFile, $targetFile, $ignoreMinified)

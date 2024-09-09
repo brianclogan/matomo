@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\API\Renderer;
 
 use Piwik\API\ApiRenderer;
@@ -13,7 +14,6 @@ use Piwik\Common;
 
 class Xml extends ApiRenderer
 {
-
     public function renderSuccess($message)
     {
         return "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n" .
@@ -39,5 +39,4 @@ class Xml extends ApiRenderer
     {
         Common::sendHeader('Content-Type: text/xml; charset=utf-8');
     }
-
 }

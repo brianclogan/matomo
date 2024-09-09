@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugin\Dimension;
 
 use Piwik\CacheId;
@@ -37,7 +38,7 @@ use Exception;
  */
 abstract class VisitDimension extends Dimension
 {
-    const INSTALLER_PREFIX = 'log_visit.';
+    public const INSTALLER_PREFIX = 'log_visit.';
 
     protected $dbTableName = 'log_visit';
     protected $category = 'General_Visitors';
@@ -176,7 +177,7 @@ abstract class VisitDimension extends Dimension
 
     /**
      * The `onExistingVisit` method is triggered when a visitor was recognized meaning it is not a new visitor.
-     * You can overwrite any previous value set by the event `onNewVisit` by implemting this event. By returning boolean
+     * You can overwrite any previous value set by the event `onNewVisit` by implementing this event. By returning boolean
      * `false` no value will be updated.
      *
      * @param Request $request
@@ -349,16 +350,16 @@ abstract class VisitDimension extends Dimension
     }
 
     /**
-     * Sort a key => value array descending by the number of occurances of the key in the supplied table and column
+     * Sort a key => value array descending by the number of occurrences of the key in the supplied table and column
      *
      * @param array     $array              Key value array
-     * @param DataTable $table              Datatable from which to count occurances
+     * @param DataTable $table              Datatable from which to count occurrences
      * @param string    $keyColumn          Column in the datatable to match against the array key
      * @param int       $maxValuesToReturn  Limit the return array to this number of elements
      *
-     * @return array    An array of values from the source array sorted by most occurances, descending
+     * @return array    An array of values from the source array sorted by most occurrences, descending
      */
-    public function sortStaticListByUsage(array $array, DataTable $table, string $keyColumn, int $maxValuesToReturn) : array
+    public function sortStaticListByUsage(array $array, DataTable $table, string $keyColumn, int $maxValuesToReturn): array
     {
         // Convert to multi-dimensional array and count the number of visits for each browser name
         foreach ($array as $k => $v) {
@@ -376,7 +377,7 @@ abstract class VisitDimension extends Dimension
             }
         }
         // Sort by most visits descending
-        uasort($array, function($a, $b) {
+        uasort($array, function ($a, $b) {
             return $a <=> $b;
         });
         $array = array_reverse($array, true);

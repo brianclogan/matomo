@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -162,6 +163,7 @@
         <div class="editingSiteFooter">
           <input
             v-show="!isLoading"
+            :disabled="isSaving"
             type="submit"
             class="btn"
             :value="translate('General_Save')"
@@ -169,6 +171,7 @@
           />
           <button
             class="btn btn-link"
+            :disabled="isSaving"
             @click="cancelEditSite(site)"
           >
             {{ translate('General_Cancel', '', '') }}
@@ -178,19 +181,13 @@
       </div>
     </div>
 
-    <MatomoDialog
+    <PasswordConfirmation
       v-model="showRemoveDialog"
-      @yes="deleteSite()"
+      @confirmed="deleteSite"
     >
-      <div class="ui-confirm">
         <h2>{{ removeDialogTitle }}</h2>
-
         <p>{{ translate('SitesManager_DeleteSiteExplanation') }}</p>
-
-        <input type="button" :value="translate('General_Yes')" role="yes"/>
-        <input type="button" :value="translate('General_No')" role="no" />
-      </div>
-    </MatomoDialog>
+    </PasswordConfirmation>
   </div>
 </template>
 
@@ -202,7 +199,6 @@ import {
   ActivityIndicator,
   format,
   translate,
-  MatomoDialog,
   AjaxHelper,
   NotificationsStore,
 } from 'CoreHome';
@@ -211,6 +207,7 @@ import {
   GroupedSettings,
   SettingsForSinglePlugin,
   Setting,
+  PasswordConfirmation,
 } from 'CorePluginsAdmin';
 import TimezoneStore from '../TimezoneStore/TimezoneStore';
 import CurrencyStore from '../CurrencyStore/CurrencyStore';
@@ -219,6 +216,7 @@ import SiteType from '../SiteTypesStore/SiteType';
 
 interface SiteFieldsState {
   isLoading: boolean;
+  isSaving: boolean;
   editMode: boolean;
   theSite: Site;
   measurableSettings: DeepReadonly<SettingsForSinglePlugin[]>;
@@ -263,6 +261,7 @@ export default defineComponent({
   data(): SiteFieldsState {
     return {
       isLoading: false,
+      isSaving: false,
       editMode: false,
       theSite: { ...(this.site as Site) },
       measurableSettings: [],
@@ -271,13 +270,17 @@ export default defineComponent({
     };
   },
   components: {
-    MatomoDialog,
+    PasswordConfirmation,
     Field,
     GroupedSettings,
     ActivityIndicator,
   },
   emits: ['delete', 'editSite', 'cancelEditSite', 'save'],
   created() {
+    CurrencyStore.init();
+    TimezoneStore.init();
+    SiteTypesStore.init();
+
     this.onSiteChanged();
   },
   watch: {
@@ -346,6 +349,12 @@ export default defineComponent({
       });
     },
     saveSite() {
+      if (this.isSaving) {
+        return; // saving already in progress
+      }
+
+      this.isSaving = true;
+
       const values: Record<string, unknown> = {
         siteName: this.theSite.name,
         timezone: this.theSite.timezone,
@@ -420,6 +429,8 @@ export default defineComponent({
         SiteTypesStore.removeEditSiteIdParameterFromHash();
 
         this.$emit('save', { site: this.theSite, settingValues: values.settingValues, isNew });
+      }).finally(() => {
+        this.isSaving = false;
       });
     },
     cancelEditSite(site: Site) {
@@ -429,12 +440,14 @@ export default defineComponent({
 
       this.$emit('cancelEditSite', { site, element: this.$refs.root as HTMLElement });
     },
-    deleteSite() {
-      AjaxHelper.fetch({
+    deleteSite(password: string) {
+      AjaxHelper.post({
         idSite: this.theSite.idsite,
         module: 'API',
         format: 'json',
         method: 'SitesManager.deleteSite',
+      }, {
+        passwordConfirmation: password,
       }).then(() => {
         this.$emit('delete', this.theSite);
       });

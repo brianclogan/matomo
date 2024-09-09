@@ -1,10 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Diagnostics\Diagnostic;
 
 use Piwik\ArchiveProcessor\Rules;
@@ -34,9 +36,9 @@ class ConfigInformational implements Diagnostic
         $results = [];
 
         if (SettingsPiwik::isMatomoInstalled()) {
-            $results[] = DiagnosticResult::informationalResult('Browser Segment Archiving Enabled',  Rules::isBrowserArchivingAvailableForSegments());
+            $results[] = DiagnosticResult::informationalResult('Browser Segment Archiving Enabled', Rules::isBrowserArchivingAvailableForSegments());
             $results[] = DiagnosticResult::informationalResult('Development Mode Enabled', Development::isEnabled());
-            $results[] = DiagnosticResult::informationalResult('Internet Enabled',SettingsPiwik::isInternetEnabled());
+            $results[] = DiagnosticResult::informationalResult('Internet Enabled', SettingsPiwik::isInternetEnabled());
             $results[] = DiagnosticResult::informationalResult('Multi Server Environment', SettingsPiwik::isMultiServerEnvironment());
             $results[] = DiagnosticResult::informationalResult('Auto Update Enabled', SettingsPiwik::isAutoUpdateEnabled());
             $results[] = DiagnosticResult::informationalResult('Custom User Path', PIWIK_USER_PATH != PIWIK_DOCUMENT_ROOT);
@@ -49,9 +51,11 @@ class ConfigInformational implements Diagnostic
             $plugins = Manager::getInstance()->loadAllPluginsAndGetTheirInfo();
             foreach ($plugins as $pluginName => $plugin) {
                 $string = $pluginName;
-                if (!empty($plugin['info']['version'])
+                if (
+                    !empty($plugin['info']['version'])
                     && !empty($plugin['uninstallable'])
-                    && (!defined('PIWIK_TEST_MODE') || !PIWIK_TEST_MODE)) {
+                    && (!defined('PIWIK_TEST_MODE') || !PIWIK_TEST_MODE)
+                ) {
                     // we only want to show versions for plugins not shipped with core
                     // in tests we don't show version numbers to not always needing to update the screenshot
                     $string .= ' ' . $plugin['info']['version'];
@@ -77,5 +81,4 @@ class ConfigInformational implements Diagnostic
 
         return $results;
     }
-
 }

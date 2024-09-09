@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Actions;
 
 use Piwik\Metrics as PiwikMetrics;
@@ -18,7 +19,6 @@ use Piwik\Tracker\Action;
  */
 class Metrics
 {
-
     public static $actionTypes = array(
         Action::TYPE_PAGE_URL,
         Action::TYPE_OUTLINK,

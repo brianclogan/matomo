@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\DataTable\Filter;
 
 use Piwik\DataTable;
@@ -40,9 +41,14 @@ class ColumnCallbackAddMetadata extends BaseFilter
      *                                  instead.
      * @param bool $applyToSummaryRow Whether the callback should be applied to the summary row or not.
      */
-    public function __construct($table, $columnsToRead, $metadataToAdd, $functionToApply = null,
-                                $functionParameters = null, $applyToSummaryRow = true)
-    {
+    public function __construct(
+        $table,
+        $columnsToRead,
+        $metadataToAdd,
+        $functionToApply = null,
+        $functionParameters = null,
+        $applyToSummaryRow = true
+    ) {
         parent::__construct($table);
 
         if (!is_array($columnsToRead)) {

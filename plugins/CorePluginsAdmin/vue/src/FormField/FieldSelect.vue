@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -32,7 +33,7 @@
         </option>
       </optgroup>
     </select>
-    <label :for="name" v-html="title"></label>
+    <label :for="name" v-html="$sanitize(title)"></label>
   </div>
   <div v-if="!groupedOptions && options" class="matomo-field-select">
     <select
@@ -55,12 +56,13 @@
         {{ option.value }}
       </option>
     </select>
-    <label :for="name" v-html="title"></label>
+    <label :for="name" v-html="$sanitize(title)"></label>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, nextTick } from 'vue';
+import { defineComponent } from 'vue';
+import AbortableModifiers from './AbortableModifiers';
 
 interface OptionGroup {
   group?: string;
@@ -171,6 +173,7 @@ function handleOldAngularJsValues<T>(value: T): T {
 export default defineComponent({
   props: {
     modelValue: null,
+    modelModifiers: Object,
     multiple: Boolean,
     name: String,
     title: String,
@@ -244,15 +247,19 @@ export default defineComponent({
         newValue = handleOldAngularJsValues(newValue);
       }
 
-      this.$emit('update:modelValue', newValue);
+      if (!(this.modelModifiers as AbortableModifiers)?.abortable) {
+        this.$emit('update:modelValue', newValue);
+        return;
+      }
 
-      // if modelValue does not change, select will still have the changed value, but we
-      // want it to have the value determined by modelValue. so we force an update.
-      nextTick(() => {
-        if (this.modelValue !== newValue) {
+      const emitEventData = {
+        value: newValue,
+        abort: () => {
           this.onModelValueChange(this.modelValue);
-        }
-      });
+        },
+      };
+
+      this.$emit('update:modelValue', emitEventData);
     },
     onModelValueChange(newVal: string|number|string[]) {
       window.$(this.$refs.select as HTMLSelectElement).val(newVal);

@@ -1,13 +1,13 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
   <div
     class="form-group row matomo-form-field"
-    v-show="showField"
   >
     <h3
       v-if="formField.introduction"
@@ -29,6 +29,7 @@
           formField,
           ...formField,
           modelValue: processedModelValue,
+          modelModifiers,
           availableOptions,
           ...extraChildComponentParams,
         }"
@@ -53,13 +54,15 @@
         <span
           class="inline-help"
           ref="inlineHelp"
-          v-if="formField.inlineHelp"
+          v-if="formField.inlineHelp || hasInlineHelpSlot"
         >
           <component
             v-if="inlineHelpComponent"
             :is="inlineHelpComponent"
             v-bind="inlineHelpBind"
           />
+
+          <slot name="inline-help"></slot>
         </span>
         <span v-show="showDefaultValue">
           <br />
@@ -101,7 +104,6 @@ import FieldTextArray from './FieldTextArray.vue';
 import FieldTextarea from './FieldTextarea.vue';
 import FieldTextareaArray from './FieldTextareaArray.vue';
 import { processCheckboxAndRadioAvailableValues } from './utilities';
-import FieldAngularJsTemplate from './FieldAngularJsTemplate.vue';
 
 const TEXT_CONTROLS = ['password', 'url', 'search', 'email'];
 const CONTROLS_SUPPORTING_ARRAY = ['textarea', 'checkbox', 'text'];
@@ -148,7 +150,6 @@ interface FormField {
   component: Component | ComponentReference;
   inlineHelp?: string;
   inlineHelpBind?: unknown;
-  templateFile?: string;
 }
 
 interface OptionLike {
@@ -159,6 +160,7 @@ interface OptionLike {
 export default defineComponent({
   props: {
     modelValue: null,
+    modelModifiers: Object,
     formField: {
       type: Object,
       required: true,
@@ -240,7 +242,7 @@ export default defineComponent({
         if ((formField.component as ComponentReference).plugin) {
           const { plugin, name } = formField.component as ComponentReference;
           if (!plugin || !name) {
-            throw new Error('Invalid component property given to piwik-field directive, must be '
+            throw new Error('Invalid component property given to FormField directive, must be '
               + '{plugin: \'...\',name: \'...\'}');
           }
 
@@ -248,11 +250,6 @@ export default defineComponent({
         }
 
         return markRaw(component);
-      }
-
-      // backwards compatibility w/ settings that use templateFile property
-      if (formField.templateFile) {
-        return markRaw(FieldAngularJsTemplate);
       }
 
       const { uiControl } = formField;
@@ -277,32 +274,18 @@ export default defineComponent({
     showFormHelp() {
       return this.formField.description
         || this.formField.inlineHelp
-        || this.showDefaultValue;
+        || this.showDefaultValue
+        || this.hasInlineHelpSlot;
     },
     showDefaultValue() {
       return this.defaultValuePretty
         && this.formField.uiControl !== 'checkbox'
         && this.formField.uiControl !== 'radio';
     },
-    /**
-     * @deprecated here for angularjs BC support. shouldn't be used directly, instead use
-     *             GroupedSetting.vue.
-     */
-    showField() {
-      if (!this.formField
-        || !this.formField.condition
-        || !(this.formField.condition instanceof Function)
-      ) {
-        return true;
-      }
-
-      return this.formField.condition();
-    },
     processedModelValue() {
       const field = this.formField as FormField;
 
-      // convert boolean values since angular 1.6 uses strict equals when determining if a model
-      // value matches the ng-value of an input.
+      // handle boolean field types
       if (field.type === 'boolean') {
         const valueIsTruthy = this.modelValue && this.modelValue > 0 && this.modelValue !== '0';
 
@@ -390,6 +373,14 @@ export default defineComponent({
     },
     defaultValuePrettyTruncated() {
       return this.defaultValuePretty.substring(0, 50);
+    },
+    hasInlineHelpSlot() {
+      if (!this.$slots['inline-help']) {
+        return false;
+      }
+
+      const inlineHelpSlot = this.$slots['inline-help']();
+      return !!inlineHelpSlot?.[0]?.children?.length;
     },
   },
   methods: {

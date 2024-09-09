@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 /**
@@ -64,7 +65,7 @@ class SettingsServer
      */
     public static function isMatomoForWordPress()
     {
-        return defined( 'ABSPATH') && function_exists('\add_action');
+        return defined('ABSPATH') && function_exists('\add_action');
     }
 
     /**
@@ -147,7 +148,7 @@ class SettingsServer
     {
         if (self::isArchivePhpTriggered()) {
             // core:archive command: no time limit
-            self::setMaxExecutionTime( 0 );
+            self::setMaxExecutionTime(0);
         }
 
         $memoryLimit = self::getMemoryLimitValue();
@@ -182,7 +183,8 @@ class SettingsServer
     {
         // in Megabytes
         $currentValue = self::getMemoryLimitValue();
-        if ($currentValue === false
+        if (
+            $currentValue === false
             || ($currentValue < $minimumMemoryLimit && @ini_set('memory_limit', $minimumMemoryLimit . 'M'))
         ) {
             return true;

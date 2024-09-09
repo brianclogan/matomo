@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\DataTable\Filter;
 
 use Piwik\DataTable\BaseFilter;
@@ -51,9 +52,15 @@ class ColumnCallbackAddColumnQuotient extends BaseFilter
      * @param bool $getDivisorFromSummaryRow Whether to get the divisor from the summary row or the current
      *                                       row iteration.
      */
-    public function __construct($table, $columnNameToAdd, $columnValueToRead, $divisorValueOrDivisorColumnName,
-                                $quotientPrecision = 0, $shouldSkipRows = false, $getDivisorFromSummaryRow = false)
-    {
+    public function __construct(
+        $table,
+        $columnNameToAdd,
+        $columnValueToRead,
+        $divisorValueOrDivisorColumnName,
+        $quotientPrecision = 0,
+        $shouldSkipRows = false,
+        $getDivisorFromSummaryRow = false
+    ) {
         parent::__construct($table);
         $this->table = $table;
         $this->columnValueToRead = $columnValueToRead;

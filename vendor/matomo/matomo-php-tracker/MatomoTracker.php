@@ -19,6 +19,7 @@
  * @package MatomoTracker
  * @api
  */
+#[AllowDynamicProperties]
 class MatomoTracker
 {
     /**
@@ -36,7 +37,7 @@ class MatomoTracker
      * @ignore
      * @var int
      */
-    const VERSION = 1;
+    public const VERSION = 1;
 
     /**
      * @ignore
@@ -48,27 +49,156 @@ class MatomoTracker
      *
      * @ignore
      */
-    const LENGTH_VISITOR_ID = 16;
+    public const LENGTH_VISITOR_ID = 16;
 
     /**
      * Charset
      * @see setPageCharset
      * @ignore
      */
-    const DEFAULT_CHARSET_PARAMETER_VALUES = 'utf-8';
+    public const DEFAULT_CHARSET_PARAMETER_VALUES = 'utf-8';
 
     /**
      * See matomo.js
      */
-    const FIRST_PARTY_COOKIES_PREFIX = '_pk_';
+    public const FIRST_PARTY_COOKIES_PREFIX = '_pk_';
 
     /**
      * Defines how many categories can be used max when calling addEcommerceItem().
      * @var int
      */
-    const MAX_NUM_ECOMMERCE_ITEM_CATEGORIES = 5;
+    public const MAX_NUM_ECOMMERCE_ITEM_CATEGORIES = 5;
 
-    const DEFAULT_COOKIE_PATH = '/';
+    public const DEFAULT_COOKIE_PATH = '/';
+
+    public $ecommerceItems = [];
+
+    public $attributionInfo = false;
+
+    public $eventCustomVar = [];
+
+    public $forcedDatetime = false;
+
+    public $forcedNewVisit = false;
+
+    public $networkTime = false;
+
+    public $serverTime = false;
+
+    public $transferTime = false;
+
+    public $domProcessingTime = false;
+
+    public $domCompletionTime = false;
+
+    public $onLoadTime = false;
+
+    public $pageCustomVar = [];
+
+    public $ecommerceView = [];
+
+    public $customParameters = [];
+
+    public $customDimensions = [];
+
+    public $customData = false;
+
+    public $hasCookies = false;
+
+    public $token_auth = false;
+
+    public $userAgent = false;
+
+    public $country = false;
+
+    public $region = false;
+
+    public $city = false;
+
+    public $lat = false;
+
+    public $long = false;
+
+    public $width = false;
+
+    public $height = false;
+
+    public $plugins = false;
+
+    public $localHour = false;
+
+    public $localMinute = false;
+
+    public $localSecond = false;
+
+    public $idPageview = false;
+
+    public $idPageviewSetManually = false;
+
+    public $idSite;
+
+    public $urlReferrer;
+
+    public $pageCharset = self::DEFAULT_CHARSET_PARAMETER_VALUES;
+
+    public $pageUrl;
+
+    public $ip;
+
+    public $acceptLanguage;
+
+    public $clientHints = [];
+
+    // Life of the visitor cookie (in sec)
+    public $configVisitorCookieTimeout = 33955200; // 13 months (365 + 28 days)
+
+    // Life of the session cookie (in sec)
+    public $configSessionCookieTimeout = 1800; // 30 minutes
+
+    // Life of the session cookie (in sec)
+    public $configReferralCookieTimeout = 15768000; // 6 months
+
+    // Visitor Ids in order
+    public $userId = false;
+    
+    public $forcedVisitorId = false;
+    
+    public $cookieVisitorId = false;
+    
+    public $randomVisitorId = false;
+
+    public $configCookiesDisabled = false;
+
+    public $configCookiePath = self::DEFAULT_COOKIE_PATH;
+
+    public $configCookieDomain = '';
+
+    public $configCookieSameSite = '';
+
+    public $configCookieSecure = false;
+
+    public $configCookieHTTPOnly = false;
+
+    public $currentTs;
+
+    public $createTs;
+
+    // Allow debug while blocking the request
+    public $requestTimeout = 600;
+    
+    public $requestConnectTimeout = 300;
+    
+    public $doBulkRequests = false;
+    
+    public $storedTrackingActions = [];
+
+    public $sendImageResponse = true;
+
+    public $outgoingTrackerCookies = [];
+
+    public $incomingTrackerCookies = [];
+
+    public $visitorCustomVar;
 
     private $requestMethod = null;
 
@@ -82,85 +212,34 @@ class MatomoTracker
      */
     public function __construct($idSite, $apiUrl = '')
     {
-        $this->ecommerceItems = [];
-        $this->attributionInfo = false;
-        $this->eventCustomVar = [];
-        $this->forcedDatetime = false;
-        $this->forcedNewVisit = false;
-        $this->networkTime = false;
-        $this->serverTime = false;
-        $this->transferTime = false;
-        $this->domProcessingTime = false;
-        $this->domCompletionTime = false;
-        $this->onLoadTime = false;
-        $this->pageCustomVar = [];
-        $this->ecommerceView = [];
-        $this->customParameters = [];
-        $this->customDimensions = [];
-        $this->customData = false;
-        $this->hasCookies = false;
-        $this->token_auth = false;
-        $this->userAgent = false;
-        $this->country = false;
-        $this->region = false;
-        $this->city = false;
-        $this->lat = false;
-        $this->long = false;
-        $this->width = false;
-        $this->height = false;
-        $this->plugins = false;
-        $this->localHour = false;
-        $this->localMinute = false;
-        $this->localSecond = false;
-        $this->idPageview = false;
-
         $this->idSite = $idSite;
         $this->urlReferrer = !empty($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : false;
-        $this->pageCharset = self::DEFAULT_CHARSET_PARAMETER_VALUES;
         $this->pageUrl = self::getCurrentUrl();
         $this->ip = !empty($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : false;
         $this->acceptLanguage = !empty($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : false;
         $this->userAgent = !empty($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : false;
+        $this->setClientHints(
+            !empty($_SERVER['HTTP_SEC_CH_UA_MODEL']) ? $_SERVER['HTTP_SEC_CH_UA_MODEL'] : '',
+            !empty($_SERVER['HTTP_SEC_CH_UA_PLATFORM']) ? $_SERVER['HTTP_SEC_CH_UA_PLATFORM'] : '',
+            !empty($_SERVER['HTTP_SEC_CH_UA_PLATFORM_VERSION']) ? $_SERVER['HTTP_SEC_CH_UA_PLATFORM_VERSION'] : '',
+            !empty($_SERVER['HTTP_SEC_CH_UA_FULL_VERSION_LIST']) ? $_SERVER['HTTP_SEC_CH_UA_FULL_VERSION_LIST'] : '',
+            !empty($_SERVER['HTTP_SEC_CH_UA_FULL_VERSION']) ? $_SERVER['HTTP_SEC_CH_UA_FULL_VERSION'] : ''
+        );
         if (!empty($apiUrl)) {
             self::$URL = $apiUrl;
         }
 
-        // Life of the visitor cookie (in sec)
-        $this->configVisitorCookieTimeout = 33955200; // 13 months (365 + 28 days)
-        // Life of the session cookie (in sec)
-        $this->configSessionCookieTimeout = 1800; // 30 minutes
-        // Life of the session cookie (in sec)
-        $this->configReferralCookieTimeout = 15768000; // 6 months
-
-        // Visitor Ids in order
-        $this->userId = false;
-        $this->forcedVisitorId = false;
-        $this->cookieVisitorId = false;
-        $this->randomVisitorId = false;
-
         $this->setNewVisitorId();
-
-        $this->configCookiesDisabled = false;
-        $this->configCookiePath = self::DEFAULT_COOKIE_PATH;
-        $this->configCookieDomain = '';
-        $this->configCookieSameSite = '';
-        $this->configCookieSecure = false;
-        $this->configCookieHTTPOnly = false;
 
         $this->currentTs = time();
         $this->createTs = $this->currentTs;
-
-        // Allow debug while blocking the request
-        $this->requestTimeout = 600;
-        $this->doBulkRequests = false;
-        $this->storedTrackingActions = [];
-
-        $this->sendImageResponse = true;
-
+        
         $this->visitorCustomVar = $this->getCustomVariablesFromCookie();
+    }
 
-        $this->outgoingTrackerCookies = [];
-        $this->incomingTrackerCookies = [];
+    public function setApiUrl(string $url)
+    {
+        self::$URL = $url;
     }
 
     /**
@@ -483,6 +562,49 @@ class MatomoTracker
     }
 
     /**
+     * Sets the client hints, used to detect OS and browser.
+     * If this function is not called, the client hints sent with the current request will be used.
+     *
+     * Supported as of Matomo 4.12.0
+     *
+     * @param string $model  Value of the header 'HTTP_SEC_CH_UA_MODEL'
+     * @param string $platform  Value of the header 'HTTP_SEC_CH_UA_PLATFORM'
+     * @param string $platformVersion  Value of the header 'HTTP_SEC_CH_UA_PLATFORM_VERSION'
+     * @param string|array $fullVersionList Value of header 'HTTP_SEC_CH_UA_FULL_VERSION_LIST' or an array containing
+     *                                      all brands with the structure
+     *                                      [['brand' => 'Chrome', 'version' => '10.0.2'], ['brand' => '...]
+     * @param string $uaFullVersion  Value of the header 'HTTP_SEC_CH_UA_FULL_VERSION'
+     *
+     * @return $this
+     */
+    public function setClientHints($model = '', $platform = '', $platformVersion = '', $fullVersionList = '', $uaFullVersion = '')
+    {
+        if (is_string($fullVersionList)) {
+            $reg  = '/^"([^"]+)"; ?v="([^"]+)"(?:, )?/';
+            $list = [];
+
+            while (\preg_match($reg, $fullVersionList, $matches)) {
+                $list[] = ['brand' => $matches[1], 'version' => $matches[2]];
+                $fullVersionList  = \substr($fullVersionList, \strlen($matches[0]));
+            }
+
+            $fullVersionList = $list;
+        } elseif (!is_array($fullVersionList)) {
+            $fullVersionList = [];
+        }
+
+        $this->clientHints = array_filter([
+            'model' => $model,
+            'platform' => $platform,
+            'platformVersion' => $platformVersion,
+            'uaFullVersion' => $uaFullVersion,
+            'fullVersionList' => $fullVersionList,
+        ]);
+
+        return $this;
+    }
+
+    /**
      * Sets the country of the visitor. If not used, Matomo will try to find the country
      * using either the visitor's IP address or language.
      *
@@ -563,6 +685,16 @@ class MatomoTracker
     }
 
     /**
+     * Disables the bulk request feature. Make sure to call `doBulkTrack()` before disabling it if you have stored  
+     * tracking actions previously as this method won't be sending any previously stored actions before disabling it.
+     *
+     */
+    public function disableBulkTracking()
+    {
+        $this->doBulkRequests = false;
+    }
+
+    /**
      * Enable Cookie Creation - this will cause a first party VisitorId cookie to be set when the VisitorId is set or reset
      *
      * @param string $domain (optional) Set first-party cookie domain.
@@ -637,11 +769,37 @@ class MatomoTracker
      */
     public function doTrackPageView($documentTitle)
     {
-        $this->generateNewPageviewId();
+        if (!$this->idPageviewSetManually) {
+            $this->generateNewPageviewId();
+        }
 
         $url = $this->getUrlTrackPageView($documentTitle);
 
         return $this->sendRequest($url);
+    }
+			 
+    /**
+     * Override PageView id for every use of `doTrackPageView()`. Do not use this if you call `doTrackPageView()`
+     * multiple times during tracking (if, for example, you are tracking a single page application).
+     *
+     * @param string $idPageview
+     */
+    public function setPageviewId($idPageview)
+    {
+        $this->idPageview = $idPageview;
+        $this->idPageviewSetManually = true;
+    }
+
+    /**
+     * Returns the PageView id. If the id was manually set using `setPageViewId()`, that id will be returned.
+     * If the id was not set manually, the id that was automatically generated in last `doTrackPageView()` will
+     * be returned. If there was no last page view, this will be false.
+     * 
+     * @return mixed The PageView id as string or false if there is none yet.
+     */
+    public function getPageviewId()
+    {
+        return $this->idPageview;
     }
 
     private function generateNewPageviewId()
@@ -852,6 +1010,47 @@ class MatomoTracker
     )
     {
         $url = $this->getUrlTrackEcommerceOrder($orderId, $grandTotal, $subTotal, $tax, $shipping, $discount);
+
+        return $this->sendRequest($url);
+    }
+
+    /**
+     * Tracks a PHP Throwable a crash (requires CrashAnalytics to be enabled in the target Matomo)
+     *
+     * @param Throwable $ex (required) the throwable to track. The message, stack trace, file location and line number
+     *                      of the crash are deduced from this parameter. The crash type is set to the class name of
+     *                      the Throwable.
+     * @param string|null $category (optional) a category value for this crash. This can be any information you want
+     *                              to attach to the crash.
+     * @return mixed Response or true if using bulk request
+     */
+    public function doTrackPhpThrowable(\Throwable $ex, $category = null)
+    {
+        $message = $ex->getMessage();
+        $stack = $ex->getTraceAsString();
+        $type = get_class($ex);
+        $location = $ex->getFile();
+        $line = $ex->getLine();
+
+        return $this->doTrackCrash($message, $type, $category, $stack, $location, $line);
+    }
+
+    /**
+     * Track a crash (requires CrashAnalytics to be enabled in the target Matomo)
+     *
+     * @param string $message (required) the error message.
+     * @param string|null $type (optional) the error type, such as the class name of an Exception.
+     * @param string|null $category (optional) a category value for this crash. This can be any information you want
+     *                              to attach to the crash.
+     * @param string|null $stack (optional) the stack trace of the crash.
+     * @param string|null $location (optional) the source file URI where the crash originated.
+     * @param int|null $line (optional) the source file line where the crash originated.
+     * @param int|null $column (optional) the source file column where the crash originated.
+     * @return mixed Response or true if using bulk request
+     */
+    public function doTrackCrash($message, $type = null, $category = null, $stack = null, $location = null, $line = null, $column = null)
+    {
+        $url = $this->getUrlTrackCrash($message, $type, $category, $stack, $location, $line, $column);
 
         return $this->sendRequest($url);
     }
@@ -1103,7 +1302,7 @@ class MatomoTracker
     }
 
     /**
-     * Builds URL to track a content impression.
+     * Builds URL to track a content interaction.
      *
      * @see doTrackContentInteraction()
      * @param string $interaction The name of the interaction with the content. For instance a 'click'
@@ -1193,6 +1392,46 @@ class MatomoTracker
     {
         $url = $this->getRequest($this->idSite);
         $url .= '&' . $actionType . '=' . urlencode($actionUrl);
+
+        return $url;
+    }
+
+    /**
+     * Builds URL to track a crash.
+     *
+     * @see doTrackCrash()
+     * @param string $message (required) the error message.
+     * @param string|null $type (optional) the error type, such as the class name of an Exception.
+     * @param string|null $category (optional) a category value for this crash. This can be any information you want
+     *                              to attach to the crash.
+     * @param string|null $stack (optional) the stack trace of the crash.
+     * @param string|null $location (optional) the source file URI where the crash originated.
+     * @param int|null $line (optional) the source file line where the crash originated.
+     * @param int|null $column (optional) the source file column where the crash originated.
+     * @return string URL to matomo.php with all parameters set to track an action
+     */
+    public function getUrlTrackCrash($message, $type = null, $category = null, $stack = null, $location = null, $line = null, $column = null)
+    {
+        $url = $this->getRequest($this->idSite);
+        $url .= '&ca=1&cra=' . urlencode($message);
+        if ($type) {
+            $url .= '&cra_tp=' . urlencode($type);
+        }
+        if ($category) {
+            $url .= '&cra_ct=' . urlencode($category);
+        }
+        if ($stack) {
+            $url .= '&cra_st=' . urlencode($stack);
+        }
+        if ($location) {
+            $url .= '&cra_ru=' . urlencode($location);
+        }
+        if ($line) {
+            $url .= '&cra_rl=' . urlencode($line);
+        }
+        if ($column) {
+            $url .= '&cra_rc=' . urlencode($column);
+        }
 
         return $url;
     }
@@ -1549,6 +1788,32 @@ didn't change any existing VisitorId value */
         return $this;
     }
 	
+    /**
+     * Returns the maximum number of seconds the tracker will spend trying to connect to Matomo.
+     * Defaults to 300 seconds.
+     */
+    public function getRequestConnectTimeout()
+    {
+        return $this->requestConnectTimeout;
+    }
+
+    /**
+     * Sets the maximum number of seconds that the tracker will spend tryint to connect to Matomo.
+     *
+     * @param int $timeout
+     * @return $this
+     * @throws Exception
+     */
+    public function setRequestConnectTimeout($timeout)
+    {
+        if (!is_int($timeout) || $timeout < 0) {
+            throw new Exception("Invalid value supplied for request connect timeout: $timeout");
+        }
+
+        $this->requestConnectTimeout = $timeout;
+        return $this;
+    }
+
 	/**
      * Sets the request method to POST, which is recommended when using setTokenAuth()
      * to prevent the token from being recorded in server logs. Avoid using redirects
@@ -1595,6 +1860,103 @@ didn't change any existing VisitorId value */
     static public $DEBUG_LAST_REQUESTED_URL = false;
 
     /**
+     * Returns array of curl options for request
+     */
+    protected function prepareCurlOptions($url, $method, $data, $forcePostUrlEncoded)
+    {
+        $options = array(
+            CURLOPT_URL => $url,
+            CURLOPT_USERAGENT => $this->userAgent,
+            CURLOPT_HEADER => true,
+            CURLOPT_TIMEOUT => $this->requestTimeout,
+            CURLOPT_CONNECTTIMEOUT => $this->requestConnectTimeout,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => array(
+                'Accept-Language: ' . $this->acceptLanguage,
+            ),
+        );
+
+        if ($method === 'GET') {
+            $options[CURLOPT_FOLLOWLOCATION] = true;
+        }
+
+        if (defined('PATH_TO_CERTIFICATES_FILE')) {
+            $options[CURLOPT_CAINFO] = PATH_TO_CERTIFICATES_FILE;
+        }
+
+        $proxy = $this->getProxy();
+        if (isset($proxy)) {
+            $options[CURLOPT_PROXY] = $proxy;
+        }
+
+        switch ($method) {
+            case 'POST':
+                $options[CURLOPT_POST] = true;
+                break;
+            default:
+                break;
+        }
+
+        // only supports JSON data
+        if (!empty($data) && $forcePostUrlEncoded) {
+            $options[CURLOPT_HTTPHEADER][] = 'Content-Type: application/x-www-form-urlencoded';
+            $options[CURLOPT_POSTFIELDS] = $data;
+            $options[CURLOPT_POST] = true;
+            if (defined('CURL_REDIR_POST_ALL')) {
+                $options[CURLOPT_POSTREDIR] = CURL_REDIR_POST_ALL;
+                $options[CURLOPT_FOLLOWLOCATION] = true;
+            }
+        } elseif (!empty($data)) {
+            $options[CURLOPT_HTTPHEADER][] = 'Content-Type: application/json';
+            $options[CURLOPT_HTTPHEADER][] = 'Expect:';
+            $options[CURLOPT_POSTFIELDS] = $data;
+        }
+
+        if (!empty($this->outgoingTrackerCookies)) {
+            $options[CURLOPT_COOKIE] = http_build_query($this->outgoingTrackerCookies);
+            $this->outgoingTrackerCookies = array();
+        }
+
+        return $options;
+    }
+
+    /**
+     * Returns array of stream options for request
+     */
+    protected function prepareStreamOptions($method, $data, $forcePostUrlEncoded)
+    {
+        $stream_options = array(
+            'http' => array(
+                'method' => $method,
+                'user_agent' => $this->userAgent,
+                'header' => "Accept-Language: " . $this->acceptLanguage . "\r\n",
+                'timeout' => $this->requestTimeout,
+            ),
+        );
+
+        $proxy = $this->getProxy();
+        if (isset($proxy)) {
+            $stream_options['http']['proxy'] = $proxy;
+        }
+
+        // only supports JSON data
+        if (!empty($data) && $forcePostUrlEncoded) {
+            $stream_options['http']['header'] .= "Content-Type: application/x-www-form-urlencoded \r\n";
+            $stream_options['http']['content'] = $data;
+        } elseif (!empty($data)) {
+            $stream_options['http']['header'] .= "Content-Type: application/json \r\n";
+            $stream_options['http']['content'] = $data;
+        }
+
+        if (!empty($this->outgoingTrackerCookies)) {
+            $stream_options['http']['header'] .= 'Cookie: ' . http_build_query($this->outgoingTrackerCookies) . "\r\n";
+            $this->outgoingTrackerCookies = array();
+        }
+
+        return $stream_options;
+    }
+
+    /**
      * @ignore
      */
     protected function sendRequest($url, $method = 'GET', $data = null, $force = false)
@@ -1613,6 +1975,7 @@ didn't change any existing VisitorId value */
             $this->clearCustomDimensions();
             $this->clearCustomTrackingParameters();
             $this->userAgent = false;
+            $this->clientHints = false;
             $this->acceptLanguage = false;
 
             return true;
@@ -1649,111 +2012,42 @@ didn't change any existing VisitorId value */
             }
         }
 
-        $proxy = $this->getProxy();
+        $content = '';
 
         if (function_exists('curl_init') && function_exists('curl_exec')) {
-            $options = array(
-                CURLOPT_URL => $url,
-                CURLOPT_USERAGENT => $this->userAgent,
-                CURLOPT_HEADER => true,
-                CURLOPT_TIMEOUT => $this->requestTimeout,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER => array(
-                    'Accept-Language: ' . $this->acceptLanguage,
-                ),
-            );
-
-            if ($method === 'GET') {
-                $options[CURLOPT_FOLLOWLOCATION] = true;
-            }
-
-            if (defined('PATH_TO_CERTIFICATES_FILE')) {
-                $options[CURLOPT_CAINFO] = PATH_TO_CERTIFICATES_FILE;
-            }
-
-            if (isset($proxy)) {
-                $options[CURLOPT_PROXY] = $proxy;
-            }
-
-            switch ($method) {
-                case 'POST':
-                    $options[CURLOPT_POST] = true;
-                    break;
-                default:
-                    break;
-            }
-
-            // only supports JSON data
-            if (!empty($data) && $forcePostUrlEncoded) {
-                $options[CURLOPT_HTTPHEADER][] = 'Content-Type: application/x-www-form-urlencoded';
-                $options[CURLOPT_POSTFIELDS] = $data;
-                $options[CURLOPT_POST] = true;
-                if (defined('CURL_REDIR_POST_ALL')) {
-                    $options[CURLOPT_POSTREDIR] = CURL_REDIR_POST_ALL;
-                    $options[CURLOPT_FOLLOWLOCATION] = true;
-                }
-            } elseif (!empty($data)) {
-                $options[CURLOPT_HTTPHEADER][] = 'Content-Type: application/json';
-                $options[CURLOPT_HTTPHEADER][] = 'Expect:';
-                $options[CURLOPT_POSTFIELDS] = $data;
-            }
-
-            if (!empty($this->outgoingTrackerCookies)) {
-                $options[CURLOPT_COOKIE] = http_build_query($this->outgoingTrackerCookies);
-                $this->outgoingTrackerCookies = array();
-            }
+            $options = $this->prepareCurlOptions($url, $method, $data, $forcePostUrlEncoded);
 
             $ch = curl_init();
             curl_setopt_array($ch, $options);
             ob_start();
             $response = @curl_exec($ch);
-            ob_end_clean();
             
-            $header = '';
-            $content = '';
+            try {
+                $header = '';
 
-            if ($response === false) {
-                throw new \RuntimeException(curl_error($ch));
+                if ($response === false) {
+                    $curlError = curl_error($ch);
+                    if (!empty($curlError)) {
+                        throw new \RuntimeException($curlError);
+                    }
+                }
+
+                if (!empty($response)) {
+                    // extract header
+                    $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+                    $header = substr($response, 0, $headerSize);
+
+                    // extract content
+                    $content = substr($response, $headerSize);
+                }
+
+                $this->parseIncomingCookies(explode("\r\n", $header));
+            } finally {
+                curl_close($ch);
+                ob_end_clean();
             }
-
-            if (!empty($response)) {
-                // extract header
-                $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-                $header = substr($response, 0, $headerSize);
-
-                // extract content
-                $content = substr($response, $headerSize);
-            }
-
-            $this->parseIncomingCookies(explode("\r\n", $header));
-
         } elseif (function_exists('stream_context_create')) {
-            $stream_options = array(
-                'http' => array(
-                    'method' => $method,
-                    'user_agent' => $this->userAgent,
-                    'header' => "Accept-Language: " . $this->acceptLanguage . "\r\n",
-                    'timeout' => $this->requestTimeout,
-                ),
-            );
-
-            if (isset($proxy)) {
-                $stream_options['http']['proxy'] = $proxy;
-            }
-
-            // only supports JSON data
-            if (!empty($data) && $forcePostUrlEncoded) {
-                $stream_options['http']['header'] .= "Content-Type: application/x-www-form-urlencoded \r\n";
-                $stream_options['http']['content'] = $data;
-            } elseif (!empty($data)) {
-                $stream_options['http']['header'] .= "Content-Type: application/json \r\n";
-                $stream_options['http']['content'] = $data;
-            }
-
-            if (!empty($this->outgoingTrackerCookies)) {
-                $stream_options['http']['header'] .= 'Cookie: ' . http_build_query($this->outgoingTrackerCookies) . "\r\n";
-                $this->outgoingTrackerCookies = array();
-            }
+            $stream_options = $this->prepareStreamOptions($method, $data, $forcePostUrlEncoded);
 
             $ctx = stream_context_create($stream_options);
             $response = file_get_contents($url, 0, $ctx);
@@ -1855,8 +2149,8 @@ didn't change any existing VisitorId value */
             (!empty($this->forcedVisitorId) ? '&cid=' . $this->forcedVisitorId : '&_id=' . $this->getVisitorId()) .
 
             // URL parameters
-            '&url=' . urlencode($this->pageUrl) .
-            '&urlref=' . urlencode($this->urlReferrer) .
+            '&url=' . urlencode($this->pageUrl ?? '') .
+            '&urlref=' . urlencode($this->urlReferrer ?? '') .
             ((!empty($this->pageCharset) && $this->pageCharset != self::DEFAULT_CHARSET_PARAMETER_VALUES) ?
                 '&cs=' . $this->pageCharset : '') .
 
@@ -1881,6 +2175,9 @@ didn't change any existing VisitorId value */
             (!empty($this->long) ? '&long=' . urlencode($this->long) : '') .
             $customFields . $customDimensions .
             (!$this->sendImageResponse ? '&send_image=0' : '') .
+
+            // client hints
+            (!empty($this->clientHints) ? ('&uadata=' . urlencode(json_encode($this->clientHints))) : '') .
 
             // DEBUG
             $this->DEBUG_APPEND_URL;

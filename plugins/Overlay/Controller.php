@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Overlay;
 
 use Piwik\API\CORSHandler;
@@ -14,12 +15,10 @@ use Piwik\Common;
 use Piwik\Config;
 use Piwik\Metrics;
 use Piwik\Piwik;
-use Piwik\Plugin\Report;
 use Piwik\Plugins\Actions\ArchivingHelper;
 use Piwik\Plugins\SegmentEditor\SegmentFormatter;
 use Piwik\Plugins\SitesManager\API as APISitesManager;
 use Piwik\ProxyHttp;
-use Piwik\Segment;
 use Piwik\Session;
 use Piwik\Tracker\Action;
 use Piwik\Tracker\PageUrl;
@@ -124,11 +123,12 @@ class Controller extends \Piwik\Plugin\Controller
                     continue;
                 }
 
-                if ($metric == 'bounce_rate'
+                if (
+                    $metric == 'bounce_rate'
                     || $metric == 'exit_rate'
                 ) {
                     $value = $formatter->getPrettyPercentFromQuotient($value);
-                } else if ($metric == 'avg_time_on_page') {
+                } elseif ($metric == 'avg_time_on_page') {
                     $value = $formatter->getPrettyTimeFromSeconds($value, $displayAsSentence = true);
                 }
 
@@ -201,24 +201,20 @@ class Controller extends \Piwik\Plugin\Controller
         Piwik::checkUserHasViewAccess($this->idSite);
 
         $url = Common::getRequestVar('url', '');
-        $url = Common::unsanitizeInputValue($url);
 
-        $message = Piwik::translate('Overlay_RedirectUrlError', array($url, "\n"));
-        $message = nl2br(htmlentities($message, ENT_COMPAT | ENT_HTML401, 'UTF-8'));
+        $message = Piwik::translate('Overlay_RedirectUrlError', [$url, '<br />']);
 
         $view = new View('@Overlay/showErrorWrongDomain');
         $this->addCustomLogoInfo($view);
         $view->message = $message;
 
         if (Piwik::isUserHasWriteAccess($this->idSite)) {
-            // TODO use $idSite to link to the correct row. This is tricky because the #rowX ids don't match
-            // the site ids when sites have been deleted.
             $url = 'index.php?module=SitesManager&action=index';
-            $troubleshoot = htmlentities(Piwik::translate('Overlay_RedirectUrlErrorAdmin'), ENT_COMPAT | ENT_HTML401, 'UTF-8');
+            $troubleshoot = Piwik::translate('Overlay_RedirectUrlErrorAdmin');
             $troubleshoot = sprintf($troubleshoot, '<a href="' . $url . '" target="_top">', '</a>');
             $view->troubleshoot = $troubleshoot;
         } else {
-            $view->troubleshoot = htmlentities(Piwik::translate('Overlay_RedirectUrlErrorUser'), ENT_COMPAT | ENT_HTML401, 'UTF-8');
+            $view->troubleshoot = Piwik::translate('Overlay_RedirectUrlErrorUser');
         }
 
         $this->outputCORSHeaders();

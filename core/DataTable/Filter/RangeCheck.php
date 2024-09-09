@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\DataTable\Filter;
 
 use Piwik\DataTable;
@@ -19,6 +20,11 @@ class RangeCheck extends BaseFilter
 {
     public static $minimumValue = 0.00;
     public static $maximumValue = 100.0;
+
+    /**
+     * @var string
+     */
+    private $columnToFilter;
 
     /**
      * @param DataTable $table

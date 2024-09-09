@@ -1,15 +1,15 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 use Exception;
-use Piwik\DataAccess\TableMetadata;
 use Piwik\Db\Adapter;
 
 /**
@@ -33,7 +33,7 @@ use Piwik\Db\Adapter;
  */
 class Db
 {
-    const SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';
+    public const SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';
 
     private static $connection = null;
     private static $readerConnection = null;
@@ -287,6 +287,49 @@ class Db
     }
 
     /**
+     * Executes a callback with potential recovery from a "MySQL server has gone away" error.
+     *
+     * If the callback throws a "MySQL server has gone away" exception
+     * it will be called again after a single reconnection attempt.
+     *
+     * @param callable $callback
+     *
+     * @return mixed
+     *
+     * @throws Exception
+     *
+     * @internal
+     */
+    public static function executeWithDatabaseWriterReconnectionAttempt(callable $callback)
+    {
+        try {
+            return $callback();
+        } catch (Exception $ex) {
+            // only attempt reconnection in a reader/writer configuration
+            if (!self::hasReaderConfigured()) {
+                throw $ex;
+            }
+
+            // only attempt reconnection if we encounter a "server has gone away" error
+            if (
+                !self::get()->isErrNo($ex, Updater\Migration\Db::ERROR_CODE_MYSQL_SERVER_HAS_GONE_AWAY)
+                && false === stripos($ex->getMessage(), 'server has gone away')
+            ) {
+                throw $ex;
+            }
+
+            // reconnect and retry query
+            // after a 100ms wait (to avoid re-hitting a network problem immediately)
+            self::$connection = null;
+
+            usleep(100 * 1000);
+            self::createDatabaseObject();
+
+            return $callback();
+        }
+    }
+
+    /**
      * Executes an SQL `SELECT` statement and returns all fetched rows from the result set.
      *
      * @param string $sql The SQL query.
@@ -428,7 +471,8 @@ class Db
     {
         $optimize = Config::getInstance()->General['enable_sql_optimize_queries'];
 
-        if (empty($optimize)
+        if (
+            empty($optimize)
             && !$force
         ) {
             return false;
@@ -442,13 +486,15 @@ class Db
             $tables = array($tables);
         }
 
-        if (!self::isOptimizeInnoDBSupported()
+        if (
+            !self::isOptimizeInnoDBSupported()
             && !$force
         ) {
             // filter out all InnoDB tables
             $myisamDbTables = array();
             foreach (self::getTableStatus() as $row) {
-                if (strtolower($row['Engine']) == 'myisam'
+                if (
+                    strtolower($row['Engine']) == 'myisam'
                     && in_array($row['Name'], $tables)
                 ) {
                     $myisamDbTables[] = $row['Name'];
@@ -472,7 +518,6 @@ class Db
         }
 
         return $success;
-
     }
 
     private static function getTableStatus()
@@ -802,7 +847,8 @@ class Db
 
     private static function logExtraInfoIfDeadlock($ex)
     {
-        if (!self::get()->isErrNo($ex, 1213)
+        if (
+            !self::get()->isErrNo($ex, 1213)
             && !self::get()->isErrNo($ex, 1205)
         ) {
             return;
@@ -813,7 +859,7 @@ class Db
 
             // log using exception so backtrace appears in log output
             Log::debug(new Exception("Encountered deadlock: " . print_r($deadlockInfo, true)));
-        } catch(\Exception $e) {
+        } catch (\Exception $e) {
             //  1227 Access denied; you need (at least one of) the PROCESS privilege(s) for this operation
         }
     }
@@ -822,7 +868,8 @@ class Db
     {
         self::checkBoundParametersIfInDevMode($sql, $parameters);
 
-        if (self::$logQueries === false
+        if (
+            self::$logQueries === false
             || @Config::getInstance()->Debug['log_sql_queries'] != 1
         ) {
             return;

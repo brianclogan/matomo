@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 use Piwik\Session\SessionNamespace;
@@ -65,31 +66,33 @@ class Nonce
      *
      * @param string $id The nonce's unique ID. See {@link getNonce()}.
      * @param string $cnonce Nonce sent from client.
-     * @param null|string $expectedReferrerHost The expected referrer host for the HTTP referrer URL.
+     * @param null|string $allowedReferrerHost The allowed referrer host for the HTTP referrer URL.
      * @return bool `true` if valid; `false` otherwise.
      */
-    public static function verifyNonce($id, $cnonce, $expectedReferrerHost = null)
+    public static function verifyNonce($id, $cnonce, $allowedReferrerHost = null)
     {
         // load error with message function.
-        $error = self::verifyNonceWithErrorMessage($id, $cnonce, $expectedReferrerHost);
+        $error = self::verifyNonceWithErrorMessage($id, $cnonce, $allowedReferrerHost);
         return $error === "";
     }
 
     /**
-     * Returns error message
+     * Returns an error message, if any of the individual checks fails.
      *
-     * A nonce is valid if it matches the current nonce and if the current nonce
-     * has not expired.
+     * A nonce must match the current nonce and must not be expired.
      *
-     * The request is valid if the referrer is a local URL (see {@link Url::isLocalUrl()})
-     * and if the HTTP origin is valid (see {@link getAcceptableOrigins()}).
+     * If a referrer is present, it must match $allowedReferrerHost. The exception is a referrer that resolves to local,
+     * which is allowed if $allowedReferrerHost is empty.
+     * If a referrer is not present, then $allowedReferrerHost is ignored.
+     *
+     * The HTTP origin must be valid (see {@link getAcceptableOrigins()}).
      *
      * @param string $id The nonce's unique ID. See {@link getNonce()}.
      * @param string $cnonce Nonce sent from client.
-     * @param null $expectedReferrerHost The expected referrer host for the HTTP referrer URL.
+     * @param string|null $allowedReferrerHost The allowed referrer for the HTTP referrer URL. See method description.
      * @return string if empty is valid otherwise return error message
      */
-    public static function verifyNonceWithErrorMessage($id, $cnonce, $expectedReferrerHost = null)
+    public static function verifyNonceWithErrorMessage($id, $cnonce, $allowedReferrerHost = null)
     {
         $ns = new SessionNamespace($id);
         $nonce = $ns->nonce;
@@ -99,15 +102,16 @@ class Nonce
         //  The Session cookie is set to a secure cookie, when SSL is mis-configured, it can cause the PHP session cookie ID to change on each page view.
         //  Indicate to user how to solve this particular use case by forcing secure connections.
         if (Url::isSecureConnectionAssumedByPiwikButNotForcedYet()) {
-            $additionalErrors =  '<br/><br/>' . Piwik::translate('Login_InvalidNonceSSLMisconfigured',
+            $additionalErrors =  '<br/><br/>' . Piwik::translate(
+                'Login_InvalidNonceSSLMisconfigured',
                 array(
-                  '<a target="_blank" rel="noreferrer noopener" href="https://matomo.org/faq/how-to/faq_91/">',
+                  '<a target="_blank" rel="noreferrer noopener" href="' . Url::addCampaignParametersToMatomoLink('https://matomo.org/faq/how-to/faq_91/') . '">',
                   '</a>',
                   'config/config.ini.php',
                   '<pre>force_ssl=1</pre>',
                   '<pre>[General]</pre>',
                 )
-              );
+            );
         }
 
         // validate token
@@ -115,25 +119,29 @@ class Nonce
             return Piwik::translate('Login_InvalidNonceToken');
         }
 
-        // validate referrer
+        // Validate referrer if present
         $referrer = Url::getReferrer();
-        if (empty($expectedReferrerHost) && !empty($referrer) && !Url::isLocalUrl($referrer)) {
-            return Piwik::translate('Login_InvalidNonceReferrer', array(
-              '<a target="_blank" rel="noreferrer noopener" href="https://matomo.org/faq/how-to-install/#faq_98">',
-              '</a>'
-              )) . $additionalErrors;
-        }
+        if (!empty($referrer)) {
+            // Allow the instance host by default, if no allowedReferrerHost is specified.
+            if (empty($allowedReferrerHost) && !Url::isLocalUrl($referrer)) {
+                return Piwik::translate('Login_InvalidNonceReferrer', array(
+                        '<a target="_blank" rel="noreferrer noopener" href="' . Url::addCampaignParametersToMatomoLink('https://matomo.org/faq/how-to-install/faq_98') . '">',
+                        '</a>'
+                    )) . $additionalErrors;
+            }
 
-        //referrer is different expected host
-        if (!empty($expectedReferrerHost) && !self::isReferrerHostValid($referrer, $expectedReferrerHost)) {
-            return Piwik::translate('Login_InvalidNonceUnexpectedReferrer') . $additionalErrors;
+            // Test that referrer matches what is allowed.
+            if (!empty($allowedReferrerHost) && !self::isReferrerHostValid($referrer, $allowedReferrerHost)) {
+                return Piwik::translate('Login_InvalidNonceUnexpectedReferrer') . $additionalErrors;
+            }
         }
 
         // validate origin
         $origin = self::getOrigin();
-        if (!empty($origin) &&
-          ($origin == 'null'
-            || !in_array($origin, self::getAcceptableOrigins()))
+        if (
+            !empty($origin) &&
+            ($origin == 'null' ||
+            !in_array($origin, self::getAcceptableOrigins()))
         ) {
             return Piwik::translate('Login_InvalidNonceOrigin') . $additionalErrors;
         }
@@ -142,14 +150,14 @@ class Nonce
     }
 
     // public for tests
-    public static function isReferrerHostValid($referrer, $expectedReferrerHost)
+    public static function isReferrerHostValid($referrer, $allowedReferrerHost)
     {
         if (empty($referrer)) {
             return false;
         }
 
         $referrerHost = Url::getHostFromUrl($referrer);
-        return preg_match('/(^|\.)' . preg_quote($expectedReferrerHost) . '$/i', $referrerHost);
+        return preg_match('/(^|\.)' . preg_quote($allowedReferrerHost) . '$/i', $referrerHost);
     }
 
     /**
@@ -198,7 +206,7 @@ class Nonce
                 'https://' . $host,
             );
             if ($port != 443) {
-                $origins[] = 'http://' . $host .':' . $port;
+                $origins[] = 'http://' . $host . ':' . $port;
             }
             $origins[] = 'https://' . $host . ':' . $port;
         } elseif (Config::getInstance()->General['force_ssl']) {
@@ -226,14 +234,14 @@ class Nonce
      *                           **nonce** query parameter is used.
      * @throws \Exception if the nonce is invalid. See {@link verifyNonce()}.
      */
-    public static function checkNonce($nonceName, $nonce = null, $expectedReferrerHost = null)
+    public static function checkNonce($nonceName, $nonce = null, $allowedReferrerHost = null)
     {
         if ($nonce === null) {
             $nonce = Common::getRequestVar('nonce', null, 'string');
         }
 
-        if (!self::verifyNonce($nonceName, $nonce, $expectedReferrerHost)) {
-            throw new \Exception(Piwik::translate('General_ExceptionNonceMismatch'));
+        if (!self::verifyNonce($nonceName, $nonce, $allowedReferrerHost)) {
+            throw new \Exception(Piwik::translate('General_ExceptionSecurityCheckFailed'));
         }
 
         self::discardNonce($nonceName);

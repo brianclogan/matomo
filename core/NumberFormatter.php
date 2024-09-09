@@ -1,12 +1,14 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
+
 use Piwik\Container\StaticContainer;
 use Piwik\Translation\Translator;
 
@@ -65,9 +67,10 @@ class NumberFormatter
      * @param int $minimumFractionDigits
      * @return mixed|string
      */
-    public function format($value, $maximumFractionDigits=0, $minimumFractionDigits=0)
+    public function format($value, $maximumFractionDigits = 0, $minimumFractionDigits = 0)
     {
-        if (is_string($value)
+        if (
+            is_string($value)
             && trim($value, '%') != $value
         ) {
             return $this->formatPercent($value, $maximumFractionDigits, $minimumFractionDigits);
@@ -86,7 +89,7 @@ class NumberFormatter
      * @param int $minimumFractionDigits
      * @return mixed|string
      */
-    public function formatNumber($value, $maximumFractionDigits=0, $minimumFractionDigits=0)
+    public function formatNumber($value, $maximumFractionDigits = 0, $minimumFractionDigits = 0)
     {
         $pattern = $this->getPattern($value, 'Intl_NumberFormatNumber');
 
@@ -100,7 +103,7 @@ class NumberFormatter
      * @param int $minimumFractionDigits
      * @return mixed|string
      */
-    public function formatPercent($value, $maximumFractionDigits=0, $minimumFractionDigits=0)
+    public function formatPercent($value, $maximumFractionDigits = 0, $minimumFractionDigits = 0)
     {
         $newValue = trim($value, " \0\x0B%");
         if (!is_numeric($newValue)) {
@@ -140,7 +143,7 @@ class NumberFormatter
      * @param int $precision
      * @return mixed|string
      */
-    public function formatCurrency($value, $currency, $precision=2)
+    public function formatCurrency($value, $currency, $precision = 2)
     {
         $newValue = trim(strval($value), " \0\x0B$currency");
         if (!is_numeric($newValue)) {
@@ -190,7 +193,7 @@ class NumberFormatter
      * @param int $minimumFractionDigits
      * @return mixed|string
      */
-    protected function formatNumberWithPattern($pattern, $value, $maximumFractionDigits=0, $minimumFractionDigits=0)
+    protected function formatNumberWithPattern($pattern, $value, $maximumFractionDigits = 0, $minimumFractionDigits = 0)
     {
         if (!is_numeric($value)) {
             return $value;
@@ -247,7 +250,7 @@ class NumberFormatter
             }
         }
         // Assemble the final number and insert it into the pattern.
-        $value = $minorDigits ? $majorDigits . '.' . $minorDigits : $majorDigits;
+        $value = strlen($minorDigits) ? $majorDigits . '.' . $minorDigits : $majorDigits;
         $value = preg_replace('/#(?:[\.,]#+)*0(?:[,\.][0#]+)*/', $value, $pattern);
         // Localize the number.
         $value = $this->replaceSymbols($value);

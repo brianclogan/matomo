@@ -1,8 +1,8 @@
 /*!
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 /**
@@ -67,6 +67,7 @@
             ajaxRequest.setCallback(function (r) {
                 if (that.options.replaceContent) {
                     $(that.element).html(r);
+                    piwikHelper.compileVueEntryComponents(that.element);
                     if (that.options.fadeInSpeed) {
                         $(that.element).effect("highlight", {}, that.options.fadeInSpeed);
                     }
@@ -173,8 +174,7 @@
             this.currentInterval = parseInt(this.options.interval, 10);
 
             if (0 === $(this.element).parents('.widget').length) {
-                var $rootScope = piwikHelper.getAngularDependency('$rootScope');
-                $rootScope.$emit('hidePeriodSelector');
+                window.CoreHome.Matomo.postEvent('hidePeriodSelector');
             }
 
             var self = this;

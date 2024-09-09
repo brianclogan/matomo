@@ -1,18 +1,17 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\CorePluginsAdmin;
-use Piwik\Common;
+
 use Piwik\Piwik;
 use Piwik\Plugin\SettingsProvider;
 use Exception;
-use Piwik\Plugins\Login\PasswordVerifier;
-use Piwik\Version;
 use Piwik\Container\StaticContainer;
 use Piwik\Plugins\CoreAdminHome\Emails\SettingsChangedEmail;
 use Piwik\Plugins\CoreAdminHome\Emails\SecurityNotificationEmail;
@@ -34,16 +33,10 @@ class API extends \Piwik\Plugin\API
      */
     private $settingsProvider;
 
-    /**
-     * @var PasswordVerifier
-     */
-    private $passwordVerifier;
-
-    public function __construct(SettingsProvider $settingsProvider, SettingsMetadata $settingsMetadata, PasswordVerifier $passwordVerifier)
+    public function __construct(SettingsProvider $settingsProvider, SettingsMetadata $settingsMetadata)
     {
         $this->settingsProvider = $settingsProvider;
         $this->settingsMetadata = $settingsMetadata;
-        $this->passwordVerifier = $passwordVerifier;
     }
 
     /**
@@ -133,20 +126,6 @@ class API extends \Piwik\Plugin\API
         $userSettings = $this->settingsProvider->getAllUserSettings();
 
         return $this->settingsMetadata->formatSettings($userSettings);
-    }
-
-    private function confirmCurrentUserPassword($passwordConfirmation)
-    {
-        if (empty($passwordConfirmation)) {
-            throw new Exception(Piwik::translate('UsersManager_ConfirmWithPassword'));
-        }
-
-        $passwordConfirmation = Common::unsanitizeInputValue($passwordConfirmation);
-
-        $loginCurrentUser = Piwik::getCurrentUserLogin();
-        if (!$this->passwordVerifier->isPasswordCorrect($loginCurrentUser, $passwordConfirmation)) {
-            throw new Exception(Piwik::translate('UsersManager_CurrentPasswordNotCorrect'));
-        }
     }
 
     private function sendNotificationEmails($sendSettingsChangedNotificationEmailPlugins)

@@ -1,15 +1,15 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Actions\Columns;
 
 use Piwik\Plugin\Dimension\VisitDimension;
-use Piwik\Plugins\CoreHome\Segment;
 use Piwik\Tracker\Action;
 use Piwik\Tracker\Request;
 use Piwik\Tracker\Visitor;
@@ -26,7 +26,7 @@ class VisitTotalInteractions extends VisitDimension
     public function __construct()
     {
         $this->suggestedValuesCallback = function ($idSite, $maxValuesToReturn) {
-            $positions = range(1,50);
+            $positions = range(1, 50);
 
             return array_slice($positions, 0, $maxValuesToReturn);
         };
@@ -111,5 +111,4 @@ class VisitTotalInteractions extends VisitDimension
 
         return false;
     }
-
 }

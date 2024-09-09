@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Columns;
 
 use Piwik\Cache;
@@ -109,7 +110,7 @@ class MetricsList
             return $cache->fetch($cacheKey);
         }
 
-        $list = new static;
+        $list = new static();
 
         /**
          * Triggered to add new metrics that cannot be picked up automatically by the platform.
@@ -187,5 +188,4 @@ class MetricsList
 
         return $list;
     }
-
 }

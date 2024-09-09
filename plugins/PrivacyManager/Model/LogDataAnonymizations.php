@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\PrivacyManager\Model;
 
 use Piwik\Common;
@@ -119,7 +120,7 @@ class LogDataAnonymizations
                     $entry['sites'][] = Site::getNameFor($idSite);
                 } catch (\Exception$e) {
                     // site might be deleted
-                    $entry['sites'][] = 'Site ID: '. $idSite;
+                    $entry['sites'][] = 'Site ID: ' . $idSite;
                 }
             }
         } else {
@@ -301,5 +302,4 @@ class LogDataAnonymizations
 
         $this->updateEntry($idLogData, 'job_finish_date', Date::now()->getDatetime());
     }
-
 }

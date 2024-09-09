@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 use Exception;
@@ -129,7 +130,8 @@ class Url
         $url = '';
 
         // insert extra path info if proxy_uri_header is set and enabled
-        if (isset(Config::getInstance()->General['proxy_uri_header'])
+        if (
+            isset(Config::getInstance()->General['proxy_uri_header'])
             && Config::getInstance()->General['proxy_uri_header'] == 1
             && !empty($_SERVER['HTTP_X_FORWARDED_URI'])
         ) {
@@ -209,7 +211,8 @@ class Url
     public static function isValidHost($host = false): bool
     {
         // only do trusted host check if it's enabled
-        if (isset(Config::getInstance()->General['enable_trusted_host_check'])
+        if (
+            isset(Config::getInstance()->General['enable_trusted_host_check'])
             && Config::getInstance()->General['enable_trusted_host_check'] == 0
         ) {
             return true;
@@ -277,12 +280,13 @@ class Url
 
     protected static function saveHostsnameInConfig($host, $domain, $key)
     {
-        if (Piwik::hasUserSuperUserAccess()
+        if (
+            Piwik::hasUserSuperUserAccess()
             && file_exists(Config::getLocalConfigPath())
         ) {
             $config = Config::getInstance()->$domain;
             if (!is_array($host)) {
-                $host = array($host);
+                $host = [$host];
             }
             $host = array_filter($host);
             if (empty($host)) {
@@ -340,6 +344,21 @@ class Url
     }
 
     /**
+     * Returns the valid hostname (according to RFC standards) as a string; else it will return false if it isn't valid.
+     * If the hostname isn't supplied it will default to using Url::getHost
+     * Note: this will not verify if the hostname is trusted.
+     * @param $hostname
+     * @return false|string
+     */
+    public static function getRFCValidHostname($hostname = null)
+    {
+        if (empty($hostname)) {
+            $hostname = self::getHost(false);
+        }
+        return filter_var($hostname, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME);
+    }
+
+    /**
      * Sets the host. Useful for CLI scripts, eg. core:archive command
      *
      * @param $host string
@@ -363,7 +382,7 @@ class Url
      */
     public static function getCurrentHost($default = 'unknown', $checkTrustedHost = true)
     {
-        $hostHeaders = array();
+        $hostHeaders = [];
 
         $config = Config::getInstance()->General;
         if (isset($config['proxy_host_headers'])) {
@@ -371,7 +390,7 @@ class Url
         }
 
         if (!is_array($hostHeaders)) {
-            $hostHeaders = array();
+            $hostHeaders = [];
         }
 
         $host = self::getHost($checkTrustedHost);
@@ -390,7 +409,8 @@ class Url
     public static function getCurrentQueryString()
     {
         $url = '';
-        if (isset($_SERVER['QUERY_STRING'])
+        if (
+            isset($_SERVER['QUERY_STRING'])
             && !empty($_SERVER['QUERY_STRING'])
         ) {
             $url .= "?" . $_SERVER['QUERY_STRING'];
@@ -491,7 +511,8 @@ class Url
 
     private static function redirectToUrlNoExit($url)
     {
-        if (UrlHelper::isLookLikeUrl($url)
+        if (
+            UrlHelper::isLookLikeUrl($url)
             || strpos($url, 'index.php') === 0
         ) {
             Common::sendResponseCode(302);
@@ -568,22 +589,22 @@ class Url
         // handle host name mangling
         $requestUri = isset($_SERVER['SCRIPT_URI']) ? $_SERVER['SCRIPT_URI'] : '';
         $parseRequest = @parse_url($requestUri);
-        $hosts = array(self::getHost(), self::getCurrentHost());
+        $hosts = [self::getHost(), self::getCurrentHost()];
         if (!empty($parseRequest['host'])) {
             $hosts[] = $parseRequest['host'];
         }
 
         // drop port numbers from hostnames and IP addresses
-        $hosts = array_map(array('self', 'getHostSanitized'), $hosts);
+        $hosts = array_map(self::class . '::getHostSanitized', $hosts);
 
         $disableHostCheck = Config::getInstance()->General['enable_trusted_host_check'] == 0;
         // compare scheme and host
         $parsedUrl = @parse_url($url);
-        $host = IPUtils::sanitizeIp(@$parsedUrl['host']);
+        $host = IPUtils::sanitizeIp($parsedUrl['host'] ?? '');
         return !empty($host)
         && ($disableHostCheck || in_array($host, $hosts))
         && !empty($parsedUrl['scheme'])
-        && in_array($parsedUrl['scheme'], array('http', 'https'));
+        && in_array($parsedUrl['scheme'], ['http', 'https']);
     }
 
     /**
@@ -635,7 +656,7 @@ class Url
      * Returns hostname, without port numbers
      *
      * @param $host
-     * @return array
+     * @return string
      */
     public static function getHostSanitized($host)
     {
@@ -650,12 +671,12 @@ class Url
         $config = @Config::getInstance()->$domain;
 
         if (!isset($config[$key])) {
-            return array();
+            return [];
         }
 
         $hosts = $config[$key];
         if (!is_array($hosts)) {
-            return array();
+            return [];
         }
         return $hosts;
     }
@@ -735,7 +756,7 @@ class Url
      */
     public static function getLocalHostnames()
     {
-        return array('localhost', '127.0.0.1', '::1', '[::1]', '[::]', '0000::1', '0177.0.0.1', '2130706433', '[0:0:0:0:0:ffff:127.0.0.1]');
+        return ['localhost', '127.0.0.1', '::1', '[::1]', '[::]', '0000::1', '0177.0.0.1', '2130706433', '[0:0:0:0:0:ffff:127.0.0.1]'];
     }
 
     /**
@@ -769,10 +790,10 @@ class Url
             return 'http';
         }
 
-        if ((isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] == 'on' || $_SERVER['HTTPS'] === true))
+        if (
+            (isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] == 'on' || $_SERVER['HTTPS'] === true))
             || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https')
         ) {
-
             return 'https';
         }
         return 'http';
@@ -796,7 +817,8 @@ class Url
     {
         $host = @$_SERVER['SERVER_NAME'];
         if (!empty($host)) {
-            if (strpos($host, ':') === false
+            if (
+                strpos($host, ':') === false
                 && !empty($_SERVER['SERVER_PORT'])
                 && $_SERVER['SERVER_PORT'] != 80
                 && $_SERVER['SERVER_PORT'] != 443
@@ -805,5 +827,62 @@ class Url
             }
         }
         return $host;
+    }
+
+    /**
+     * Add campaign parameters to URLs linking to matomo.org to improve understanding of how online help is being
+     * used for different parts of the application, no personally identifiable information is included, just the area
+     * of the application from which the link originated.
+     *
+     * @param string|null $url      eg. www.matomo.org/faq/123 or https://matomo.org/faq/456
+     * @param string|null $campaign Optional campaign override, defaults to 'Matomo_App'
+     * @param string|null $source   Optional campaign source override, defaults to either 'Matomo_App_OnPremise' or
+     *                              'Matomo_App_Cloud'
+     * @param string|null $medium   Optional campaign medium, defaults to App.[module].[action] where module and action are
+     *                              taken from the currently viewed application page, eg. 'CoreAdminHome.trackingCodeGenerator'
+     *
+     * @return string|null      www.matomo.org/faq/123?mtm_campaign=Matomo_App&mtm_source=Matomo_App_OnPremise&mtm_medium=App.CoreAdminHome.trackingCodeGenerator
+     */
+    public static function addCampaignParametersToMatomoLink(
+        ?string $url = null,
+        ?string $campaign = null,
+        ?string $source = null,
+        ?string $medium = null
+    ): ?string {
+
+        // Ignore if disabled by config setting
+        if (Config::getInstance()->General['disable_tracking_matomo_app_links']) {
+            return $url;
+        }
+
+        // Ignore nulls
+        if ($url === null) {
+            return $url;
+        }
+
+        // Ignore non-matomo domains
+        $domain = self::getHostFromUrl($url);
+        if (!in_array($domain, ['matomo.org', 'www.matomo.org', 'developer.matomo.org', 'plugins.matomo.org'])) {
+            return $url;
+        }
+
+        // Build parameters
+        if ($medium === null) {
+            $module = Piwik::getModule();
+            $action = Piwik::getAction();
+            if (empty($module) || empty($action)) {
+                return $url; // Ignore if no module or action
+            }
+            $medium = 'App.' . $module . '.' . $action;
+        }
+        $newParams = [
+            'mtm_campaign' => $campaign ?? 'Matomo_App',
+            'mtm_source' => $source ?? 'Matomo_App_' . (\Piwik\Plugin\Manager::getInstance()->isPluginLoaded('Cloud') ? 'Cloud' : 'OnPremise'),
+            'mtm_medium' => $medium
+            ];
+
+        // Add parameters to the link, overriding any existing campaign parameters while preserving the path and query string
+        $pathAndQueryString = UrlHelper::getPathAndQueryFromUrl($url, $newParams, true);
+        return 'https://' . $domain . '/' . $pathAndQueryString;
     }
 }

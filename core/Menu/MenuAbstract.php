@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Menu;
 
 use Piwik\Cache;
@@ -25,7 +26,6 @@ use Piwik\Plugin\Manager as PluginManager;
  */
 abstract class MenuAbstract extends Singleton
 {
-
     protected $menu = null;
     protected $menuEntries = array();
     protected $menuEntriesToRemove = array();
@@ -99,11 +99,23 @@ abstract class MenuAbstract extends Singleton
      * @param bool|string $icon An icon classname, such as "icon-add". Only supported by admin menu
      * @param bool|string $onclick Will execute the on click handler instead of executing the link. Only supported by admin menu.
      * @param string $attribute Will add this string as a link attribute.
+     * @param bool|string $help Will display a help icon that will pop a notification with help information.
+     * @param int $badgeCount If non-zero then a badge will be overlaid on the icon showing the provided count
      * @since 2.7.0
      * @api
      */
-    public function addItem($menuName, $subMenuName, $url, $order = 50, $tooltip = false, $icon = false, $onclick = false, $attribute = false)
-    {
+    public function addItem(
+        $menuName,
+        $subMenuName,
+        $url,
+        $order = 50,
+        $tooltip = false,
+        $icon = false,
+        $onclick = false,
+        $attribute = false,
+        $help = false,
+        $badgeCount = 0
+    ) {
         // make sure the idSite value used is numeric (hack-y fix for #3426)
         if (isset($url['idSite']) && !is_numeric($url['idSite'])) {
             $idSites = API::getInstance()->getSitesIdWithAtLeastViewAccess();
@@ -118,7 +130,9 @@ abstract class MenuAbstract extends Singleton
             $tooltip,
             $icon,
             $onclick,
-            $attribute
+            $attribute,
+            $help,
+            $badgeCount
         );
     }
 
@@ -146,8 +160,18 @@ abstract class MenuAbstract extends Singleton
      * @param int $order
      * @param bool|string $tooltip Tooltip to display.
      */
-    private function buildMenuItem($menuName, $subMenuName, $url, $order = 50, $tooltip = false, $icon = false, $onclick = false, $attribute = false)
-    {
+    private function buildMenuItem(
+        $menuName,
+        $subMenuName,
+        $url,
+        $order = 50,
+        $tooltip = false,
+        $icon = false,
+        $onclick = false,
+        $attribute = false,
+        $help = false,
+        $badgeCount = 0
+    ) {
         if (!isset($this->menu[$menuName])) {
             $this->menu[$menuName] = array(
                 '_hasSubmenu' => false,
@@ -169,6 +193,8 @@ abstract class MenuAbstract extends Singleton
             if (!empty($onclick)) {
                 $this->menu[$menuName]['_onclick'] = $onclick;
             }
+            $this->menu[$menuName]['_help'] = $help ?: '';
+            $this->menu[$menuName]['_badgecount'] = $badgeCount;
         }
         if (!empty($subMenuName)) {
             $this->menu[$menuName][$subMenuName]['_url'] = $url;
@@ -178,6 +204,8 @@ abstract class MenuAbstract extends Singleton
             $this->menu[$menuName][$subMenuName]['_attribute'] = $attribute;
             $this->menu[$menuName][$subMenuName]['_icon'] = $icon;
             $this->menu[$menuName][$subMenuName]['_onclick'] = $onclick;
+            $this->menu[$menuName][$subMenuName]['_help'] = $help ?: '';
+            $this->menu[$menuName][$subMenuName]['_badgecount'] = $badgeCount;
             $this->menu[$menuName]['_hasSubmenu'] = true;
 
             if (!array_key_exists('_tooltip', $this->menu[$menuName])) {
@@ -192,7 +220,18 @@ abstract class MenuAbstract extends Singleton
     private function buildMenu()
     {
         foreach ($this->menuEntries as $menuEntry) {
-            $this->buildMenuItem($menuEntry[0], $menuEntry[1], $menuEntry[2], $menuEntry[3], $menuEntry[4], $menuEntry[5], $menuEntry[6], $menuEntry[7]);
+            $this->buildMenuItem(
+                $menuEntry[0],
+                $menuEntry[1],
+                $menuEntry[2],
+                $menuEntry[3],
+                $menuEntry[4],
+                $menuEntry[5],
+                $menuEntry[6],
+                $menuEntry[7],
+                $menuEntry[8],
+                $menuEntry[9]
+            );
         }
     }
 
@@ -291,8 +330,8 @@ abstract class MenuAbstract extends Singleton
                     unset($this->menu[$mainMenuOriginal][$subMenuOriginal]);
                     $this->menu[$mainMenuRenamed][$subMenuRenamed] = $save;
                 }
-            } // Changing a first-level element
-            elseif (isset($this->menu[$mainMenuOriginal])) {
+            } elseif (isset($this->menu[$mainMenuOriginal])) {
+                // Changing a first-level element
                 $save = $this->menu[$mainMenuOriginal];
                 $save['_name'] = $mainMenuRenamed;
                 unset($this->menu[$mainMenuOriginal]);
@@ -306,7 +345,8 @@ abstract class MenuAbstract extends Singleton
      */
     private function applyOrdering()
     {
-        if (empty($this->menu)
+        if (
+            empty($this->menu)
             || $this->orderingApplied
         ) {
             return;
@@ -359,8 +399,9 @@ abstract class MenuAbstract extends Singleton
 
         if ($itemOne['_order'] == $itemTwo['_order']) {
             return strcmp(
-                @$itemOne['_name'],
-                @$itemTwo['_name']);
+                $itemOne['_name'] ?? '',
+                $itemTwo['_name'] ?? ''
+            );
         }
 
         return ($itemOne['_order'] < $itemTwo['_order']) ? -1 : 1;

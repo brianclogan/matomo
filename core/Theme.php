@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 use Piwik\Plugin\Manager;
@@ -75,8 +76,10 @@ class Theme
 
     public function rewriteAssetsPathToTheme($output)
     {
-        if ($this->themeName == \Piwik\Plugin\Manager::DEFAULT_THEME
-            && !Manager::getAlternativeWebRootDirectories()) {
+        if (
+            $this->themeName == \Piwik\Plugin\Manager::DEFAULT_THEME
+            && !Manager::getAlternativeWebRootDirectories()
+        ) {
             return $output;
         }
 
@@ -146,7 +149,7 @@ class Theme
         foreach (Manager::getAlternativeWebRootDirectories() as $absDir => $webRootDirectory) {
             $withoutPlugins = str_replace('plugins/', '', $pathAsset);
             if (file_exists($absDir . '/' . $withoutPlugins)) {
-	            return str_replace($pathAsset, $webRootDirectory . $withoutPlugins, $source);
+                return str_replace($pathAsset, $webRootDirectory . $withoutPlugins, $source);
             }
         }
 

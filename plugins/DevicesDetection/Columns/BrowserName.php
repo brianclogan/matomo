@@ -1,16 +1,16 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\DevicesDetection\Columns;
 
 use DeviceDetector\Parser\Client\Browser;
 use Piwik\Columns\DimensionSegmentFactory;
-use Piwik\Common;
 use Piwik\Metrics\Formatter;
 use Piwik\Plugin\Segment;
 use Piwik\Segment\SegmentsList;
@@ -41,7 +41,7 @@ class BrowserName extends Base
         $segment->setNeedsMostFrequentValues(false);
         $segment->setSqlFilterValue(function ($val) {
             $browsers = Browser::getAvailableBrowsers();
-            $browsers = array_map(function($val) {
+            $browsers = array_map(function ($val) {
                 return mb_strtolower($val);
             }, $browsers);
             $result   = array_search(mb_strtolower($val), $browsers);
@@ -77,16 +77,13 @@ class BrowserName extends Base
      */
     public function onNewVisit(Request $request, Visitor $visitor, $action)
     {
-        $userAgent = $request->getUserAgent();
-        $parser    = $this->getUAParser($userAgent);
+        $parser    = $this->getUAParser($request->getUserAgent(), $request->getClientHints());
 
         $aBrowserInfo = $parser->getClient();
 
         if (!empty($aBrowserInfo['short_name'])) {
-
             return $aBrowserInfo['short_name'];
-        } else if (!empty($aBrowserInfo['name'])) {
-
+        } elseif (!empty($aBrowserInfo['name'])) {
             return $aBrowserInfo['name'];
         }
 

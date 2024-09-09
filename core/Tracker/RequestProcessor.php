@@ -1,9 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Tracker;
@@ -132,7 +133,7 @@ abstract class RequestProcessor
      * to change what gets inserted into `log_visit`.
      *
      * Only implement this method if you cannot use a Dimension for the same thing.
-     * 
+     *
      * Please note that the `onNewAction` hook in an action dimension is executed after this method.
      *
      * @param VisitProperties $visitProperties

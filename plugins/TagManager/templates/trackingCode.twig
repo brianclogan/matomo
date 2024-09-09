@@ -1,4 +1,7 @@
-<div piwik-content-block anchor="tagmanager" content-title="{{ 'TagManager_TagManager'|translate }}">
-    <p>{{ 'TagManager_TagManagerTrackingInfo'|translate('<a href="' ~ linkTo({module: 'TagManager', action: 'gettingStarted'})~'">', '</a>', '<a href="' ~ linkTo({module: 'TagManager', action: 'manageContainers'})~'">', '</a>')|raw }}</p>
-    <div matomo-tagmanager-tracking-code></div>
+<div
+        vue-entry="TagManager.TrackingCodePage"
+        current-action="{{ action|json_encode }}"
+        show-container-row="{{ showContainerRow|json_encode }}"
+        is-js-tracker-install-check-available="{{ isJsTrackerInstallCheckAvailable|json_encode }}"
+>
 </div>

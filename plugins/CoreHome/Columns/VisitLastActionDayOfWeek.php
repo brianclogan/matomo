@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\CoreHome\Columns;
 
 use Piwik\Columns\DimensionMetricFactory;
@@ -20,7 +21,7 @@ class VisitLastActionDayOfWeek extends VisitDimension
     protected $columnName = 'visit_last_action_time';
     protected $type = self::TYPE_DATETIME;
     protected $segmentName = 'visitEndServerDayOfWeek';
-    protected $nameSingular = 'VisitTime_ColumnVisitEndServerDayOfWeek';
+    protected $nameSingular = 'VisitTime_ColumnVisitEndUTCDayOfWeek';
     protected $sqlSegment = 'DAYOFWEEK(log_visit.visit_last_action_time)';
     protected $acceptValues = '1, 2, 3, 4, 5, 6, 7';
 

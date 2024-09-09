@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -11,10 +12,12 @@
       :name="name"
       :model-value="modelValue"
       @update:modelValue="onUpdateValue"
+      :model-modifiers="modelModifiers"
       :field1="uiControlAttributes.field1"
       :field2="uiControlAttributes.field2"
       :field3="uiControlAttributes.field3"
       :field4="uiControlAttributes.field4"
+      :rows="uiControlAttributes.rows"
     >
     </MultiPairField>
   </div>
@@ -29,6 +32,7 @@ export default defineComponent({
     name: String,
     title: String,
     modelValue: null,
+    modelModifiers: Object,
     uiControlAttributes: Object,
   },
   inheritAttrs: false,

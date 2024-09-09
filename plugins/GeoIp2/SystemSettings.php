@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\GeoIp2;
 
 use Piwik\Piwik;
@@ -45,7 +46,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
 
     private function createGeoIp2ServerVarSetting($name, $defaultValue)
     {
-        return $this->makeSetting('geoip2var_'.$name, $default = $defaultValue, FieldConfig::TYPE_STRING, function (FieldConfig $field) use ($name) {
+        return $this->makeSetting('geoip2var_' . $name, $default = $defaultValue, FieldConfig::TYPE_STRING, function (FieldConfig $field) use ($name) {
             $field->title = Piwik::translate('GeoIp2_ServerVariableFor', '<strong>' . str_replace('_', ' ', $name) . '</strong>');
             $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
             $field->condition = 'geoip2usecustom==1';

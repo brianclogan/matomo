@@ -1,15 +1,15 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Referrers\Reports;
 
 use Piwik\Common;
-use Piwik\EventDispatcher;
 use Piwik\Piwik;
 use Piwik\Plugin\ViewDataTable;
 use Piwik\Plugins\CoreVisualizations\Visualizations\HtmlTable;
@@ -28,12 +28,18 @@ class GetReferrerType extends Base
         $this->name          = Piwik::translate('Referrers_Type');
         $this->documentation = Piwik::translate('Referrers_TypeReportDocumentation') . '<br />'
                              . '<b>' . Piwik::translate('Referrers_DirectEntry') . ':</b> ' . Piwik::translate('Referrers_DirectEntryDocumentation') . '<br />'
-                             . '<b>' . Piwik::translate('Referrers_SearchEngines') . ':</b> ' . Piwik::translate('Referrers_SearchEnginesDocumentation',
-                                 array('<br />', '&quot;' . Piwik::translate('Referrers_SubmenuSearchEngines') . '&quot;')) . '<br />'
-                             . '<b>' . Piwik::translate('Referrers_Websites') . ':</b> ' . Piwik::translate('Referrers_WebsitesDocumentation',
-                                 array('<br />', '&quot;' . Piwik::translate('Referrers_SubmenuWebsitesOnly') . '&quot;')) . '<br />'
-                             . '<b>' . Piwik::translate('Referrers_Campaigns') . ':</b> ' . Piwik::translate('Referrers_CampaignsDocumentation',
-                                 array('<br />', '&quot;' . Piwik::translate('Referrers_Campaigns') . '&quot;'));
+                             . '<b>' . Piwik::translate('Referrers_SearchEngines') . ':</b> ' . Piwik::translate(
+                                 'Referrers_SearchEnginesDocumentation',
+                                 array('<br />', '&quot;' . Piwik::translate('Referrers_SubmenuSearchEngines') . '&quot;')
+                             ) . '<br />'
+                             . '<b>' . Piwik::translate('Referrers_Websites') . ':</b> ' . Piwik::translate(
+                                 'Referrers_WebsitesDocumentation',
+                                 array('<br />', '&quot;' . Piwik::translate('Referrers_SubmenuWebsitesOnly') . '&quot;')
+                             ) . '<br />'
+                             . '<b>' . Piwik::translate('Referrers_Campaigns') . ':</b> ' . Piwik::translate(
+                                 'Referrers_CampaignsDocumentation',
+                                 array('<br />', '&quot;' . Piwik::translate('Referrers_Campaigns') . '&quot;')
+                             );
         $this->constantRowsCount = true;
         $this->hasGoalMetrics = true;
         $this->order = 1;
@@ -110,7 +116,7 @@ class GetReferrerType extends Base
         if ($view->isViewDataTableId(HtmlTable::ID)) {
             $view->config->disable_subtable_when_show_goals = true;
         }
-        
+
         $this->configureFooterMessage($view);
     }
 

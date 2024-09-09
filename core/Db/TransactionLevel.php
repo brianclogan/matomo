@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Db;
@@ -14,7 +14,7 @@ use Piwik\Option;
 
 class TransactionLevel
 {
-    const TEST_OPTION_NAME = 'TransactionLevel.testOption';
+    public const TEST_OPTION_NAME = 'TransactionLevel.testOption';
 
     private $statusBackup;
 
@@ -86,7 +86,7 @@ class TransactionLevel
 
             $value = str_replace('-', ' ', $value);
             if (in_array($value, array('REPEATABLE READ', 'READ COMMITTED', 'SERIALIZABLE'))) {
-                $this->db->query('SET SESSION TRANSACTION ISOLATION LEVEL '.$value);
+                $this->db->query('SET SESSION TRANSACTION ISOLATION LEVEL ' . $value);
             } elseif ($value !== 'READ UNCOMMITTED') {
                 $this->db->query('SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ');
             }

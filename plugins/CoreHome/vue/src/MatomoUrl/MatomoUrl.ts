@@ -1,11 +1,10 @@
 /*!
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
-import { ILocationService, ITimeoutService } from 'angular';
 import { computed, ref, readonly } from 'vue';
 import Matomo from '../Matomo/Matomo';
 import { Periods, format } from '../Periods'; // important to load all periods here
@@ -28,16 +27,22 @@ type ParsedQueryParameters = Record<string, unknown>;
  * URL store and helper functions.
  */
 class MatomoUrl {
-  readonly urlQuery = ref('');
+  readonly url = ref<URL|null>(null);
 
-  readonly hashQuery = ref('');
+  readonly urlQuery = computed(
+    () => (this.url.value ? this.url.value.search.replace(/^\?/, '') : ''),
+  );
+
+  readonly hashQuery = computed(
+    () => (this.url.value ? this.url.value.hash.replace(/^[#/?]+/, '') : ''),
+  );
 
   readonly urlParsed = computed(() => readonly(
-    broadcast.getValuesFromUrl(`?${this.urlQuery.value}`, true) as ParsedQueryParameters,
+    this.parse(this.urlQuery.value) as ParsedQueryParameters,
   ));
 
   readonly hashParsed = computed(() => readonly(
-    broadcast.getValuesFromUrl(`?${this.hashQuery.value}`, true) as ParsedQueryParameters,
+    this.parse(this.hashQuery.value) as ParsedQueryParameters,
   ));
 
   readonly parsed = computed(() => readonly({
@@ -46,30 +51,34 @@ class MatomoUrl {
   } as ParsedQueryParameters));
 
   constructor() {
-    this.setUrlQuery(window.location.search);
-    this.setHashQuery(window.location.hash);
+    this.url.value = new URL(window.location.href);
 
-    // $locationChangeSuccess is triggered before angularjs changes actual window the hash, so we
-    // have to hook into this method if we want our event handlers to execute before other angularjs
-    // handlers (like the reporting page one)
-    Matomo.on('$locationChangeSuccess', (absUrl: string) => {
-      const url = new URL(absUrl);
-      this.setUrlQuery(url.search.replace(/^\?/, ''));
-      this.setHashQuery(url.hash.replace(/^#/, ''));
+    window.addEventListener('hashchange', (event) => {
+      this.url.value = new URL(event.newURL);
+      this.updatePeriodParamsFromUrl();
     });
 
     this.updatePeriodParamsFromUrl();
+  }
+
+  updateHashToUrl(urlWithoutLeadingHash: string) {
+    const wholeHash = `#${urlWithoutLeadingHash}`;
+
+    if (window.location.hash === wholeHash) { // trigger event manually since the url is the same
+      window.dispatchEvent(new HashChangeEvent('hashchange', {
+        newURL: window.location.href,
+        oldURL: window.location.href,
+      }));
+    } else {
+      window.location.hash = wholeHash;
+    }
   }
 
   updateHash(params: QueryParameters|string) {
     const modifiedParams = this.getFinalHashParams(params);
     const serializedParams = this.stringify(modifiedParams);
 
-    const $location: ILocationService = Matomo.helper.getAngularDependency('$location');
-    $location.search(serializedParams);
-
-    const $timeout: ITimeoutService = Matomo.helper.getAngularDependency('$timeout');
-    $timeout();
+    this.updateHashToUrl(`?${serializedParams}`);
   }
 
   updateUrl(params: QueryParameters|string, hashParams: QueryParameters|string = {}) {
@@ -95,11 +104,11 @@ class MatomoUrl {
   ) {
     const paramsObj = typeof params !== 'string'
       ? params as QueryParameters
-      : broadcast.getValuesFromUrl(`?${params}`, true);
+      : this.parse(params as string);
 
     const urlParamsObj = typeof params !== 'string'
       ? urlParams as QueryParameters
-      : broadcast.getValuesFromUrl(`?${urlParams}`, true);
+      : this.parse(urlParams as string);
 
     return {
       // these params must always be present in the hash
@@ -113,7 +122,7 @@ class MatomoUrl {
 
   // if we're in an embedded context, loads an entire new URL, otherwise updates the hash
   updateLocation(params: QueryParameters|string) {
-    if (Matomo.helper.isAngularRenderingThePage()) {
+    if (Matomo.helper.isReportingPage()) {
       this.updateHash(params);
       return;
     }
@@ -139,17 +148,23 @@ class MatomoUrl {
     return window.broadcast.getValueFromUrl(paramName, window.location.search);
   }
 
+  parse(query: string): QueryParameters {
+    return broadcast.getValuesFromUrl(`?${query}`, true);
+  }
+
   stringify(search: QueryParameters): string {
     const searchWithoutEmpty = Object.fromEntries(
       Object.entries(search).filter(([, value]) => value !== '' && value !== null && value !== undefined),
     );
 
-    // TODO: using $ since URLSearchParams does not handle array params the way Matomo uses them
+    // using jQuery since URLSearchParams does not handle array params the way Matomo uses them
     return $.param(searchWithoutEmpty).replace(/%5B%5D/g, '[]')
       // some browsers treat URLs w/ date=a,b differently from date=a%2Cb, causing multiple
-      // entries to show up in the browser history. this has a compounding effect w/ angular.js,
-      // which when the back button is pressed to effectively abort the back navigation.
-      .replace(/%2C/g, ',');
+      // entries to show up in the browser history.
+      .replace(/%2C/g, ',')
+      // jquery seems to encode space characters as '+', but certain parts of matomo won't
+      // decode it correctly, so we make sure to use %20 instead
+      .replace(/\+/g, '%20');
   }
 
   updatePeriodParamsFromUrl(): void {
@@ -180,14 +195,6 @@ class MatomoUrl {
     }
 
     piwik.currentDateString = date;
-  }
-
-  private setUrlQuery(search: string) {
-    this.urlQuery.value = search.replace(/^\?/, '');
-  }
-
-  private setHashQuery(hash: string) {
-    this.hashQuery.value = hash.replace(/^[#/?]+/, '');
   }
 }
 

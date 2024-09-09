@@ -1,17 +1,18 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Events;
 
+use Piwik\Columns\Dimension;
 use Piwik\Common;
 use Piwik\DataTable;
 use Piwik\Piwik;
-use Piwik\Plugin\Report;
 use Piwik\Plugin\ViewDataTable;
 use Piwik\Plugin\ReportsProvider;
 use Piwik\Plugins\CoreVisualizations\Visualizations\HtmlTable\AllColumns;
@@ -26,6 +27,7 @@ class Events extends \Piwik\Plugin
         return array(
             'Metrics.getDefaultMetricDocumentationTranslations' => 'addMetricDocumentationTranslations',
             'Metrics.getDefaultMetricTranslations' => 'addMetricTranslations',
+            'Metrics.getDefaultMetricSemanticTypes' => 'addMetricSemanticTypes',
             'ViewDataTable.configure'   => 'configureViewDataTable',
             'AssetManager.getStylesheetFiles' => 'getStylesheetFiles',
             'Actions.getCustomActionDimensionFieldsAndJoins' => 'provideActionDimensionFields'
@@ -40,6 +42,18 @@ class Events extends \Piwik\Plugin
     public function addMetricDocumentationTranslations(&$translations)
     {
         $translations = array_merge($translations, $this->getMetricDocumentation());
+    }
+
+    public function addMetricSemanticTypes(array &$types): void
+    {
+        $metricTypes = array(
+            'nb_events'            => Dimension::TYPE_NUMBER,
+            'sum_event_value'      => Dimension::TYPE_NUMBER,
+            'min_event_value'      => Dimension::TYPE_NUMBER,
+            'max_event_value'      => Dimension::TYPE_NUMBER,
+            'nb_events_with_value' => Dimension::TYPE_NUMBER,
+        );
+        $types = array_merge($types, $metricTypes);
     }
 
     public function getMetricDocumentation()
@@ -202,7 +216,7 @@ class Events extends \Piwik\Plugin
             . "<br/>"
             . Piwik::translate('Events_SwitchToSecondaryDimension', '');
 
-        foreach($secondaryDimensions as $dimension) {
+        foreach ($secondaryDimensions as $dimension) {
             if ($dimension == $secondaryDimension) {
                 // don't show as related report the currently selected dimension
                 continue;
@@ -215,7 +229,6 @@ class Events extends \Piwik\Plugin
                 array('secondaryDimension' => $dimension)
             );
         }
-
     }
 
     private function addTooltipEventValue(ViewDataTable $view)

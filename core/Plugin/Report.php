@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugin;
 
 use Piwik\API\Proxy;
@@ -38,13 +39,13 @@ class Report
     /**
      * The sub-namespace name in a plugin where Report components are stored.
      */
-    const COMPONENT_SUBNAMESPACE = 'Reports';
+    public const COMPONENT_SUBNAMESPACE = 'Reports';
 
     /**
      * When added to the menu, a given report eg 'getCampaigns'
      * will be routed as &action=menuGetCampaigns
      */
-    const PREFIX_ACTION_IN_MENU = 'menu';
+    public const PREFIX_ACTION_IN_MENU = 'menu';
 
     /**
      * The name of the module which is supposed to be equal to the name of the plugin. The module is detected
@@ -82,14 +83,14 @@ class Report
 
     /**
      * The translation key of the category the report belongs to.
-     * @var string
+     * @var string|null
      * @api
      */
     protected $categoryId;
 
     /**
      * The translation key of the subcategory the report belongs to.
-     * @var string
+     * @var string|null
      * @api
      */
     protected $subcategoryId;
@@ -113,6 +114,15 @@ class Report
      */
     protected $processedMetrics = array('nb_actions_per_visit', 'avg_time_on_site', 'bounce_rate', 'conversion_rate');
     // for a little performance improvement we avoid having to call Metrics::getDefaultProcessedMetrics for each report
+
+    /**
+     * The semantic types for all metrics this report displays (including processed metrics).
+     *
+     * If set to null, the defaults from the `Metrics.getDefaultMetricSemanticTypes` event are used.
+     *
+     * @var null|(string|null)[]
+     */
+    protected $metricSemanticTypes = null;
 
     /**
      * Set this property to true in case your report supports goal metrics. In this case, the goal metrics will be
@@ -199,7 +209,22 @@ class Report
     protected $defaultSortOrderDesc = true;
 
     /**
-     * The constructur initializes the module, action and the default metrics. If you want to overwrite any of those
+     * The column that uniquely identifies a row in this report. Normally
+     * this is the 'label' column, but it is sometimes the case that the label column is
+     * not unique. In this case, another column or metadata is used to uniquely identify a row, but
+     * we don't want to display it to the user, perhaps because it is a numeric ID and not a human
+     * readable value.
+     *
+     * This property is used by features like Row Evolution which compares the same row in
+     * multiple instances of a report. Being able to find corresponding rows in reports for other
+     * periods/sites/etc. is required for such features.
+     *
+     * @var string
+     */
+    protected $rowIdentifier = 'label';
+
+    /**
+     * The constructor initializes the module, action and the default metrics. If you want to overwrite any of those
      * values or if you want to do any work during initializing overwrite the method {@link init()}.
      * @ignore
      */
@@ -449,6 +474,39 @@ class Report
     }
 
     /**
+     * Returns the semantic types for metrics this report displays.
+     *
+     * If the semantic type is not defined by the derived Report class, it defaults to
+     * the value returned by {@link Metrics::getDefaultMetricSemanticTypes()} or
+     * {@link Metric::getSemanticType()}. If the semantic type cannot be found this way,
+     * this method tries to deduce it from the metric name, though this process will
+     * not identify the semantic type for most metrics.
+     *
+     * @return string[] maps metric name => semantic type
+     * @api
+     */
+    public function getMetricSemanticTypes(): array
+    {
+        $metricTypes = $this->metricSemanticTypes ?: [];
+
+        $allMetrics = array_merge($this->metrics ?: [], $this->processedMetrics ?: []);
+
+        foreach ($allMetrics as $metric) {
+            $metricName = $metric instanceof Metric ? $metric->getName() : $metric;
+            if (
+                $metricName == 'label'
+                || !empty($metricTypes[$metricName])
+            ) {
+                continue;
+            }
+
+            $metricTypes[$metricName] = $this->deduceMetricTypeFromName($metric);
+        }
+
+        return $metricTypes;
+    }
+
+    /**
      * Returns the array of all metrics displayed by this report.
      *
      * @return array
@@ -624,6 +682,11 @@ class Report
         $report['metricsDocumentation'] = $this->getMetricsDocumentation();
         $report['processedMetrics']     = $this->getProcessedMetrics();
 
+        $report['metricTypes'] = $this->getMetricSemanticTypes();
+        $report['metricTypes'] = array_map(function ($t) {
+            return $t ?: 'unspecified';
+        }, $report['metricTypes']);
+
         if (!empty($this->actionToLoadSubTables)) {
             $report['actionToLoadSubTables'] = $this->actionToLoadSubTables;
         }
@@ -744,7 +807,7 @@ class Report
 
     /**
      * Get the translated name of the category the report belongs to.
-     * @return string
+     * @return string|null
      * @ignore
      */
     public function getCategoryId()
@@ -754,7 +817,7 @@ class Report
 
     /**
      * Get the translated name of the subcategory the report belongs to.
-     * @return string
+     * @return string|null
      * @ignore
      */
     public function getSubcategoryId()
@@ -921,7 +984,7 @@ class Report
                 $translation = $metric->getTranslatedName();
             } else {
                 $metricName  = $metric;
-                $translation = @$translations[$metric];
+                $translation = $translations[$metric] ?? null;
             }
 
             $metrics[$metricName] = $translation ?: $metricName;
@@ -951,7 +1014,8 @@ class Report
         $provider = new ReportsProvider();
         $reports = $provider->getAllReports();
         foreach ($reports as $report) {
-            if (!$report->isSubtableReport()
+            if (
+                !$report->isSubtableReport()
                 && $report->getDimension()
                 && $report->getDimension()->getId() == $dimension->getId()
             ) {
@@ -974,7 +1038,8 @@ class Report
         foreach ($processedMetrics as $processedMetric) {
             if ($processedMetric instanceof ProcessedMetric) { // instanceof check for backwards compatibility
                 $result[$processedMetric->getName()] = $processedMetric;
-            } elseif ($processedMetric instanceof ArchivedMetric
+            } elseif (
+                $processedMetric instanceof ArchivedMetric
                 && $processedMetric->getType() !== Dimension::TYPE_NUMBER
                 && $processedMetric->getType() !== Dimension::TYPE_FLOAT
                 && $processedMetric->getType() !== Dimension::TYPE_BOOL
@@ -1078,5 +1143,37 @@ class Report
 
             $callback($name);
         }
+    }
+
+    /**
+     * Returns the name of the column/metadata that uniquely identifies rows in this report. See
+     * {@link self::$rowIdentifier} for more information.
+     *
+     * @return string
+     */
+    public function getRowIdentifier(): string
+    {
+        return $this->rowIdentifier;
+    }
+
+    private function deduceMetricTypeFromName($metric): ?string
+    {
+        $metricName = $metric instanceof Metric ? $metric->getName() : $metric;
+
+        $metricType = null;
+        if ($metric instanceof Metric) {
+            $metricType = $metric->getSemanticType();
+        }
+
+        if (empty($metricType)) {
+            if (preg_match('/_(evolution|rate|percentage)(_|$)/', $metricName)) {
+                $metricType = Dimension::TYPE_PERCENT;
+            } else {
+                $allMetricTypes = Metrics::getDefaultMetricSemanticTypes();
+                $metricType = $allMetricTypes[$metricName] ?? null;
+            }
+        }
+
+        return $metricType;
     }
 }

@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -42,14 +43,14 @@
               <span>{{ translate('General_No') }}</span>
               <span
                 class="form-description"
-                v-html="archivingTriggerDesc"
+                v-html="$sanitize(archivingTriggerDesc)"
                 style="margin-left: 4px;"
               >
               </span>
             </label>
           </p>
         </div><div class="col s12 m6">
-        <div class="form-help" v-html="archivingInlineHelp">
+        <div class="form-help" v-html="$sanitize(archivingInlineHelp)">
         </div>
       </div>
       </div>
@@ -100,6 +101,7 @@ import {
   translate,
   NotificationsStore,
   AjaxHelper,
+  externalLink,
 } from 'CoreHome';
 import { SaveButton } from 'CorePluginsAdmin';
 
@@ -137,7 +139,7 @@ export default defineComponent({
 
       result += translate(
         'General_ArchivingTriggerDescription',
-        '<a target="_blank" rel="noreferrer noopener" href="https://matomo.org/docs/setup-auto-archiving/">',
+        externalLink('https://matomo.org/docs/setup-auto-archiving/'),
         '</a>',
       );
 
@@ -152,7 +154,7 @@ export default defineComponent({
       result += '<br/>';
       result += translate(
         'General_SeeTheOfficialDocumentationForMoreInformation',
-        '<a target="_blank" rel="noreferrer noopener" href="https://matomo.org/docs/setup-auto-archiving/">',
+        externalLink('https://matomo.org/docs/setup-auto-archiving/'),
         '</a>',
       );
       return result;

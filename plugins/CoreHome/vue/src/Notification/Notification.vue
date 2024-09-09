@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -108,7 +109,7 @@ export default defineComponent({
     }
 
     if (this.style) {
-      $(this.$refs.root as HTMLElement).css(this.style as JQLiteCssProperties);
+      $(this.$refs.root as HTMLElement).css(this.style as string);
     }
   },
   methods: {

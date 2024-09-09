@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -196,7 +197,7 @@
           </th>
           <th>{{ translate('General_Name') }}</th>
           <th class="role_header">
-            <span v-html="`${translate('UsersManager_Role')} `"></span>
+            <span v-html="$sanitize(`${translate('UsersManager_Role')} `)"></span>
             <a
               href=""
               class="helpIcon"
@@ -207,7 +208,7 @@
             </a>
           </th>
           <th class="capabilities_header">
-            <span v-html="`${translate('UsersManager_Capabilities')} `"></span>
+            <span v-html="$sanitize(`${translate('UsersManager_Capabilities')} `)"></span>
             <a
               href=""
               class="helpIcon"
@@ -273,6 +274,7 @@
             <Field
               :model-value="entry.role"
               @update:model-value="onRoleChange(entry, $event);"
+              :model-modifiers="{abortable: true}"
               uicontrol="select"
               :options="filteredAccessLevels"
               :full-width="true"
@@ -342,7 +344,7 @@
           href=""
           class="modal-action modal-close modal-no"
           @click.prevent="
-            siteAccessToChange.role = previousRole;
+            accessChangeEvent && accessChangeEvent.abort();
             siteAccessToChange = null;
             roleToChangeTo = null;"
         >{{ translate('General_No') }}</a>
@@ -381,8 +383,9 @@ import {
   AjaxHelper,
   Site,
   Matomo,
+  externalLink,
 } from 'CoreHome';
-import { Field } from 'CorePluginsAdmin';
+import { Field, AbortableEvent } from 'CorePluginsAdmin';
 import CapabilitiesEdit from '../CapabilitiesEdit/CapabilitiesEdit.vue';
 import Capability from '../CapabilitiesStore/Capability';
 
@@ -396,6 +399,7 @@ interface SiteAccess {
 interface AccessLevel {
   key: string|number;
   value: unknown;
+  type: string;
 }
 
 interface UserPermissionsEditState {
@@ -410,7 +414,7 @@ interface UserPermissionsEditState {
   selectedRows: Record<string, boolean>;
   isBulkActionsDisabled: boolean;
   areAllResultsSelected: boolean;
-  previousRole: string|null;
+  accessChangeEvent: AbortableEvent<string>|null;
   hasAccessToAtLeastOneSite: boolean;
   isRoleHelpToggled: boolean;
   isCapabilitiesHelpToggled: boolean;
@@ -462,7 +466,7 @@ export default defineComponent({
       selectedRows: {},
       isBulkActionsDisabled: true,
       areAllResultsSelected: false,
-      previousRole: null,
+      accessChangeEvent: null,
       hasAccessToAtLeastOneSite: true,
       isRoleHelpToggled: false,
       isCapabilitiesHelpToggled: false,
@@ -622,6 +626,9 @@ export default defineComponent({
     showChangeAccessConfirm() {
       $(this.$refs.changeAccessConfirmModal as HTMLElement).modal({
         dismissible: false,
+        onCloseEnd: () => {
+          this.accessChangeEvent = null;
+        },
       }).modal('open');
     },
     getRoleDisplay(role: string|null) {
@@ -637,6 +644,7 @@ export default defineComponent({
       this.isGivingAccessToAllSites = true;
       AjaxHelper.fetch<Site[]>({
         method: 'SitesManager.getSitesWithAdminAccess',
+        filter_limit: -1,
       }).then((allSites) => {
         const idSites = allSites.map((s) => s.idsite);
         return AjaxHelper.post(
@@ -667,10 +675,10 @@ export default defineComponent({
         }
       });
     },
-    onRoleChange(entry: SiteAccess, newRole: string) {
-      this.previousRole = entry.role;
-      this.roleToChangeTo = newRole;
+    onRoleChange(entry: SiteAccess, event: AbortableEvent<string>) {
       this.siteAccessToChange = entry;
+      this.roleToChangeTo = event.value;
+      this.accessChangeEvent = event;
       this.showChangeAccessConfirm();
     },
   },
@@ -678,9 +686,9 @@ export default defineComponent({
     rolesHelpText() {
       return translate(
         'UsersManager_RolesHelp',
-        '<a href="https://matomo.org/faq/general/faq_70/" target="_blank" rel="noreferrer noopener">',
+        externalLink('https://matomo.org/faq/general/faq_70/'),
         '</a>',
-        '<a href="https://matomo.org/faq/general/faq_69/" target="_blank" rel="noreferrer noopener">',
+        externalLink('https://matomo.org/faq/general/faq_69/'),
         '</a>',
       );
     },
@@ -753,7 +761,7 @@ export default defineComponent({
       return Math.min(this.offset + this.limit, this.totalEntries);
     },
     filteredAccessLevels() {
-      return (this.accessLevels as AccessLevel[]).filter((entry) => entry.key !== 'superuser');
+      return (this.accessLevels as AccessLevel[]).filter((entry) => entry.key !== 'superuser' && entry.type === 'role');
     },
     filteredSelectAccessLevels() {
       return (this.filterAccessLevels as AccessLevel[]).filter(

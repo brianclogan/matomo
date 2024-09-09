@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\PrivacyManager;
 
 use Piwik\Plugins\PrivacyManager\Model\DataSubjects;
@@ -14,7 +15,6 @@ use Piwik\Plugins\SitesManager\API as SitesManagerAPI;
 
 class Tasks extends \Piwik\Plugin\Tasks
 {
-
     /**
      * @var LogDataAnonymizations
      */
@@ -54,7 +54,6 @@ class Tasks extends \Piwik\Plugin\Tasks
             if (!empty($id)) {
                 $this->logDataAnonymizations->executeScheduledEntry($id);
             }
-
         } while (!empty($id) && $loop < 100);
     }
 

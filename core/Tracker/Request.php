@@ -1,24 +1,24 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Tracker;
 
 use Exception;
 use Piwik\Common;
-use Piwik\Config;
 use Piwik\Container\StaticContainer;
 use Piwik\Cookie;
 use Piwik\Exception\InvalidRequestParameterException;
 use Piwik\Exception\UnexpectedWebsiteFoundException;
+use Piwik\Http;
 use Piwik\IP;
 use Matomo\Network\IPUtils;
 use Piwik\Piwik;
-use Piwik\Plugins\PrivacyManager\PrivacyManager;
 use Piwik\Plugins\UsersManager\UsersManager;
 use Piwik\ProxyHttp;
 use Piwik\Segment\SegmentExpression;
@@ -46,6 +46,8 @@ class Request
 
     protected $tokenAuth;
 
+    protected $timestamp;
+
     /**
      * Stores plugin specific tracking request metadata. RequestProcessors can store
      * whatever they want in this array, and other RequestProcessors can modify these
@@ -55,7 +57,7 @@ class Request
      */
     private $requestMetadata = array();
 
-    const UNKNOWN_RESOLUTION = 'unknown';
+    public const UNKNOWN_RESOLUTION = 'unknown';
 
     private $customTimestampDoesNotRequireTokenauthWhenNewerThan;
 
@@ -74,10 +76,12 @@ class Request
         $this->timestamp = time();
         $this->isEmptyRequest = empty($params);
 
+
         // When the 'url' and referrer url parameter are not given, we might be in the 'Simple Image Tracker' mode.
         // The URL can default to the Referrer, which will be in this case
         // the URL of the page containing the Simple Image beacon
-        if (empty($this->params['urlref'])
+        if (
+            empty($this->params['urlref'])
             && empty($this->params['url'])
             && array_key_exists('HTTP_REFERER', $_SERVER)
         ) {
@@ -90,11 +94,13 @@ class Request
         // check for 4byte utf8 characters in all tracking params and replace them with � if not support by database
         $this->params = $this->replaceUnsupportedUtf8Chars($this->params);
 
-        $this->customTimestampDoesNotRequireTokenauthWhenNewerThan = (int) TrackerConfig::getConfigValue('tracking_requests_require_authentication_when_custom_timestamp_newer_than',
-            $this->getIdSiteIfExists());
+        $this->customTimestampDoesNotRequireTokenauthWhenNewerThan = (int) TrackerConfig::getConfigValue(
+            'tracking_requests_require_authentication_when_custom_timestamp_newer_than',
+            $this->getIdSiteIfExists()
+        );
     }
 
-    protected function replaceUnsupportedUtf8Chars($value, $key=false)
+    protected function replaceUnsupportedUtf8Chars($value, $key = false)
     {
         $dbSettings   = new \Piwik\Db\Settings();
         $charset      = $dbSettings->getUsedCharset();
@@ -109,7 +115,7 @@ class Request
         }
 
         if (is_array($value)) {
-            array_walk_recursive ($value, function(&$value, $key){
+            array_walk_recursive($value, function (&$value, $key) {
                 $value = $this->replaceUnsupportedUtf8Chars($value, $key);
             });
         }
@@ -207,8 +213,10 @@ class Request
             $tokenAuthHashed = $userModel->hashTokenAuth($tokenAuth);
             $hashedToken = UsersManager::hashTrackingToken((string) $tokenAuthHashed, $idSite);
 
-            if (array_key_exists('tracking_token_auth', $website)
-                && in_array($hashedToken, $website['tracking_token_auth'], true)) {
+            if (
+                array_key_exists('tracking_token_auth', $website)
+                && in_array($hashedToken, $website['tracking_token_auth'], true)
+            ) {
                 return true;
             }
         }
@@ -244,13 +252,13 @@ class Request
 
         if (!empty($excludedRequests)) {
             $excludedRequests = explode(',', $excludedRequests);
-            $pattern = '/^(.+?)('.SegmentExpression::MATCH_EQUAL.'|'
-                .SegmentExpression::MATCH_NOT_EQUAL.'|'
-                .SegmentExpression::MATCH_CONTAINS.'|'
-                .SegmentExpression::MATCH_DOES_NOT_CONTAIN.'|'
-                .preg_quote(SegmentExpression::MATCH_STARTS_WITH).'|'
-                .preg_quote(SegmentExpression::MATCH_ENDS_WITH)
-                .'){1}(.*)/';
+            $pattern = '/^(.+?)(' . SegmentExpression::MATCH_EQUAL . '|'
+                . SegmentExpression::MATCH_NOT_EQUAL . '|'
+                . SegmentExpression::MATCH_CONTAINS . '|'
+                . SegmentExpression::MATCH_DOES_NOT_CONTAIN . '|'
+                . preg_quote(SegmentExpression::MATCH_STARTS_WITH) . '|'
+                . preg_quote(SegmentExpression::MATCH_ENDS_WITH)
+                . '){1}(.*)/';
             foreach ($excludedRequests as $excludedRequest) {
                 $match = preg_match($pattern, $excludedRequest, $matches);
 
@@ -310,7 +318,8 @@ class Request
      */
     public function getBrowserLanguage()
     {
-        return Common::getRequestVar('lang', Common::getBrowserLanguage(), 'string', $this->params);
+        $parameterValue = Common::getRequestVar('lang', '', 'string', $this->params);
+        return Common::getBrowserLanguage($parameterValue ?: null);
     }
 
     /**
@@ -323,13 +332,13 @@ class Request
             'i' => (string)Common::getRequestVar('m', $this->getCurrentDate("i"), 'int', $this->params),
             's' => (string)Common::getRequestVar('s', $this->getCurrentDate("s"), 'int', $this->params)
         );
-        if($localTimes['h'] < 0 || $localTimes['h'] > 23) {
+        if ($localTimes['h'] < 0 || $localTimes['h'] > 23) {
             $localTimes['h'] = 0;
         }
-        if($localTimes['i'] < 0 || $localTimes['i'] > 59) {
+        if ($localTimes['i'] < 0 || $localTimes['i'] > 59) {
             $localTimes['i'] = 0;
         }
-        if($localTimes['s'] < 0 || $localTimes['s'] > 59) {
+        if ($localTimes['s'] < 0 || $localTimes['s'] > 59) {
             $localTimes['s'] = 0;
         }
         foreach ($localTimes as $k => $time) {
@@ -536,7 +545,7 @@ class Request
         if (!empty($cache['delete_logs_enable']) && !empty($cache['delete_logs_older_than'])) {
             $scheduleInterval = $cache['delete_logs_schedule_lowest_interval'];
             $maxLogAge = $cache['delete_logs_older_than'];
-            $logEntryCutoff = time() - (($maxLogAge + $scheduleInterval) * 60*60*24);
+            $logEntryCutoff = time() - (($maxLogAge + $scheduleInterval) * 60 * 60 * 24);
             if ($cdt < $logEntryCutoff) {
                 $message = "Custom timestamp is older than the configured 'deleted old raw data' value of $maxLogAge days";
                 Common::printDebug($message);
@@ -633,6 +642,16 @@ class Request
         return Common::getRequestVar('ua', $default, 'string', $this->params);
     }
 
+    public function getClientHints(): array
+    {
+        // use headers as default if no data was send with the tracking request
+        $default = Http::getClientHintsFromServerVariables();
+
+        $clientHints = Common::getRequestVar('uadata', $default, 'json', $this->params);
+
+        return is_array($clientHints) ? $clientHints : [];
+    }
+
     public function shouldUseThirdPartyCookie()
     {
         return TrackerConfig::getConfigValue('use_third_party_id_cookie', $this->getIdSiteIfExists());
@@ -642,7 +661,8 @@ class Request
     {
         $cookie = $this->makeThirdPartyCookieUID();
         $idVisitor = $cookie->get(0);
-        if ($idVisitor !== false
+        if (
+            $idVisitor !== false
             && strlen($idVisitor) == Tracker::LENGTH_HEX_ID_STRING
         ) {
             return $idVisitor;
@@ -681,7 +701,8 @@ class Request
         $cookie = new Cookie(
             $this->getCookieName(),
             $this->getCookieExpire(),
-            $this->getCookiePath());
+            $this->getCookiePath()
+        );
 
         $domain = $this->getCookieDomain();
         if (!empty($domain)) {
@@ -791,7 +812,7 @@ class Request
             $useThirdPartyCookie = $this->shouldUseThirdPartyCookie();
             if ($useThirdPartyCookie) {
                 $idVisitor = $this->getThirdPartyCookieVisitorId();
-                if(!empty($idVisitor)) {
+                if (!empty($idVisitor)) {
                     $found = true;
                 }
             }

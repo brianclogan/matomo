@@ -1,10 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugin;
 
 use Piwik\DataTable;
@@ -33,7 +35,7 @@ abstract class Metric
     /**
      * The sub-namespace name in a plugin where Metric components are stored.
      */
-    const COMPONENT_SUBNAMESPACE = 'Metrics';
+    public const COMPONENT_SUBNAMESPACE = 'Metrics';
 
     /**
      * Returns the column name of this metric, eg, `"nb_visits"` or `"avg_time_on_site"`.
@@ -74,6 +76,27 @@ abstract class Metric
     public function getDocumentation()
     {
         return "";
+    }
+
+    /**
+     * Returns this metric's semantic type. This can be used to provide the semantic
+     * type for processed metrics.
+     *
+     * A metric's semantic type is metadata used primarily in integrations with Matomo
+     * and third party services/applications. It provides information that can be used
+     * to determine how to display or use the information.
+     *
+     * It is recommended for your plugin to provide this information so users of third
+     * party services that connect with Matomo can make full use of the data your plugin
+     * tracks.
+     *
+     * See {@link \Piwik\Columns\Dimension} for the list of available semantic types.
+     *
+     * @return string|null
+     */
+    public function getSemanticType(): ?string
+    {
+        return null;
     }
 
     /**
@@ -187,7 +210,6 @@ abstract class Metric
         $firstRow = $table->getFirstRow();
 
         if (!empty($firstRow) && $firstRow->hasColumn($columnName) === false) {
-
             if (empty($mappingIdToName)) {
                 $mappingNameToId = Metrics::getMappingFromNameToId();
             }

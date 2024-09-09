@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Segment;
 
 use Piwik\Cache;
@@ -107,7 +108,7 @@ class SegmentsList
             return $cache->fetch($cacheKey);
         }
 
-        $list = new static;
+        $list = new static();
 
         /**
          * Triggered to add custom segment definitions.
@@ -145,10 +146,9 @@ class SegmentsList
          * @param SegmentsList $list An instance of the SegmentsList.
          */
         Piwik::postEvent('Segment.filterSegments', array($list));
-        
+
         $cache->save($cacheKey, $list);
 
         return $list;
     }
-
 }

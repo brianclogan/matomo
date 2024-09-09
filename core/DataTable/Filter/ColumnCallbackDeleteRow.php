@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\DataTable\Filter;
 
 use Piwik\DataTable;
@@ -27,6 +28,7 @@ class ColumnCallbackDeleteRow extends BaseFilter
 {
     private $function;
     private $functionParams;
+    private $columnsToFilter;
 
     /**
      * Constructor.
@@ -39,7 +41,7 @@ class ColumnCallbackDeleteRow extends BaseFilter
      * @param array $functionParams deprecated - use an [anonymous function](http://php.net/manual/en/functions.anonymous.php)
      *                              instead.
      */
-    public function __construct($table, $columnsToFilter, $function, $functionParams = array())
+    public function __construct($table, $columnsToFilter, $function, $functionParams = [])
     {
         parent::__construct($table);
 

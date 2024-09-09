@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\DBStats\Reports;
 
 use Piwik\Metrics\Formatter;
@@ -61,9 +62,12 @@ abstract class Base extends \Piwik\Plugin\Report
         ));
     }
 
-    protected function addPresentationFilters(ViewDataTable $view, $addTotalSizeColumn = true, $addPercentColumn = false,
-                                              $sizeColumns = array('data_size', 'index_size'))
-    {
+    protected function addPresentationFilters(
+        ViewDataTable $view,
+        $addTotalSizeColumn = true,
+        $addPercentColumn = false,
+        $sizeColumns = array('data_size', 'index_size')
+    ) {
         // add total_size column
         if ($addTotalSizeColumn) {
             $getTotalTableSize = function ($dataSize, $indexSize) {
@@ -79,12 +83,12 @@ abstract class Base extends \Piwik\Plugin\Report
         $runPrettySizeFilterBeforeGeneric = false;
 
         if ($view->isViewDataTableId(HtmlTable::ID)) {
-
             // add summary row only if displaying a table
             $view->config->filters[] = array('AddSummaryRow', Piwik::translate('General_Total'));
 
             // add percentage column if desired
-            if ($addPercentColumn
+            if (
+                $addPercentColumn
                 && $addTotalSizeColumn
             ) {
                 $view->config->filters[] = array(
@@ -96,8 +100,7 @@ abstract class Base extends \Piwik\Plugin\Report
 
                 $view->requestConfig->filter_sort_column = 'percent_total';
             }
-
-        } else if ($view->isViewDataTableId(Graph::ID)) {
+        } elseif ($view->isViewDataTableId(Graph::ID)) {
             if ($addTotalSizeColumn) {
                 $view->config->columns_to_display = array('label', 'total_size');
 

@@ -1,11 +1,14 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Category;
+
 use Piwik\Piwik;
 
 /**
@@ -42,6 +45,13 @@ class Category
      * @var int
      */
     protected $icon = '';
+
+    /**
+     * Optional widget spec to replace the category in the reporting menu, e.g. Marketplace.RichMenuButton
+     *
+     * @var string
+     */
+    protected $widget = '';
 
     /**
      * @param int $order
@@ -119,6 +129,17 @@ class Category
     public function getIcon()
     {
         return $this->icon;
+    }
+
+    public function setWidget(string $widget): self
+    {
+        $this->widget = $widget;
+        return $this;
+    }
+
+    public function getWidget(): string
+    {
+        return $this->widget;
     }
 
     /**

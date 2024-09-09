@@ -1,19 +1,19 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\CliMulti;
 
 use Piwik\CliMulti;
-use Piwik\Common;
 use Piwik\Filesystem;
 
 class Output implements OutputInterface
 {
-
     private $tmpFile  = '';
     private $outputId = null;
 
@@ -61,9 +61,11 @@ class Output implements OutputInterface
     {
         $content = @file_get_contents($this->tmpFile);
         $search = '#!/usr/bin/env php';
-        if (!empty($content)
+        if (
+            !empty($content)
             && is_string($content)
-            && mb_substr(trim($content), 0, strlen($search)) === $search) {
+            && mb_substr(trim($content), 0, strlen($search)) === $search
+        ) {
             $content = trim(mb_substr(trim($content), strlen($search)));
         }
         return $content;

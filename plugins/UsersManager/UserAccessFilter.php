@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\UsersManager;
@@ -47,6 +47,12 @@ class UserAccessFilter
      * @var array  Array ('loginName' => array(idsites...))
      */
     private $usersWithAdminAccess;
+
+    /**
+     * Holds a list of all user logins that have write access. Only used for caching
+     * @var array  Array ('loginName' => array(idsites...))
+     */
+    private $usersWithWriteAccess;
 
     /**
      * Holds a list of all user logins that have view access. Only used for caching
@@ -102,9 +108,9 @@ class UserAccessFilter
         }
 
         return array_values(array_filter($users, function ($user) {
-            return $this->isNonSuperUserAllowedToSeeThisLogin($user['login']);
+            $isPendingVisible = empty($user['invite_token']) || $this->isOwnLogin($user['invited_by']);
+            return $isPendingVisible && $this->isNonSuperUserAllowedToSeeThisLogin($user['login']);
         }));
-
     }
 
     /**
@@ -114,8 +120,9 @@ class UserAccessFilter
      */
     public function filterUser($user)
     {
-        if ($this->access->hasSuperUserAccess()
-          || (!empty($user['login']) && $this->isNonSuperUserAllowedToSeeThisLogin($user['login']))
+        if (
+            $this->access->hasSuperUserAccess()
+            || (!empty($user['login']) && $this->isNonSuperUserAllowedToSeeThisLogin($user['login']))
         ) {
             return $user;
         }
@@ -171,13 +178,14 @@ class UserAccessFilter
         if (!isset($this->idSitesWithAdmin)) {
             $this->idSitesWithAdmin     = $this->access->getSitesIdWithAdminAccess();
             $this->usersWithAdminAccess = $this->model->getUsersSitesFromAccess('admin');
+            $this->usersWithWriteAccess = $this->model->getUsersSitesFromAccess('write');
             $this->usersWithViewAccess  = $this->model->getUsersSitesFromAccess('view');
         }
 
         return (
           (isset($this->usersWithViewAccess[$login]) && array_intersect($this->idSitesWithAdmin, $this->usersWithViewAccess[$login]))
-          ||
-          (isset($this->usersWithAdminAccess[$login]) && array_intersect($this->idSitesWithAdmin, $this->usersWithAdminAccess[$login]))
+          || (isset($this->usersWithWriteAccess[$login]) && array_intersect($this->idSitesWithAdmin, $this->usersWithWriteAccess[$login]))
+          || (isset($this->usersWithAdminAccess[$login]) && array_intersect($this->idSitesWithAdmin, $this->usersWithAdminAccess[$login]))
         );
     }
 }

@@ -1,27 +1,31 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
-  <div>
+  <div class="widgetLoader">
     <ActivityIndicator
-      :loading-message="loadingMessage"
+      :loading-message="finalLoadingMessage"
       :loading="loading"
     />
     <div v-show="loadingFailed">
       <h2 v-if="widgetName">{{ widgetName }}</h2>
-      <div class="notification system notification-error">
+      <div v-if="!loadingFailedRateLimit" class="notification system notification-error">
         {{ translate('General_ErrorRequest', '', '') }}
         <a
           rel="noreferrer noopener"
           target="_blank"
-          href="https://matomo.org/faq/troubleshooting/faq_19489/"
+          :href="externalRawLink('https://matomo.org/faq/troubleshooting/faq_19489/')"
           v-if="hasErrorFaqLink"
         >
           {{ translate('General_ErrorRequestFaqLink') }}
         </a>
+      </div>
+      <div v-else class="notification system notification-error">
+        {{ translate('General_ErrorRateLimit') }}
       </div>
     </div>
     <div class="theWidgetContent" ref="widgetContent" />
@@ -29,10 +33,9 @@
 </template>
 
 <script lang="ts">
-import { IRootScopeService, IScope } from 'angular';
 import { defineComponent } from 'vue';
 import ActivityIndicator from '../ActivityIndicator/ActivityIndicator.vue';
-import translate from '../translate';
+import { translate } from '../translate';
 import Matomo from '../Matomo/Matomo';
 import AjaxHelper from '../AjaxHelper/AjaxHelper';
 import { NotificationsStore } from '../Notification';
@@ -42,8 +45,8 @@ import ComparisonsStoreInstance from '../Comparisons/Comparisons.store.instance'
 interface WidgetLoaderState {
   loading: boolean;
   loadingFailed: boolean;
+  loadingFailedRateLimit: boolean;
   changeCounter: number;
-  currentScope: null|IScope;
   lastWidgetAbortController: null|AbortController;
 }
 
@@ -63,6 +66,7 @@ export default defineComponent({
   props: {
     widgetParams: Object,
     widgetName: String,
+    loadingMessage: String,
   },
   components: {
     ActivityIndicator,
@@ -71,8 +75,8 @@ export default defineComponent({
     return {
       loading: false,
       loadingFailed: false,
+      loadingFailedRateLimit: false,
       changeCounter: 0,
-      currentScope: null,
       lastWidgetAbortController: null,
     };
   },
@@ -84,7 +88,11 @@ export default defineComponent({
     },
   },
   computed: {
-    loadingMessage() {
+    finalLoadingMessage() {
+      if (this.loadingMessage) {
+        return this.loadingMessage;
+      }
+
       if (!this.widgetName) {
         return translate('General_LoadingData');
       }
@@ -105,7 +113,7 @@ export default defineComponent({
       this.loadWidgetUrl(this.widgetParams as QueryParameters, this.changeCounter += 1);
     }
   },
-  unmounted() {
+  beforeUnmount() {
     this.cleanupLastWidgetContent();
   },
   methods: {
@@ -117,11 +125,9 @@ export default defineComponent({
     },
     cleanupLastWidgetContent() {
       const widgetContent = this.$refs.widgetContent as HTMLElement;
+      Matomo.helper.destroyVueComponent(widgetContent);
       if (widgetContent) {
         widgetContent.innerHTML = '';
-      }
-      if (this.currentScope) {
-        this.currentScope.$destroy();
       }
     },
     getWidgetUrl(parameters?: QueryParameters): QueryParameters {
@@ -184,12 +190,9 @@ export default defineComponent({
 
       AjaxHelper.fetch(this.getWidgetUrl(parameters), {
         format: 'html',
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-        },
         abortController: this.lastWidgetAbortController,
       }).then((response) => {
-        if (thisChangeId !== this.changeCounter || !response || typeof response !== 'string') {
+        if (thisChangeId !== this.changeCounter || typeof response !== 'string') {
           // another widget was requested meanwhile, ignore this response
           return;
         }
@@ -215,11 +218,7 @@ export default defineComponent({
           }
         }
 
-        const $rootScope: IRootScopeService = Matomo.helper.getAngularDependency('$rootScope');
-        const scope = $rootScope.$new();
-        this.currentScope = scope;
-
-        Matomo.helper.compileAngularComponents($content, { scope });
+        Matomo.helper.compileVueEntryComponents($content);
 
         NotificationsStore.parseNotificationDivs();
 
@@ -242,6 +241,10 @@ export default defineComponent({
 
         if (response.xhrStatus === 'abort') {
           return;
+        }
+
+        if (response.status === 429) {
+          this.loadingFailedRateLimit = true;
         }
 
         this.loadingFailed = true;

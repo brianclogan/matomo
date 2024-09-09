@@ -1,18 +1,17 @@
 /*!
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 /* eslint-disable max-classes-per-file */
 
-import { ITimeoutService } from 'angular';
 import jqXHR = JQuery.jqXHR;
 import MatomoUrl from '../MatomoUrl/MatomoUrl';
 import Matomo from '../Matomo/Matomo';
 
-interface AjaxOptions {
+export interface AjaxOptions {
   withTokenInUrl?: boolean;
   postParams?: QueryParameters;
   headers?: Record<string, string>;
@@ -20,12 +19,16 @@ interface AjaxOptions {
   createErrorNotification?: boolean;
   abortController?: AbortController;
   returnResponseObject?: boolean;
+  errorElement?: HTMLElement|JQuery|string;
+  redirectOnSuccess?: QueryParameters|boolean;
 }
 
 interface ErrorResponse {
   result: string;
   message: string;
 }
+
+const { $ } = window;
 
 window.globalAjaxQueue = [] as unknown as GlobalAjaxQueue;
 window.globalAjaxQueue.active = 0;
@@ -65,7 +68,7 @@ type AnyFunction = (...params:any[]) => any; // eslint-disable-line
  */
 function defaultErrorCallback(deferred: XMLHttpRequest, status: string): void {
   // do not display error message if request was aborted
-  if (status === 'abort') {
+  if (status === 'abort' || !deferred || deferred.status === 0) {
     return;
   }
 
@@ -74,13 +77,10 @@ function defaultErrorCallback(deferred: XMLHttpRequest, status: string): void {
     return;
   }
 
-  const loadingError = $('#loadingError');
   if (Piwik_Popover.isOpen() && deferred && deferred.status === 500) {
-    if (deferred && deferred.status === 500) {
-      $(document.body).html(piwikHelper.escape(deferred.responseText));
-    }
+    $(document.body).html(piwikHelper.escape(deferred.responseText));
   } else {
-    loadingError.show();
+    $('#loadingError').show();
   }
 }
 
@@ -115,7 +115,7 @@ export default class AjaxHelper<T = any> { // eslint-disable-line
    *
    * @deprecated use the jquery promise API
    */
-  errorCallback: AnyFunction;
+  errorCallback: AnyFunction|null;
 
   withToken = false;
 
@@ -153,17 +153,19 @@ export default class AjaxHelper<T = any> { // eslint-disable-line
   /**
    * Element to be displayed while loading
    */
-  loadingElement: HTMLElement|null|JQuery|JQLite|string = null;
+  loadingElement: HTMLElement|null|JQuery|string = null;
 
   /**
    * Element to be displayed on error
    */
-  errorElement: HTMLElement|JQuery|JQLite|string = '#ajaxError';
+  errorElement: HTMLElement|JQuery|string = '#ajaxError';
 
   /**
    * Extra headers to add to the request.
    */
-  headers?: Record<string, string>;
+  headers?: Record<string, string> = {
+    'X-Requested-With': 'XMLHttpRequest',
+  };
 
   /**
    * Handle for current request
@@ -185,10 +187,24 @@ export default class AjaxHelper<T = any> { // eslint-disable-line
     if (options.withTokenInUrl) {
       helper.withTokenInUrl();
     }
+    if (options.errorElement) {
+      helper.setErrorElement(options.errorElement);
+    }
+    if (options.redirectOnSuccess) {
+      helper.redirectOnSuccess(
+        options.redirectOnSuccess !== true ? options.redirectOnSuccess : undefined,
+      );
+    }
     helper.setFormat(options.format || 'json');
     if (Array.isArray(params)) {
       helper.setBulkRequests(...(params as QueryParameters[]));
     } else {
+      Object.keys(params).forEach((key) => {
+        if (/password/i.test(key)) {
+          throw new Error(`Password parameters are not allowed to be sent as GET parameter. Please send ${key} as POST parameter instead.`);
+        }
+      });
+
       helper.addParams({
         module: 'API',
         format: options.format || 'json',
@@ -207,13 +223,16 @@ export default class AjaxHelper<T = any> { // eslint-disable-line
       helper.addParams(options.postParams, 'post');
     }
     if (options.headers) {
-      helper.headers = options.headers;
+      helper.headers = { ...helper.headers, ...options.headers };
     }
 
+    let createErrorNotification = true;
     if (typeof options.createErrorNotification !== 'undefined'
       && !options.createErrorNotification
     ) {
       helper.useCallbackInCaseOfError();
+      helper.setErrorCallback(null);
+      createErrorNotification = false;
     }
 
     if (options.abortController) {
@@ -228,11 +247,27 @@ export default class AjaxHelper<T = any> { // eslint-disable-line
       const data = result instanceof AjaxHelper ? result.requestHandle!.responseJSON : result;
 
       // check for error if not using default notification behavior
-      if ((data as ErrorResponse).result === 'error') {
-        throw new ApiResponseError((data as ErrorResponse).message);
+      const results = helper.postParams.method === 'API.getBulkRequest' && Array.isArray(data) ? data : [data];
+      const errors = results.filter((r) => r.result === 'error').map((r) => r.message as string);
+
+      if (errors.length) {
+        throw new ApiResponseError(errors.filter((e) => e.length).join('\n'));
       }
 
       return result as R;
+    }).catch((xhr: jqXHR) => {
+      if (createErrorNotification || xhr instanceof ApiResponseError) {
+        throw xhr;
+      }
+
+      let message = 'Something went wrong';
+      if (xhr.status === 504) {
+        message = 'Request was possibly aborted';
+      }
+      if (xhr.status === 429) {
+        message = 'Rate Limit was exceed';
+      }
+      throw new Error(message);
     });
   }
 
@@ -243,7 +278,36 @@ export default class AjaxHelper<T = any> { // eslint-disable-line
     postParams: any = {},
     options: AjaxOptions = {},
   ): Promise<R> {
-    return this.fetch<R>(params, { ...options, postParams });
+    return AjaxHelper.fetch<R>(params, { ...options, postParams });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  static oneAtATime<R = any>(
+    method: string,
+    options?: AjaxOptions,
+  ): (params: QueryParameters, postParams?: QueryParameters) => Promise<R> {
+    let abortController: AbortController|null = null;
+
+    return (params: QueryParameters, postParams?: QueryParameters) => {
+      if (abortController) {
+        abortController.abort();
+      }
+
+      abortController = new AbortController();
+      return AjaxHelper.post<R>(
+        {
+          ...params,
+          method,
+        },
+        postParams,
+        {
+          ...options,
+          abortController,
+        },
+      ).finally(() => {
+        abortController = null;
+      });
+    };
   }
 
   constructor() {
@@ -264,11 +328,15 @@ export default class AjaxHelper<T = any> { // eslint-disable-line
 
     const arrayParams = ['compareSegments', 'comparePeriods', 'compareDates'];
     Object.keys(params).forEach((key) => {
-      const value = params[key];
+      let value = params[key];
       if (arrayParams.indexOf(key) !== -1
         && !value
       ) {
         return;
+      }
+
+      if (typeof value === 'boolean') {
+        value = value ? 1 : 0;
       }
 
       if (type.toLowerCase() === 'get') {
@@ -339,7 +407,7 @@ export default class AjaxHelper<T = any> { // eslint-disable-line
    * @param [params] to modify in redirect url
    * @return {void}
    */
-  redirectOnSuccess(params: QueryParameters): void {
+  redirectOnSuccess(params?: QueryParameters): void {
     this.setCallback(() => {
       piwikHelper.redirect(params);
     });
@@ -350,7 +418,7 @@ export default class AjaxHelper<T = any> { // eslint-disable-line
    *
    * @deprecated use the jquery promise API
    */
-  setErrorCallback(callback: AnyFunction): void {
+  setErrorCallback(callback: AnyFunction|null): void {
     this.errorCallback = callback;
   }
 
@@ -438,13 +506,6 @@ export default class AjaxHelper<T = any> { // eslint-disable-line
     this.requestHandle = this.buildAjaxCall();
     window.globalAjaxQueue.push(this.requestHandle);
 
-    let $timeout: ITimeoutService|null = null;
-    try {
-      $timeout = Matomo.helper.getAngularDependency('$timeout');
-    } catch (e) {
-      // ignore
-    }
-
     if (this.abortController) {
       this.abortController.signal.addEventListener('abort', () => {
         if (this.requestHandle) {
@@ -463,15 +524,19 @@ export default class AjaxHelper<T = any> { // eslint-disable-line
           resolve(data as (T | ErrorResponse)); // ignoring textStatus/jqXHR
         }
       }).fail((xhr: jqXHR) => {
-        if (xhr.statusText !== 'abort') {
-          console.log(`Warning: the ${$.param(this.getParams)} request failed!`);
-
+        if (xhr.status === 429) {
+          console.log(`Warning: the '${$.param(this.getParams)}' request was rate limited!`);
           reject(xhr);
+          return;
         }
-      }).done(() => {
-        if ($timeout) {
-          $timeout(); // trigger digest
+
+        if (xhr.statusText === 'abort' || xhr.status === 0) {
+          return;
         }
+
+        console.log(`Warning: the ${$.param(this.getParams)} request failed!`);
+
+        reject(xhr);
       });
     });
 
@@ -530,20 +595,42 @@ export default class AjaxHelper<T = any> { // eslint-disable-line
           $(this.loadingElement).hide();
         }
 
-        if (response && response.result === 'error' && !this.useRegularCallbackInCaseOfError) {
+        const results = this.postParams.method === 'API.getBulkRequest' && Array.isArray(response) ? response : [response];
+        const errors = results.filter((r) => r.result === 'error')
+          .map((r) => r.message as string)
+          .filter((e) => e.length)
+          // count occurrences of error messages
+          .reduce((acc: Record<string, number>, e: string) => {
+            acc[e] = (acc[e] || 0) + 1;
+            return acc;
+          }, {});
+
+        if (errors && Object.keys(errors).length && !this.useRegularCallbackInCaseOfError) {
+          let errorMessage = '';
+          Object.keys(errors).forEach((error) => {
+            if (errorMessage.length) {
+              errorMessage += '<br />';
+            }
+            // append error count if it occured more than once
+            if (errors[error] > 1) {
+              errorMessage += `${error} (${errors[error]}x)`;
+            } else {
+              errorMessage += error;
+            }
+          });
           let placeAt = null;
           let type: string|null = 'toast';
-          if ($(this.errorElement).length && response.message) {
+          if ($(this.errorElement).length && errorMessage.length) {
             $(this.errorElement).show();
             placeAt = this.errorElement;
             type = null;
           }
 
           const isLoggedIn = !document.querySelector('#login_form');
-          if (response.message && isLoggedIn) {
+          if (errorMessage && isLoggedIn) {
             const UI = window['require']('piwik/UI'); // eslint-disable-line
             const notification = new UI.Notification();
-            notification.show(response.message, {
+            notification.show(errorMessage, {
               placeat: placeAt,
               context: 'error',
               type,
@@ -629,8 +716,10 @@ export default class AjaxHelper<T = any> { // eslint-disable-line
 
     Object.keys(defaultParams).forEach((key) => {
       if (this.useGETDefaultParameter(key)
-        && !params[key]
-        && !this.postParams[key]
+        && (params[key] === null || typeof params[key] === 'undefined' || params[key] === '')
+        && (this.postParams[key] === null
+          || typeof this.postParams[key] === 'undefined'
+          || this.postParams[key] === '')
         && defaultParams[key]
       ) {
         params[key] = defaultParams[key];

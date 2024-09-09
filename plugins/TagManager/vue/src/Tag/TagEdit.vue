@@ -57,6 +57,17 @@
               :inline-help="translate('TagManager_TagNameHelp')"
             />
           </div>
+          <div>
+            <Field
+              uicontrol="textarea"
+              name="description"
+              :model-value="tag.description"
+              @update:model-value="tag.description = $event; setValueHasChanged()"
+              :maxlength="1000"
+              :title="translate('General_Description')"
+              :inline-help="translate('TagManager_TagDescriptionHelp')"
+            />
+          </div>
           <div
             class="form-group row"
             v-show="tag.typeMetadata?.parameters.length"
@@ -69,7 +80,7 @@
             <GroupedSettings
               :settings="tag.typeMetadata?.parameters || []"
               :all-setting-values="parameterValues"
-              @change="parameterValues[$event.name] = $event.value"
+              @change="parameterValues[$event.name] = $event.value; setValueHasChanged()"
             />
           </div>
           <div
@@ -183,20 +194,20 @@
                 <div class="form-help">
                 <span class="inline-help">
                   <span>
-                    <span v-html="translate(
+                    <span v-html="$sanitize(translate(
                       'TagManager_TagStartDateHelp',
                       '&lt;strong&gt;',
                       '&lt;/strong&gt;'
-                    )" />
+                    ))" />
                     <br />
                     <span
                       class="currentLocalTime"
-                      v-html="translate(
+                      v-html="$sanitize(translate(
                         'TagManager_CurrentTimeInLocalTimezone',
                         '&lt;strong&gt;',
                         currentTime,
                         '&lt;/strong&gt;',
-                      )"
+                      ))"
                     />
                   </span>
                 </span>
@@ -226,20 +237,20 @@
                 <div class="form-help">
                 <span class="inline-help">
                   <span>
-                    <span v-html="translate(
+                    <span v-html="$sanitize(translate(
                       'TagManager_TagEndDateHelp',
                       '&lt;strong&gt;',
                       '&lt;/strong&gt;',
-                    )" />
+                    ))" />
                     <br />
                     <span
                       class="currentLocalTime"
-                      v-html="translate(
+                      v-html="$sanitize(translate(
                         'TagManager_CurrentTimeInLocalTimezone',
                         '&lt;strong&gt;',
                         currentTime,
                         '&lt;/strong&gt;',
-                      )"
+                      ))"
                     />
                   </span>
                 </span>
@@ -420,6 +431,8 @@ export default defineComponent({
     };
   },
   created() {
+    AvailableFireLimitsStore.init();
+
     this.updateAvailableTriggers();
     this.setCurrentTime();
 
@@ -564,7 +577,6 @@ export default defineComponent({
     },
     openEditTrigger(callback: (trigger: Trigger) => void, idTag: number) {
       tagManagerHelper.editTrigger(
-        null,
         this.idContainer,
         this.idContainerVersion,
         idTag,
@@ -694,11 +706,14 @@ export default defineComponent({
 
           setTimeout(() => {
             const createdX = translate('TagManager_CreatedX', translate('TagManager_Tag'));
-            const wantToRedeploy = translate(
-              'TagManager_WantToDeployThisChangeCreateVersion',
-              '<a class="createNewVersionLink">',
-              '</a>',
-            );
+            let wantToRedeploy = '';
+            if (this.hasPublishCapability()) {
+              wantToRedeploy = translate(
+                'TagManager_WantToDeployThisChangeCreateVersion',
+                '<a class="createNewVersionLink">',
+                '</a>',
+              );
+            }
 
             this.showNotification(`${createdX} ${wantToRedeploy}`, 'success');
           }, 200);
@@ -738,11 +753,14 @@ export default defineComponent({
         });
 
         const updatedAt = translate('TagManager_UpdatedX', translate('TagManager_Tag'));
-        const wantToDeploy = translate(
-          'TagManager_WantToDeployThisChangeCreateVersion',
-          '<a class="createNewVersionLink">',
-          '</a>',
-        );
+        let wantToDeploy = '';
+        if (this.hasPublishCapability()) {
+          wantToDeploy = translate(
+            'TagManager_WantToDeployThisChangeCreateVersion',
+            '<a class="createNewVersionLink">',
+            '</a>',
+          );
+        }
 
         this.showNotification(`${updatedAt} ${wantToDeploy}`, 'success');
       }).finally(() => {
@@ -762,6 +780,9 @@ export default defineComponent({
       }
 
       return true;
+    },
+    hasPublishCapability() {
+      return Matomo.hasUserCapability('tagmanager_write') && Matomo.hasUserCapability('tagmanager_use_custom_templates');
     },
   },
   computed: {

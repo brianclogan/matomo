@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Actions\Columns;
 
 use Piwik\Columns\DimensionMetricFactory;
@@ -77,5 +78,4 @@ class ActionType extends ActionDimension
     {
         // do not generate any metric for this
     }
-
 }

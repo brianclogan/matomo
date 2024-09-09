@@ -1,13 +1,14 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Updater\Migration\Db;
 
-use Piwik\Db;
 use Piwik\DbHelper;
 
 /**
@@ -37,7 +38,5 @@ class DropColumns extends Sql
             $sql = sprintf("ALTER TABLE `%s` %s", $tableName, implode(', ', $dropColumns));
             parent::__construct($sql, static::ERROR_CODE_COLUMN_NOT_EXISTS);
         }
-
     }
-
 }

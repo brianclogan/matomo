@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\VisitorInterest\Reports;
 
 use Piwik\Piwik;
@@ -50,7 +51,6 @@ class GetNumberOfVisitsPerVisitDuration extends Base
         $view->requestConfig->filter_sort_column = 'label';
         $view->requestConfig->filter_sort_order  = 'asc';
 
-        $view->config->addTranslation('label', $this->dimension->getName());
         $view->config->enable_sort = false;
         $view->config->show_exclude_low_population = false;
         $view->config->show_offset_information = false;
@@ -66,5 +66,4 @@ class GetNumberOfVisitsPerVisitDuration extends Base
             $view->config->max_graph_elements = 10;
         }
     }
-
 }

@@ -1,18 +1,16 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\CoreVue\Commands;
 
 use Piwik\Filesystem;
 use Piwik\Plugin\ConsoleCommand;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
 
 class BuildPolyfill extends ConsoleCommand
 {
@@ -20,7 +18,7 @@ class BuildPolyfill extends ConsoleCommand
     {
         $this->setName('vue:build-polyfill');
         $this->setDescription('Builds the polyfill UMD.');
-        $this->addOption('clear-webpack-cache', null, InputOption::VALUE_NONE);
+        $this->addNoValueOption('clear-webpack-cache');
     }
 
     public function isEnabled()
@@ -28,11 +26,11 @@ class BuildPolyfill extends ConsoleCommand
         return \Piwik\Development::isEnabled();
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function doExecute(): int
     {
         Build::checkVueCliServiceAvailable();
 
-        $clearWebpackCache = $input->getOption('clear-webpack-cache');
+        $clearWebpackCache = $this->getInput()->getOption('clear-webpack-cache');
         if ($clearWebpackCache) {
             $this->clearWebpackCache();
         }
@@ -50,6 +48,8 @@ class BuildPolyfill extends ConsoleCommand
         }
 
         $this->deleteExtraFiles();
+
+        return self::SUCCESS;
     }
 
     private function createDummyPackageJson()

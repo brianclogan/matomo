@@ -1,21 +1,23 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\CoreHome\Columns;
 
 use Piwik\Cache;
-use Piwik\Common;
+use Piwik\Columns\DimensionSegmentFactory;
 use Piwik\DataTable;
 use Piwik\DataTable\Map;
 use Piwik\Metrics;
 use Piwik\Plugin;
 use Piwik\Plugin\Dimension\VisitDimension;
-use Piwik\Plugins\VisitsSummary\API as VisitsSummaryApi;
+use Piwik\Plugins\Live\Live;
+use Piwik\Segment\SegmentsList;
 use Piwik\Tracker\Request;
 use Piwik\Tracker\Visitor;
 use Piwik\Tracker\Action;
@@ -25,7 +27,7 @@ use Piwik\Tracker\Action;
  */
 class UserId extends VisitDimension
 {
-    const MAXLENGTH = 200;
+    public const MAXLENGTH = 200;
 
     /**
      * @var string
@@ -44,6 +46,14 @@ class UserId extends VisitDimension
 
         if (Plugin\Manager::getInstance()->isPluginActivated('UserId')) {
             $this->suggestedValuesApi = 'UserId.getUsers';
+        }
+    }
+
+    public function configureSegments(SegmentsList $segmentsList, DimensionSegmentFactory $dimensionSegmentFactory)
+    {
+        // Configure userId segment only if visitor profile is available
+        if (Live::isVisitorProfileEnabled()) {
+            parent::configureSegments($segmentsList, $dimensionSegmentFactory);
         }
     }
 
@@ -147,5 +157,4 @@ class UserId extends VisitDimension
 
         return !empty($numUsers);
     }
-
 }

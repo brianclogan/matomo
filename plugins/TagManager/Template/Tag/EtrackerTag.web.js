@@ -44,7 +44,8 @@
                 if (etrackerConfig.etrackerDNT) {
                     script.setAttribute('data-respect-dnt', 'true');
                 }
-                script.src = '//static.etracker.com/code/e.js';
+                script.src = '//code.etracker.com/code/e.js';
+                script.setAttribute('async', '');
                 s.parentNode.insertBefore(script, s);
             }
         }
@@ -74,11 +75,42 @@
             if(parameters.get('etrackerWrapperBasket')){
                ewrapper.et_basket = parameters.get('etrackerWrapperBasket');
             }
+            // Custom Dimensions
+            if (etrackerConfig.customDimensions
+                && TagManager.utils.isArray(etrackerConfig.customDimensions)
+                && etrackerConfig.customDimensions.length) {
+                var dimIndex;
+                for (dimIndex = 0; dimIndex < etrackerConfig.customDimensions.length; dimIndex++) {
+                    var dimension = etrackerConfig.customDimensions[dimIndex];
+                    if (dimension && TagManager.utils.isObject(dimension) && dimension.index && dimension.value) {
+                        ewrapper[dimension.index] = dimension.value;
+                    }
+                }
+            }
             et_eC_Wrapper(ewrapper);
         }
         // event tracking function
         if (trackingType === 'event' && typeof(_etracker) === "object") {
             _etracker.sendEvent(new et_UserDefinedEvent(parameters.get('etrackerEventObject'), parameters.get('etrackerEventCategory'), parameters.get('etrackerEventAction'), parameters.get('etrackerEventType')));
+        }
+        // transaction tracking function
+        if (trackingType === 'transaction') {
+            if(parameters.get('etrackerTransactionDebugMode')){
+                etCommerce.debugMode = true;
+            }
+            var etorder = {orderNumber:parameters.get('etrackerTransactionID'),status:parameters.get('etrackerTransactionType'),orderPrice:parameters.get('etrackerTransactionValue').toString(),basket:parameters.get('etrackerTransactionBasket'),currency:parameters.get('etrackerTransactionCurrency'),customerGroup:parameters.get('etrackerTransactionCustomerGroup'),deliveryConditions:parameters.get('etrackerTransactionDeliveryConditions'),paymentConditions:parameters.get('etrackerTransactionPaymentConditions')};
+            etCommerce.sendEvent('order', etorder);
+        }
+        // ecommerce - add to cart tracking function
+        if (trackingType === 'addtocart') {
+            etCommerce.sendEvent('insertToBasket', parameters.get('etrackerAddToCartProduct'), Number(parameters.get('etrackerAddToCartNumber')));
+        }
+        // form - form tracking
+        if (trackingType === 'form' && typeof(_etracker) === "object") {
+            if(parameters.get('etrackerFormData')){
+                etForm.sendEvent(parameters.get('etrackerFormType'), parameters.get('etrackerFormName'), parameters.get('etrackerFormData')) ;
+            }
+            else{ etForm.sendEvent(parameters.get('etrackerFormType'), parameters.get('etrackerFormName'));}
         }
         };
         };

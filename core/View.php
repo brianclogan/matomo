@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 use Exception;
@@ -164,6 +165,8 @@ class View implements ViewInterface
         } catch (Exception $ex) {
             // pass (occurs when DB cannot be connected to, perhaps piwik URL cache should be stored in config file...)
         }
+
+        $this->userRequiresPasswordConfirmation = Piwik::doesUserRequirePasswordConfirmation(Piwik::getCurrentUserLogin());
     }
 
     /**
@@ -270,6 +273,7 @@ class View implements ViewInterface
             $this->isMultiServerEnvironment = SettingsPiwik::isMultiServerEnvironment();
             $this->isInternetEnabled = SettingsPiwik::isInternetEnabled();
             $this->shouldPropagateTokenAuth = $this->shouldPropagateTokenAuthInAjaxRequests();
+            $this->isAutoUpdateEnabled = SettingsPiwik::isAutoUpdateEnabled();
 
             $piwikAds = StaticContainer::get('Piwik\ProfessionalServices\Advertising');
             $this->areAdsForProfessionalServicesEnabled = $piwikAds->areAdsForProfessionalServicesEnabled();
@@ -294,7 +298,7 @@ class View implements ViewInterface
             Common::sendHeader('Content-Type: ' . $this->contentType);
             // always sending this header, sometimes empty, to ensure that Dashboard embed loads
             // - when calling sendHeader() multiple times, the last one prevails
-            if(!empty($this->xFrameOptions)) {
+            if (!empty($this->xFrameOptions)) {
                 Common::sendHeader('X-Frame-Options: ' . (string)$this->xFrameOptions);
             }
 
@@ -331,15 +335,15 @@ class View implements ViewInterface
         $output = $this->twig->render($this->getTemplateFile(), $this->getTemplateVars());
 
         if ($this->enableCacheBuster) {
-            $output = $this->applyFilter_cacheBuster($output);
+            $output = $this->applyFilterCacheBuster($output);
         }
 
-        $helper = new Theme;
+        $helper = new Theme();
         $output = $helper->rewriteAssetsPathToTheme($output);
         return $output;
     }
 
-    protected function applyFilter_cacheBuster($output)
+    protected function applyFilterCacheBuster($output)
     {
         $cacheBuster = UIAssetCacheBuster::getInstance();
         $cache = Cache::getTransientCache();
@@ -357,12 +361,14 @@ class View implements ViewInterface
             $cache->save('cssCacheBusterId', $cssCacheBusterId);
         }
 
-        $tagJs  = 'cb=' . $cacheBuster->piwikVersionBasedCacheBuster();
+        $tagJs  = 'cb=' . ($this->cacheBuster ?? $cacheBuster->piwikVersionBasedCacheBuster());
         $tagCss = 'cb=' . $cssCacheBusterId;
 
         $pattern = array(
             '~<script type=[\'"]text/javascript[\'"] src=[\'"]([^\'"]+)[\'"]>~',
             '~<script src=[\'"]([^\'"]+)[\'"] type=[\'"]text/javascript[\'"]>~',
+            '~<script type=[\'"]text/javascript[\'"] src=[\'"]([^\'"?]*\?[^\'"]+)[\'"] defer>~',
+            '~<script type=[\'"]text/javascript[\'"] src=[\'"]([^\'"?]+)[\'"] defer>~',
             '~<link rel=[\'"]stylesheet[\'"] type=[\'"]text/css[\'"] href=[\'"]([^\'"]+)[\'"] ?/?>~',
             // removes the double ?cb= tag
             '~(src|href)=\"index.php\?module=([A-Za-z0-9_]+)&action=([A-Za-z0-9_]+)\?cb=~',
@@ -371,6 +377,8 @@ class View implements ViewInterface
         $replace = array(
             '<script type="text/javascript" src="$1?' . $tagJs . '">',
             '<script type="text/javascript" src="$1?' . $tagJs . '">',
+            '<script type="text/javascript" src="$1&' . $tagJs . '" defer>',
+            '<script type="text/javascript" src="$1?' . $tagJs . '" defer>',
             '<link rel="stylesheet" type="text/css" href="$1?' . $tagCss . '" />',
             '$1="index.php?module=$2&amp;action=$3&amp;cb=',
         );

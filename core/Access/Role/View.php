@@ -1,15 +1,17 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Access\Role;
 
 use Piwik\Access\Role;
 use Piwik\Piwik;
+use Piwik\Url;
 
 class View extends Role
 {
@@ -32,8 +34,6 @@ class View extends Role
 
     public function getHelpUrl(): string
     {
-        return 'https://matomo.org/faq/general/faq_70/';
+        return Url::addCampaignParametersToMatomoLink('https://matomo.org/faq/general/faq_70/');
     }
-
-
 }

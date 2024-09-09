@@ -96,7 +96,7 @@ var PagePerformance = function() {
         Piwik_Popover.setTitle(title);
     }
 
-    function show(apiMethod, label) {
+    function show(apiMethod, label, isReportFlat) {
 
         // open the popover
         var box = Piwik_Popover.showLoading('Page performance report');
@@ -107,7 +107,7 @@ var PagePerformance = function() {
             Piwik_Popover.setContent(html);
 
             // remove title returned from the server
-            var title = box.find('h2[piwik-enriched-headline]');
+            var title = box.find('.enrichedHeadline').closest('h2');
             var defaultTitle = title.text();
 
             if (title.length) {
@@ -125,6 +125,7 @@ var PagePerformance = function() {
             action: 'indexPagePerformance',
             apiMethod: apiMethod,
             label: encodeURIComponent(label),
+            flat: isReportFlat,
         };
 
         var ajaxRequest = new ajaxHelper();

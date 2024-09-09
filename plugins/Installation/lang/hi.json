@@ -1,7 +1,7 @@
 {
     "Installation": {
         "CannotConnectToDb": "डेटाबेस से कनेक्ट नहीं कर सकते",
-        "CollaborativeProject": "Matomo सभी दुनिया भर से लोगों से प्यार के साथ बनाया गया एक सहयोगी परियोजना है।",
+        "CollaborativeProject": "माटोमो प्रेम से निर्मित एक सहयोगात्मक परियोजना है।",
         "ConfirmDeleteExistingTables": "अपने डेटाबेस से %s: क्या आप तालिकाओं को हटाना चाहते हैं? चेतावनी: इन तालिकाओं से डेटा बरामद नहीं किया जा सकता है!",
         "Congratulations": "बधाई हो",
         "DatabaseAbilities": "डेटाबेस की क्षमताओं",
@@ -101,7 +101,7 @@
         "TablesWithSameNamesFound": "अपने डेटाबेस से कुछ %1$s तालिकाओं के रूप में %2$sएक ही नाम हैMatomo बनाने की कोशिश कर रहा है",
         "Timezone": "वेबसाइट समय क्षेत्र",
         "WeHopeYouWillEnjoyPiwik": "हम आपको हम इसे बनाने का आनंद के रूप में ज्यादा के रूप में Matomo उपयोग का आनंद ले जाएगा उम्मीद है।",
-        "Welcome": "आपका स्वागत है!",
+        "Welcome": "आपका स्वागत है",
         "WelcomeToCommunity": "Matomo समुदाय के लिए आपका स्वागत है!"
     }
 }

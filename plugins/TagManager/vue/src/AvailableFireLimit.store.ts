@@ -6,7 +6,7 @@
  */
 
 import { reactive, computed, readonly } from 'vue';
-import { AjaxHelper, lazyInitSingleton } from 'CoreHome';
+import { AjaxHelper } from 'CoreHome';
 
 interface FireLimit {
   id: string;
@@ -34,21 +34,34 @@ class AvailableFireLimitStore {
     ({ id, name }) => ({ key: id, value: name }),
   ));
 
-  constructor() {
-    this.fetchAvailableComparisons();
+  private initializePromise: Promise<void>|null = null;
+
+  init() {
+    if (!this.initializePromise) {
+      this.initializePromise = this.fetchAvailableFireLimits();
+    }
+
+    return this.initializePromise;
   }
 
-  private fetchAvailableComparisons() {
+  private fetchAvailableFireLimits() {
     this.privateState.isLoading = true;
-    AjaxHelper.fetch<FireLimit[]>({
+    return AjaxHelper.fetch<FireLimit[]|Record<string, FireLimit>>({
       method: 'TagManager.getAvailableTagFireLimits',
       filter_limit: '-1',
     }).then((fireLimits) => {
-      this.privateState.fireLimits = fireLimits;
+      let entities: FireLimit[];
+      if (Array.isArray(fireLimits)) {
+        entities = fireLimits as FireLimit[];
+      } else {
+        entities = Object.values(fireLimits as Record<string, FireLimit>);
+      }
+
+      this.privateState.fireLimits = entities;
     }).finally(() => {
       this.privateState.isLoading = false;
     });
   }
 }
 
-export default lazyInitSingleton(AvailableFireLimitStore) as AvailableFireLimitStore;
+export default new AvailableFireLimitStore();

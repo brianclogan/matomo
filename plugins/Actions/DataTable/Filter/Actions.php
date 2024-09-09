@@ -1,17 +1,17 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Actions\DataTable\Filter;
 
 use Piwik\Common;
-use Piwik\Config;
+use Piwik\Config\GeneralConfig;
 use Piwik\DataTable\BaseFilter;
-use Piwik\DataTable\Row;
 use Piwik\DataTable;
 use Piwik\Plugins\Actions\ArchivingHelper;
 use Piwik\Tracker\Action;
@@ -42,17 +42,17 @@ class Actions extends BaseFilter
             $site = $dataTable->getMetadata('site');
             $urlPrefix = $site ? $site->getMainUrl() : null;
 
-            $defaultActionName = Config::getInstance()->General['action_default_name'];
+            $defaultActionName = GeneralConfig::getConfigValue('action_default_name');
 
             $isPageTitleType = $this->actionType == Action::TYPE_PAGE_TITLE;
 
             // for BC, we read the old style delimiter first (see #1067)
-            $actionDelimiter = @Config::getInstance()->General['action_category_delimiter'];
+            $actionDelimiter = GeneralConfig::getConfigValue('action_category_delimiter');
             if (empty($actionDelimiter)) {
                 if ($isPageTitleType) {
-                    $actionDelimiter = Config::getInstance()->General['action_title_category_delimiter'];
+                    $actionDelimiter = GeneralConfig::getConfigValue('action_title_category_delimiter');
                 } else {
-                    $actionDelimiter = Config::getInstance()->General['action_url_category_delimiter'];
+                    $actionDelimiter = GeneralConfig::getConfigValue('action_url_category_delimiter');
                 }
             }
 
@@ -75,15 +75,15 @@ class Actions extends BaseFilter
                                 $row->setMetadata('url', 'https://' . mb_substr($url, 7 /* = strlen('http://') */));
                             }
                         }
-                    } else if ($folderUrlStart) {
+                    } elseif ($folderUrlStart) {
                         $row->setMetadata('segment', 'pageUrl=^' . urlencode(urlencode($folderUrlStart)));
-                    } else if ($pageTitlePath) {
+                    } elseif ($pageTitlePath) {
                         if ($row->getIdSubDataTable()) {
                             $row->setMetadata('segment', 'pageTitle=^' . urlencode(urlencode(trim($pageTitlePath))));
                         } else {
                             $row->setMetadata('segmentValue', urlencode(trim($pageTitlePath)));
                         }
-                    } else if ($isPageTitleType && !in_array($label, [DataTable::LABEL_SUMMARY_ROW])) {
+                    } elseif ($isPageTitleType && !in_array($label, [DataTable::LABEL_SUMMARY_ROW])) {
                         // for older data w/o page_title_path metadata
                         if ($row->getIdSubDataTable()) {
                             $row->setMetadata('segment', 'pageTitle=^' . urlencode(urlencode(trim($label))));
@@ -94,7 +94,7 @@ class Actions extends BaseFilter
                                 $row->setMetadata('segmentValue', urlencode(trim($label)));
                             }
                         }
-                    } else if ($this->actionType == Action::TYPE_PAGE_URL && $urlPrefix) { // folder for older data w/ no folder URL metadata
+                    } elseif ($this->actionType == Action::TYPE_PAGE_URL && $urlPrefix) { // folder for older data w/ no folder URL metadata
                         if ($label === $notDefinedUrl) {
                             $row->setMetadata('segmentValue', '');
                         } else {
@@ -106,7 +106,7 @@ class Actions extends BaseFilter
                 // remove the default action name 'index' in the end of flattened urls and prepend $actionDelimiter
                 if ($isFlattening) {
                     $label = $row->getColumn('label');
-                    $stringToSearch = $actionDelimiter.$defaultActionName;
+                    $stringToSearch = $actionDelimiter . $defaultActionName;
                     if (substr($label, -strlen($stringToSearch)) == $stringToSearch) {
                         $label = substr($label, 0, -strlen($defaultActionName));
                         $label = rtrim($label, $actionDelimiter) . $actionDelimiter;

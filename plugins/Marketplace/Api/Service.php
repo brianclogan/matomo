@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Marketplace\Api;
 
 use Piwik\Http;
@@ -15,8 +16,8 @@ use Piwik\Http;
  */
 class Service
 {
-    const CACHE_TIMEOUT_IN_SECONDS = 1200;
-    const HTTP_REQUEST_TIMEOUT = 60;
+    public const CACHE_TIMEOUT_IN_SECONDS = 1200;
+    public const HTTP_REQUEST_TIMEOUT = 60;
 
     /**
      * @var string
@@ -79,38 +80,52 @@ class Service
      *
      * @param string $url An absolute URL to the marketplace including domain.
      * @param null|string $destinationPath
-     * @param null|int $timeout  Defaults to 60 seconds see {@link self::HTTP_REQUEST_METHOD}
-     * @return bool|string  Returns the downloaded data or true if a destination path was given.
+     * @param null|int $timeout Defaults to 60 seconds see {@link self::HTTP_REQUEST_METHOD}
+     * @param null|array $postData eg array('email' => 'user@example.org')
+     * @param bool $getExtendedInfo Return the extended response info for the HTTP request.
+     * @return bool|string Returns the downloaded data or true if a destination path was given.
      * @throws \Exception
      */
-    public function download($url, $destinationPath = null, $timeout = null)
-    {
+    public function download(
+        $url,
+        $destinationPath = null,
+        $timeout = null,
+        ?array $postData = null,
+        bool $getExtendedInfo = false
+    ) {
         $method = Http::getTransportMethod();
 
         if (!isset($timeout)) {
             $timeout = static::HTTP_REQUEST_TIMEOUT;
         }
 
-        $post = null;
         if ($this->accessToken) {
-            $post = array('access_token' => $this->accessToken);
+            if (!is_array($postData)) {
+                $postData = [];
+            }
+
+            $postData['access_token'] = $this->accessToken;
         }
 
         $file = Http::ensureDestinationDirectoryExists($destinationPath);
 
-        $response = Http::sendHttpRequestBy($method,
-                                            $url,
-                                            $timeout,
-                                            $userAgent = null,
-                                            $destinationPath,
-                                            $file,
-                                            $followDepth = 0,
-                                            $acceptLanguage = false,
-                                            $acceptInvalidSslCertificate = false,
-                                            $byteRange = false, $getExtendedInfo = false, $httpMethod = 'POST',
-                                            $httpUsername = null, $httpPassword = null, $post);
-
-        return $response;
+        return Http::sendHttpRequestBy(
+            $method,
+            $url,
+            $timeout,
+            $userAgent = null,
+            $destinationPath,
+            $file,
+            $followDepth = 0,
+            $acceptLanguage = false,
+            $acceptInvalidSslCertificate = false,
+            $byteRange = false,
+            $getExtendedInfo,
+            $httpMethod = 'POST',
+            $httpUsername = null,
+            $httpPassword = null,
+            $postData
+        );
     }
 
     /**
@@ -118,32 +133,59 @@ class Service
      *
      * Make sure to call {@link authenticate()} to download paid plugins.
      *
-     * @param string $action  eg 'plugins', 'plugins/$pluginName/info', ...
-     * @param array $params   eg array('sort' => 'alpha')
+     * @param string $action eg 'plugins', 'plugins/$pluginName/info', ...
+     * @param array $params eg array('sort' => 'alpha')
+     * @param null|array $postData eg array('email' => 'user@example.org')
+     * @param bool $getExtendedInfo Return the extended response info for the HTTP request.
+     * @param bool $throwOnApiError Throw if an error was returned from the API or return the result.
+     *                              Will always throw if an HTTP error occurred (unreadable response).
      * @return mixed
      * @throws Service\Exception
      */
-    public function fetch($action, $params)
-    {
+    public function fetch(
+        $action,
+        $params,
+        ?array $postData = null,
+        bool $getExtendedInfo = false,
+        bool $throwOnApiError = true
+    ) {
         $endpoint = sprintf('%s/api/%s/', $this->domain, $this->version);
 
         $query = Http::buildQuery($params);
         $url   = sprintf('%s%s?%s', $endpoint, $action, $query);
 
-        $response = $this->download($url);
+        $response = $this->download($url, null, null, $postData, true);
+        $result = $response['data'] ?? null;
 
-        $result = json_decode($response, true);
-
-        if (is_null($result)) {
-            $message = sprintf('There was an error reading the response from the Marketplace: Please try again later.');
-            throw new Service\Exception($message, Service\Exception::HTTP_ERROR);
+        if (null === $result) {
+            throw new Service\Exception(
+                'There was an error reading the response from the Marketplace. Please try again later.',
+                Service\Exception::HTTP_ERROR
+            );
         }
 
-        if (!empty($result['error'])) {
-            throw new Service\Exception($result['error'], Service\Exception::API_ERROR);
+        if ('' !== $result) {
+            $result = json_decode($result, true);
+
+            if (null === $result) {
+                throw new Service\Exception(
+                    'There was an error reading the response from the Marketplace. Please try again later.',
+                    Service\Exception::HTTP_ERROR
+                );
+            }
+
+            if ($throwOnApiError && !empty($result['error'])) {
+                throw new Service\Exception($result['error'], Service\Exception::API_ERROR);
+            }
         }
 
-        return $result;
+        if (!$getExtendedInfo) {
+            return $result;
+        }
+
+        $response['data'] = $result;
+
+        return $response;
     }
 
     /**
@@ -154,5 +196,4 @@ class Service
     {
         return $this->domain;
     }
-
 }

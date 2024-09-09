@@ -1,9 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\Diagnostics;
@@ -24,5 +25,4 @@ class Menu extends \Piwik\Plugin\Menu
             $menu->addDiagnosticItem('Diagnostics_ConfigFileTitle', $this->urlForAction('configfile'), $orderId = 30);
         }
     }
-
 }

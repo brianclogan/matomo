@@ -40,7 +40,7 @@
             <Field
               uicontrol="text"
               name="type"
-              :model-value="variable.name"
+              :model-value="variable.typeMetadata?.name"
               :disabled="true"
               :inline-help="typeInlineHelp"
               :title="translate('TagManager_Type')"
@@ -55,6 +55,17 @@
               :maxlength="50"
               :title="translate('General_Name')"
               :inline-help="translate('TagManager_VariableNameHelp')"
+            />
+          </div>
+          <div>
+            <Field
+              uicontrol="textarea"
+              name="description"
+              :model-value="variable.description"
+              @update:model-value="variable.description = $event; setValueHasChanged()"
+              :maxlength="1000"
+              :title="translate('General_Description')"
+              :inline-help="translate('TagManager_VariableDescriptionHelp')"
             />
           </div>
           <div
@@ -313,6 +324,8 @@ export default defineComponent({
   },
   emits: ['changeVariable'],
   created() {
+    AvailableComparisonsStore.init();
+
     // needed for suggestNameForType() to make sure it is aware of all names
     VariablesStore.fetchVariablesIfNotLoaded(this.idContainer, this.idContainerVersion);
 
@@ -386,6 +399,7 @@ export default defineComponent({
             this.idContainer,
             this.idContainerVersion,
             this.idVariable,
+            this.isEmbedded,
           ).then((variable) => {
             if (!variable) {
               return;
@@ -472,6 +486,7 @@ export default defineComponent({
       this.variable = {
         idsite: parseInt(`${Matomo.idSite}`, 10),
         name: VariablesStore.suggestNameForType(variableTemplate.name) || '',
+        description: '',
         type: variableTemplate.id,
         idcontainer: this.idContainer,
         idcontainerversion: this.idContainerVersion,
@@ -543,25 +558,21 @@ export default defineComponent({
             return;
           }
 
-          if (Matomo.helper.isAngularRenderingThePage()) {
-            MatomoUrl.updateHash({
-              ...MatomoUrl.hashParsed.value,
-              idVariable,
-            });
-          } else {
-            // TODO: compare w/ original behavior
-            MatomoUrl.updateHash({
-              idVariable,
-            });
-          }
+          MatomoUrl.updateHash({
+            ...MatomoUrl.hashParsed.value,
+            idVariable,
+          });
 
           setTimeout(() => {
             const createdX = translate('TagManager_CreatedX', translate('TagManager_Variable'));
-            const wantToRedeploy = translate(
-              'TagManager_WantToDeployThisChangeCreateVersion',
-              '<a class="createNewVersionLink">',
-              '</a>',
-            );
+            let wantToRedeploy = '';
+            if (this.hasPublishCapability()) {
+              wantToRedeploy = translate(
+                'TagManager_WantToDeployThisChangeCreateVersion',
+                '<a class="createNewVersionLink">',
+                '</a>',
+              );
+            }
 
             this.showNotification(`${createdX} ${wantToRedeploy}`, 'success');
           }, 200);
@@ -606,11 +617,14 @@ export default defineComponent({
         });
 
         const updatedAt = translate('TagManager_UpdatedX', translate('TagManager_Variable'));
-        const wantToDeploy = translate(
-          'TagManager_WantToDeployThisChangeCreateVersion',
-          '<a class="createNewVersionLink">',
-          '</a>',
-        );
+        let wantToDeploy = '';
+        if (this.hasPublishCapability()) {
+          wantToDeploy = translate(
+            'TagManager_WantToDeployThisChangeCreateVersion',
+            '<a class="createNewVersionLink">',
+            '</a>',
+          );
+        }
 
         this.showNotification(`${updatedAt} ${wantToDeploy}`, 'success');
       }).finally(() => {
@@ -623,6 +637,9 @@ export default defineComponent({
         return false;
       }
       return true;
+    },
+    hasPublishCapability() {
+      return Matomo.hasUserCapability('tagmanager_write') && Matomo.hasUserCapability('tagmanager_use_custom_templates');
     },
   },
   computed: {

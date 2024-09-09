@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\View;
 
 use Piwik\Config;
@@ -19,9 +20,9 @@ class SecurityPolicy
     /*
      * Commonly used rules
      */
-    const RULE_DEFAULT = "'self' 'unsafe-inline' 'unsafe-eval'";
-    const RULE_IMG_DEFAULT = "'self' 'unsafe-inline' 'unsafe-eval' data:";
-    const RULE_EMBEDDED_FRAME = "'self' 'unsafe-inline' 'unsafe-eval' data: https: http:";
+    public const RULE_DEFAULT = "'self' 'unsafe-inline' 'unsafe-eval'";
+    public const RULE_IMG_DEFAULT = "'self' 'unsafe-inline' 'unsafe-eval' data:";
+    public const RULE_EMBEDDED_FRAME = "'self' 'unsafe-inline' 'unsafe-eval' data: https: http:";
 
     /**
      * The policies that will generate the CSP header.
@@ -37,7 +38,8 @@ class SecurityPolicy
     /**
      * Constructor.
      */
-    public function __construct(Config $config) {
+    public function __construct(Config $config)
+    {
         $this->policies['default-src'] = self::RULE_DEFAULT;
         $this->policies['img-src'] = self::RULE_IMG_DEFAULT;
 
@@ -51,7 +53,8 @@ class SecurityPolicy
      *
      * @api
      */
-    public function addPolicy($directive, $value) {
+    public function addPolicy($directive, $value)
+    {
         if (isset($this->policies[$directive])) {
             $this->policies[$directive] .= ' ' . $value;
         } else {
@@ -64,7 +67,8 @@ class SecurityPolicy
      *
      * @api
      */
-    public function removeDirective($directive) {
+    public function removeDirective($directive)
+    {
         if (isset($this->policies[$directive])) {
             unset($this->policies[$directive]);
         }
@@ -75,7 +79,8 @@ class SecurityPolicy
      *
      * @api
      */
-    public function overridePolicy($directive, $value) {
+    public function overridePolicy($directive, $value)
+    {
         $this->policies[$directive] = $value;
     }
 
@@ -84,7 +89,8 @@ class SecurityPolicy
      *
      * @api
      */
-    public function disable() {
+    public function disable()
+    {
         $this->cspEnabled = false;
     }
 
@@ -93,7 +99,8 @@ class SecurityPolicy
      *
      * @return string
      */
-    public function createHeaderString() {
+    public function createHeaderString()
+    {
         if (!$this->cspEnabled) {
             return '';
         }
@@ -116,7 +123,8 @@ class SecurityPolicy
      *
      * @api
      */
-    public function allowEmbedPage() {
+    public function allowEmbedPage()
+    {
         $this->overridePolicy('default-src', self::RULE_EMBEDDED_FRAME);
         $this->overridePolicy('img-src', self::RULE_EMBEDDED_FRAME);
         $this->addPolicy('script-src', self::RULE_DEFAULT);

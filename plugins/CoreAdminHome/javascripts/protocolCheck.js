@@ -1,8 +1,8 @@
 /*!
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 $(document).ready(function () {
@@ -32,7 +32,7 @@ $(document).ready(function () {
         '"config/config.ini.php"',
         '"assume_secure_protocol=1"',
         '"[General]"',
-        '<a target="_blank" href="https://matomo.org/faq/how-to-install/faq_98/">',
+        '<a target="_blank" href="' + _pk_externalRawLink('https://matomo.org/faq/how-to-install/faq_98/') + '">',
         '</a>'
     ];
     var message = _pk_translate('CoreAdminHome_ProtocolNotDetectedCorrectly') + " " + _pk_translate('CoreAdminHome_ProtocolNotDetectedCorrectlySolution', params);

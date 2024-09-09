@@ -1,13 +1,13 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
   <div
-    v-if="actualWidget"
-    v-show="showWidget"
+    v-if="actualWidget && showWidget"
     class="matomo-widget"
     :class="{'isFirstWidgetInPage': actualWidget.isFirstInPage}"
     :id="actualWidget.uniqueId"
@@ -39,11 +39,11 @@ import { DeepReadonly, defineComponent } from 'vue';
 import WidgetLoader from '../WidgetLoader/WidgetLoader.vue';
 import WidgetContainer from '../WidgetContainer/WidgetContainer.vue';
 import WidgetByDimensionContainer from '../WidgetByDimensionContainer/WidgetByDimensionContainer.vue';
-import WidgetsStoreInstance, {
-  getWidgetChildren,
+import WidgetsStoreInstance, { getWidgetChildren } from './Widgets.store';
+import {
   Widget as WidgetData,
   WidgetContainer as WidgetDataContainer,
-} from './Widgets.store';
+} from './types';
 import AjaxHelper from '../AjaxHelper/AjaxHelper';
 import ReportMetadataStoreInstance from '../ReportMetadata/ReportMetadata.store';
 import Tooltips from '../Tooltips/Tooltips';
@@ -109,7 +109,7 @@ export default defineComponent({
   setup() {
     function tooltipContent(this: HTMLElement) {
       const $this = window.$(this) as JQuery;
-      if ($this.attr('piwik-field') === '' || $this.hasClass('matomo-form-field')) {
+      if ($this.hasClass('matomo-form-field')) {
         // do not show it for form fields
         return '';
       }

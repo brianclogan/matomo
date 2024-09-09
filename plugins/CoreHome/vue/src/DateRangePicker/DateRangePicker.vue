@@ -1,11 +1,12 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
-  <div>
+  <div class="dateRangePicker">
     <div id="calendarRangeFrom">
       <h6>
         {{ translate('General_DateRangeFrom') }}

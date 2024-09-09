@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugin;
 
 use Piwik\Cache;
@@ -42,7 +43,7 @@ class ReportsProvider
 
         $klassName = $listApiToReport[$api];
 
-        return new $klassName;
+        return new $klassName();
     }
 
     private static function getMapOfModuleActionsToReport()
@@ -58,7 +59,6 @@ class ReportsProvider
         // fallback eg fror API.getReportMetadata and API.getSegmentsMetadata
         $idSites = Common::getRequestVar('idSites', '', $type = null);
         if (!empty($idSites)) {
-
             $transientCache = Cache::getTransientCache();
             $transientCacheKey = 'ReportIdSitesParam';
             if ($transientCache->contains($transientCacheKey)) {
@@ -153,7 +153,7 @@ class ReportsProvider
              *     public function filterReports(&$reports)
              *     {
              *         foreach ($reports as $index => $report) {
-             *              if ($report->getCategory() === 'Actions') {}
+             *              if ($report->getCategoryId() === 'General_Actions') {
              *                  unset($reports[$index]); // remove all reports having this action
              *              }
              *         }
@@ -198,6 +198,16 @@ class ReportsProvider
         return $result;
     }
 
+    /**
+     * @param string|null $catIdA
+     * @param string|null $subcatIdA
+     * @param int $orderA
+     * @param string|null $catIdB
+     * @param string|null $subcatIdB
+     * @param int $orderB
+     *
+     * @return int
+     */
     public function compareCategories($catIdA, $subcatIdA, $orderA, $catIdB, $subcatIdB, $orderB)
     {
         if (!isset($this->categoryList)) {
@@ -209,7 +219,6 @@ class ReportsProvider
 
         // in case there is a category class for both reports
         if (isset($catA) && isset($catB)) {
-
             if ($catA->getOrder() == $catB->getOrder()) {
                 // same category order, compare subcategory order
                 $subcatA = $catA->getSubcategory($subcatIdA);
@@ -228,7 +237,6 @@ class ReportsProvider
                     }
 
                     return $subcatA->getOrder() < $subcatB->getOrder() ? -1 : 1;
-
                 } elseif ($subcatA) {
                     return 1;
                 } elseif ($subcatB) {
@@ -243,7 +251,6 @@ class ReportsProvider
             }
 
             return $catA->getOrder() < $catB->getOrder() ? -1 : 1;
-
         } elseif (isset($catA)) {
             return -1;
         } elseif (isset($catB)) {
@@ -259,7 +266,7 @@ class ReportsProvider
             return $orderA < $orderB ? -1 : 1;
         }
 
-        return strnatcasecmp($catIdA, $catIdB);
+        return strnatcasecmp($catIdA ?? '', $catIdB ?? '');
     }
 
     /**

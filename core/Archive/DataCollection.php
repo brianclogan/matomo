@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Archive;
@@ -21,7 +21,7 @@ use Piwik\DataTable;
  */
 class DataCollection
 {
-    const METADATA_CONTAINER_ROW_KEY = '_metadata';
+    public const METADATA_CONTAINER_ROW_KEY = '_metadata';
 
     /**
      * The archive data, indexed first by site ID and then by period date range. Eg,
@@ -52,7 +52,7 @@ class DataCollection
      * There is a special element '_metadata' in data rows that holds values treated
      * as DataTable metadata.
      */
-    private $data = array();
+    private $data = [];
 
     /**
      * The whole list of metric/record names that were used in the archive query.
@@ -97,12 +97,20 @@ class DataCollection
     private $periods;
 
     /**
+     * The segment that was queried
+     *
+     * @var \Piwik\Segment
+     */
+    private $segment;
+
+    /**
      * Constructor.
      *
      * @param array $dataNames @see $this->dataNames
      * @param string $dataType @see $this->dataType
      * @param array $sitesId @see $this->sitesId
      * @param \Piwik\Period[] $periods @see $this->periods
+     * @param \Piwik\Segment $segment @see $this->segment
      * @param array $defaultRow @see $this->defaultRow
      */
     public function __construct($dataNames, $dataType, $sitesId, $periods, $segment, $defaultRow = null)
@@ -143,11 +151,11 @@ class DataCollection
      * Set data for a specific site & period. If there is no data for the given site ID & period,
      * it is set to the default row.
      *
-     * @param int $idSite
-     * @param string $period eg, '2012-01-01,2012-01-31'
-     * @param string $name eg 'nb_visits'
-     * @param string $value eg 5
-     * @param array  $meta Optional metadata to add to the row
+     * @param int           $idSite
+     * @param string        $period eg, '2012-01-01,2012-01-31'
+     * @param string        $name   eg 'nb_visits'
+     * @param string        $value  eg 5
+     * @param array|null    $meta   Optional metadata to add to the row
      */
     public function set($idSite, $period, $name, $value, array $meta = null)
     {
@@ -229,7 +237,13 @@ class DataCollection
     public function getDataTable($resultIndices)
     {
         $dataTableFactory = new DataTableFactory(
-            $this->dataNames, $this->dataType, $this->sitesId, $this->periods, $this->segment, $this->defaultRow);
+            $this->dataNames,
+            $this->dataType,
+            $this->sitesId,
+            $this->periods,
+            $this->segment,
+            $this->defaultRow
+        );
 
         $index = $this->getIndexedArray($resultIndices);
 
@@ -246,7 +260,13 @@ class DataCollection
     public function getMergedDataTable($resultIndices)
     {
         $dataTableFactory = new DataTableFactory(
-            $this->dataNames, $this->dataType, $this->sitesId, $this->periods, $this->segment, $this->defaultRow);
+            $this->dataNames,
+            $this->dataType,
+            $this->sitesId,
+            $this->periods,
+            $this->segment,
+            $this->defaultRow
+        );
 
         $index = $this->getIndexedArray($resultIndices);
 
@@ -278,7 +298,13 @@ class DataCollection
         $this->checkExpandedMethodPrerequisites();
 
         $dataTableFactory = new DataTableFactory(
-            $this->dataNames, 'blob', $this->sitesId, $this->periods, $this->segment, $this->defaultRow);
+            $this->dataNames,
+            'blob',
+            $this->sitesId,
+            $this->periods,
+            $this->segment,
+            $this->defaultRow
+        );
         $dataTableFactory->expandDataTable($depth, $addMetadataSubTableId);
         $dataTableFactory->useSubtable($idSubTable);
 
@@ -298,7 +324,7 @@ class DataCollection
         if (isset($data[self::METADATA_CONTAINER_ROW_KEY])) {
             return $data[self::METADATA_CONTAINER_ROW_KEY];
         } else {
-            return array();
+            return [];
         }
     }
 
@@ -324,7 +350,7 @@ class DataCollection
      */
     private function createOrderedIndex($metadataNamesToIndexBy)
     {
-        $result = array();
+        $result = [];
 
         if (!empty($metadataNamesToIndexBy)) {
             $metadataName = array_shift($metadataNamesToIndexBy);
@@ -336,7 +362,7 @@ class DataCollection
             }
 
             if (empty($metadataNamesToIndexBy)) {
-                $result = array_fill_keys($indexKeyValues, array());
+                $result = array_fill_keys($indexKeyValues, []);
             } else {
                 foreach ($indexKeyValues as $key) {
                     $result[$key] = $this->createOrderedIndex($metadataNamesToIndexBy);
@@ -364,7 +390,7 @@ class DataCollection
             }
 
             if (!isset($currentLevel[$key])) {
-                $currentLevel[$key] = array();
+                $currentLevel[$key] = [];
             }
 
             $currentLevel = & $currentLevel[$key];
@@ -373,45 +399,14 @@ class DataCollection
         $currentLevel = $row;
     }
 
-    public function forEachBlobExpanded($callable, $idSubTable = null, $depth = null, $addMetadataSubTableId = false)
-    {
-        $this->checkExpandedMethodPrerequisites();
-
-        $dataTableFactory = new DataTableFactory(
-            $this->dataNames, 'blob', $this->sitesId, $this->periods, $this->segment, $this->defaultRow);
-        $dataTableFactory->expandDataTable($depth, $addMetadataSubTableId);
-        $dataTableFactory->useSubtable($idSubTable);
-
-        foreach ($this->data as $idSite => $periods) {
-            foreach ($periods as $periodRange => $data) {
-                // FIXME: This hack works around a strange bug that occurs when getting
-                //         archive IDs through ArchiveProcessing instances. When a table
-                //         does not already exist, for some reason the archive ID for
-                //         today (or from two days ago) will be added to the Archive
-                //         instances list. The Archive instance will then select data
-                //         for periods outside of the requested set.
-                //         working around the bug here, but ideally, we need to figure
-                //         out why incorrect idarchives are being selected.
-                if (empty($this->periods[$periodRange])) {
-                    continue;
-                }
-                $tableMetadata = $dataTableFactory->getTableMetadataFor($idSite, $this->periods[$periodRange]);
-
-                $callable($data, $dataTableFactory, $tableMetadata);
-            }
-        }
-    }
-
     private function checkExpandedMethodPrerequisites()
     {
         if ($this->dataType != 'blob') {
-            throw new Exception("DataCollection: cannot call getExpandedDataTable with "
-                . "{$this->dataType} data types. Only works with blob data.");
+            throw new Exception("DataCollection: cannot call getExpandedDataTable with {$this->dataType} data types. Only works with blob data.");
         }
 
         if (count($this->dataNames) !== 1) {
-            throw new Exception("DataCollection: cannot call getExpandedDataTable with "
-                . "more than one record.");
+            throw new Exception("DataCollection: cannot call getExpandedDataTable with more than one record.");
         }
     }
 }

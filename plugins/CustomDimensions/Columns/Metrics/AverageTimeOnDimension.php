@@ -1,14 +1,15 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\CustomDimensions\Columns\Metrics;
 
-use Piwik\DataTable\Row;
-use Piwik\Metrics\Formatter;
+use Piwik\Columns\Dimension;
 use Piwik\Piwik;
 use Piwik\Plugins\Actions\Columns\Metrics\AverageTimeOnPage;
 
@@ -31,4 +32,8 @@ class AverageTimeOnDimension extends AverageTimeOnPage
         return Piwik::translate('CustomDimensions_ColumnAvgTimeOnDimension');
     }
 
+    public function getSemanticType(): ?string
+    {
+        return Dimension::TYPE_DURATION_S;
+    }
 }

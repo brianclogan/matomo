@@ -1,9 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Tracker;
@@ -48,6 +49,8 @@ class TrackerCodeGenerator
      * @param bool $trackNoScript
      * @param bool $crossDomain
      * @param bool $excludedQueryParams
+     * @param array $excludedReferrers
+     * @param bool $disableCampaignParameters
      * @return string Javascript code.
      */
     public function generate(
@@ -64,7 +67,9 @@ class TrackerCodeGenerator
         $disableCookies = false,
         $trackNoScript = false,
         $crossDomain = false,
-        $excludedQueryParams = false
+        $excludedQueryParams = false,
+        $excludedReferrers = [],
+        $disableCampaignParameters = false
     ) {
         // changes made to this code should be mirrored in plugins/CoreAdminHome/javascripts/jsTrackingGenerator.js var generateJsCode
 
@@ -95,7 +100,7 @@ class TrackerCodeGenerator
         if (Manager::getInstance()->isPluginActivated('CustomVariables')) {
             $maxCustomVars = CustomVariables::getNumUsableCustomVariables();
 
-            if ($visitorCustomVariables && count($visitorCustomVariables) > 0) {
+            if (is_array($visitorCustomVariables) && count($visitorCustomVariables) > 0) {
                 $options .= '  // you can set up to ' . $maxCustomVars . ' custom variables for each visitor' . "\n";
                 $index   = 1;
                 foreach ($visitorCustomVariables as $visitorCustomVariable) {
@@ -112,7 +117,7 @@ class TrackerCodeGenerator
                     );
                 }
             }
-            if ($pageCustomVariables && count($pageCustomVariables) > 0) {
+            if (is_array($pageCustomVariables) && count($pageCustomVariables) > 0) {
                 $options .= '  // you can set up to ' . $maxCustomVars . ' custom variables for each action (page view, download, click, site search)' . "\n";
                 $index   = 1;
                 foreach ($pageCustomVariables as $pageCustomVariable) {
@@ -130,25 +135,39 @@ class TrackerCodeGenerator
             }
         }
 
+        if ($disableCampaignParameters) {
+            $options .= '  _paq.push(["disableCampaignParameters"]);' . "\n";
+        }
+
         if ($customCampaignNameQueryParam) {
             $options .= '  _paq.push(["setCampaignNameKey", '
                 . json_encode($customCampaignNameQueryParam) . ']);' . "\n";
         }
+
         if ($customCampaignKeywordParam) {
             $options .= '  _paq.push(["setCampaignKeywordKey", '
                 . json_encode($customCampaignKeywordParam) . ']);' . "\n";
         }
+
         if ($doNotTrack) {
             $options .= '  _paq.push(["setDoNotTrack", true]);' . "\n";
         }
 
         // Add any excluded query parameters to the tracker options
         if ($excludedQueryParams) {
-
             if (!is_array($excludedQueryParams)) {
-                $excludedQueryParams = explode(',',$excludedQueryParams);
+                $excludedQueryParams = explode(',', $excludedQueryParams);
             }
-            $options .= '  _paq.push(["setExcludedQueryParams", '.json_encode($excludedQueryParams).']);'."\n";
+            $options .= '  _paq.push(["setExcludedQueryParams", ' . json_encode($excludedQueryParams) . ']);' . "\n";
+        }
+
+        // Add any ignored referrer to the tracker options
+        if ($excludedReferrers) {
+            if (!is_array($excludedReferrers)) {
+                $excludedReferrers = explode(',', $excludedReferrers);
+            }
+
+            $options .= '  _paq.push(["setExcludedReferrers", ' . json_encode($excludedReferrers) . ']);' . "\n";
         }
 
         if ($disableCookies) {
@@ -172,9 +191,17 @@ class TrackerCodeGenerator
             $codeImpl['protocol'] = 'https://';
         }
 
-        $parameters = compact('mergeSubdomains', 'groupPageTitlesByDomain', 'mergeAliasUrls', 'visitorCustomVariables',
-            'pageCustomVariables', 'customCampaignNameQueryParam', 'customCampaignKeywordParam',
-            'doNotTrack');
+        $parameters = compact(
+            'mergeSubdomains',
+            'groupPageTitlesByDomain',
+            'mergeAliasUrls',
+            'visitorCustomVariables',
+            'pageCustomVariables',
+            'customCampaignNameQueryParam',
+            'customCampaignKeywordParam',
+            'doNotTrack',
+            'disableCampaignParameters'
+        );
 
         /**
          * Triggered when generating JavaScript tracking code server side. Plugins can use
@@ -264,7 +291,7 @@ class TrackerCodeGenerator
             if (empty($site_url)) {
                 continue;
             }
-            
+
             $referrerParsed = parse_url($site_url);
 
             if (!isset($firstHost) && isset($referrerParsed['host'])) {
@@ -279,7 +306,7 @@ class TrackerCodeGenerator
             if (!empty($referrerParsed['path'])) {
                 $url .= $referrerParsed['path'];
             }
-            
+
             if (!empty($url)) {
                 $websiteHosts[] = $url;
             }

@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Login;
 
 use Exception;
@@ -13,8 +14,6 @@ use Piwik\Auth as AuthInterface;
 use Piwik\AuthResult;
 use Piwik\Config;
 use Piwik\Cookie;
-use Piwik\Db;
-use Piwik\Log;
 use Piwik\Piwik;
 use Piwik\Plugins\UsersManager\API as UsersManagerAPI;
 use Piwik\ProxyHttp;
@@ -65,9 +64,12 @@ class SessionInitializer
      * @param int|null $authCookieValidTime
      * @param string|null $authCookiePath
      */
-    public function __construct($usersManagerAPI = null, $authCookieName = null, $authCookieValidTime = null,
-                                $authCookiePath = null)
-    {
+    public function __construct(
+        $usersManagerAPI = null,
+        $authCookieName = null,
+        $authCookieValidTime = null,
+        $authCookiePath = null
+    ) {
         if (empty($usersManagerAPI)) {
             $usersManagerAPI = UsersManagerAPI::getInstance();
         }
@@ -104,12 +106,10 @@ class SessionInitializer
         $authResult = $this->doAuthenticateSession($auth);
 
         if (!$authResult->wasAuthenticationSuccessful()) {
-
             Piwik::postEvent('Login.authenticate.failed', array($auth->getLogin()));
 
             $this->processFailedSession($rememberMe);
         } else {
-
             Piwik::postEvent('Login.authenticate.successful', array($auth->getLogin()));
 
             $this->processSuccessfulSession($authResult, $rememberMe);

@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\VisitTime;
@@ -15,6 +15,10 @@ use Piwik\Piwik;
 
 function getTimeLabel($label)
 {
+    if (!is_numeric($label)) {
+        return Piwik::translate('General_Unknown');
+    }
+
     $time = mktime($label);
     if (empty($time)) {
         return Piwik::translate('General_Unknown');

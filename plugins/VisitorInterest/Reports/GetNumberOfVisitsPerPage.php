@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\VisitorInterest\Reports;
 
 use Piwik\Piwik;
@@ -66,5 +67,4 @@ class GetNumberOfVisitsPerPage extends Base
             $view->config->max_graph_elements = 10;
         }
     }
-
 }

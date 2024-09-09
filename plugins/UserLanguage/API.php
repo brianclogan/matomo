@@ -1,16 +1,15 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\UserLanguage;
 
 use Piwik\Archive;
-use Piwik\DataTable;
-use Piwik\Metrics;
 use Piwik\Piwik;
 
 /**
@@ -39,7 +38,7 @@ class API extends \Piwik\Plugin\API
     {
         $dataTable = $this->getDataTable(Archiver::LANGUAGE_RECORD_NAME, $idSite, $period, $date, $segment);
         $dataTable->filter('GroupBy', array('label', __NAMESPACE__ . '\groupByLangCallback'));
-        $dataTable->filter('ColumnCallbackAddMetadata', array('label', 'segment', function($label) {
+        $dataTable->filter('ColumnCallbackAddMetadata', array('label', 'segment', function ($label) {
             if (empty($label) || $label == 'xx') {
                 return 'languageCode==xx';
             }

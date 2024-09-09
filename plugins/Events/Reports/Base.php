@@ -1,19 +1,22 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Events\Reports;
 
+use Piwik\DataTable;
 use Piwik\EventDispatcher;
 use Piwik\Common;
 use Piwik\Plugin\ViewDataTable;
 use Piwik\Plugins\Events\API;
 use Piwik\Plugins\Events\Columns\Metrics\AverageEventValue;
 use Piwik\Report\ReportWidgetFactory;
+use Piwik\Url;
 use Piwik\Widget\WidgetsList;
 
 abstract class Base extends \Piwik\Plugin\Report
@@ -22,7 +25,7 @@ abstract class Base extends \Piwik\Plugin\Report
     {
         $this->categoryId = 'General_Actions';
         $this->subcategoryId = 'Events_Events';
-        $this->onlineGuideUrl = 'https://matomo.org/docs/event-tracking/';
+        $this->onlineGuideUrl = Url::addCampaignParametersToMatomoLink('https://matomo.org/docs/event-tracking/');
 
         $this->processedMetrics = array(
             new AverageEventValue()
@@ -66,10 +69,10 @@ abstract class Base extends \Piwik\Plugin\Report
             return;
         }
 
-        $out = '';
-        EventDispatcher::getInstance()->postEvent('Template.afterEventsReport', array(&$out));
-        $view->config->show_footer_message = $out;
+        $view->config->filters[] = function (DataTable $dataTable) use ($view) {
+            $out = '';
+            EventDispatcher::getInstance()->postEvent('Template.afterEventsReport', [&$out, $dataTable]);
+            $view->config->show_footer_message = $out;
+        };
     }
-
-
 }

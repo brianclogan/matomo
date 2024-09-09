@@ -1,17 +1,19 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Actions\Reports;
 
 use Piwik\Common;
 use Piwik\Piwik;
 use Piwik\Plugin\ViewDataTable;
 use Piwik\Plugins\Actions\Actions;
+use Piwik\Url;
 
 abstract class SiteSearchBase extends Base
 {
@@ -19,7 +21,7 @@ abstract class SiteSearchBase extends Base
     {
         parent::init();
         $this->categoryId = 'General_Actions';
-        $this->onlineGuideUrl = 'https://matomo.org/docs/site-search/';
+        $this->onlineGuideUrl = Url::addCampaignParametersToMatomoLink('https://matomo.org/docs/site-search/');
     }
 
     public function isEnabled()

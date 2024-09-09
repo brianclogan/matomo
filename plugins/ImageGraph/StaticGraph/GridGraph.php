@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\ImageGraph\StaticGraph;
 
 use Piwik\Exception\InvalidDimensionException;
@@ -16,35 +17,35 @@ use Piwik\Plugins\ImageGraph\StaticGraph;
  */
 abstract class GridGraph extends StaticGraph
 {
-    const GRAPHIC_COLOR_KEY = 'GRAPHIC_COLOR';
+    public const GRAPHIC_COLOR_KEY = 'GRAPHIC_COLOR';
 
-    const TRUNCATION_TEXT = '...';
+    public const TRUNCATION_TEXT = '...';
 
-    const DEFAULT_TICK_ALPHA = 20;
-    const DEFAULT_SERIE_WEIGHT = 0.5;
-    const LEFT_GRID_MARGIN = 4;
-    const BOTTOM_GRID_MARGIN = 10;
-    const TOP_GRID_MARGIN_HORIZONTAL_GRAPH = 1;
-    const RIGHT_GRID_MARGIN_HORIZONTAL_GRAPH = 4;
-    const OUTER_TICK_WIDTH = 5;
-    const INNER_TICK_WIDTH = 0;
-    const LABEL_SPACE_VERTICAL_GRAPH = 7;
+    public const DEFAULT_TICK_ALPHA = 20;
+    public const DEFAULT_SERIE_WEIGHT = 0.5;
+    public const LEFT_GRID_MARGIN = 20;
+    public const BOTTOM_GRID_MARGIN = 10;
+    public const TOP_GRID_MARGIN_HORIZONTAL_GRAPH = 10;
+    public const RIGHT_GRID_MARGIN_HORIZONTAL_GRAPH = 20;
+    public const OUTER_TICK_WIDTH = 5;
+    public const INNER_TICK_WIDTH = 0;
+    public const LABEL_SPACE_VERTICAL_GRAPH = 7;
 
-    const HORIZONTAL_LEGEND_TOP_MARGIN = 5;
-    const HORIZONTAL_LEGEND_LEFT_MARGIN = 10;
-    const HORIZONTAL_LEGEND_BOTTOM_MARGIN = 10;
-    const VERTICAL_LEGEND_TOP_MARGIN = 8;
-    const VERTICAL_LEGEND_LEFT_MARGIN = 6;
-    const VERTICAL_LEGEND_MAX_WIDTH_PCT = 0.70;
-    const LEGEND_LINE_BULLET_WIDTH = 14;
-    const LEGEND_BOX_BULLET_WIDTH = 5;
-    const LEGEND_BULLET_RIGHT_PADDING = 5;
-    const LEGEND_ITEM_HORIZONTAL_INTERSTICE = 6;
-    const LEGEND_ITEM_VERTICAL_INTERSTICE_OFFSET = 4;
-    const LEGEND_SHADOW_OPACITY = 25;
-    const LEGEND_VERTICAL_SHADOW_PADDING = 3;
-    const LEGEND_HORIZONTAL_SHADOW_PADDING = 2;
-    const PCHART_HARD_CODED_VERTICAL_LEGEND_INTERSTICE = 5;
+    public const HORIZONTAL_LEGEND_TOP_MARGIN = 5;
+    public const HORIZONTAL_LEGEND_LEFT_MARGIN = 10;
+    public const HORIZONTAL_LEGEND_BOTTOM_MARGIN = 10;
+    public const VERTICAL_LEGEND_TOP_MARGIN = 10;
+    public const VERTICAL_LEGEND_LEFT_MARGIN = 6;
+    public const VERTICAL_LEGEND_MAX_WIDTH_PCT = 0.70;
+    public const LEGEND_LINE_BULLET_WIDTH = 14;
+    public const LEGEND_BOX_BULLET_WIDTH = 5;
+    public const LEGEND_BULLET_RIGHT_PADDING = 5;
+    public const LEGEND_ITEM_HORIZONTAL_INTERSTICE = 6;
+    public const LEGEND_ITEM_VERTICAL_INTERSTICE_OFFSET = 4;
+    public const LEGEND_SHADOW_OPACITY = 25;
+    public const LEGEND_VERTICAL_SHADOW_PADDING = 3;
+    public const LEGEND_HORIZONTAL_SHADOW_PADDING = 2;
+    public const PCHART_HARD_CODED_VERTICAL_LEGEND_INTERSTICE = 5;
 
     protected function getDefaultColors()
     {
@@ -64,8 +65,7 @@ abstract class GridGraph extends StaticGraph
         $horizontalGraph,
         $showTicks,
         $verticalLegend
-    )
-    {
+    ) {
         $this->initpData();
 
         $colorIndex = 1;
@@ -117,7 +117,8 @@ abstract class GridGraph extends StaticGraph
                 }
             }
 
-            if ($this->forceSkippedLabels
+            if (
+                $this->forceSkippedLabels
                 && $skippedLabels
                 && $skippedLabels < $this->forceSkippedLabels
                 && $abscissaSeriesCount > $this->forceSkippedLabels + 1
@@ -134,7 +135,7 @@ abstract class GridGraph extends StaticGraph
             $currentMax = $this->pData->getMax($column);
 
             if ($currentMax > $maxOrdinateValue) {
-                $maxOrdinateValue = $currentMax;
+                $maxOrdinateValue = ceil($currentMax);
             }
         }
 
@@ -358,7 +359,7 @@ abstract class GridGraph extends StaticGraph
         if ($horizontalGraph) {
             $topMargin = $ordinateMaxHeight + self::TOP_GRID_MARGIN_HORIZONTAL_GRAPH + self::OUTER_TICK_WIDTH;
         } else {
-            $topMargin = $ordinateMaxHeight / 2;
+            $topMargin = $ordinateMaxHeight / 2 + self::TOP_GRID_MARGIN_HORIZONTAL_GRAPH;
         }
 
         if ($this->showLegend && !$verticalLegend) {
@@ -398,7 +399,7 @@ abstract class GridGraph extends StaticGraph
             list($ordinateMaxWidth, $ordinateMaxHeight) = $this->getMaximumTextWidthHeight($this->ordinateSeries);
             return self::RIGHT_GRID_MARGIN_HORIZONTAL_GRAPH + $ordinateMaxWidth;
         } else {
-            return 0;
+            return self::RIGHT_GRID_MARGIN_HORIZONTAL_GRAPH;
         }
     }
 
@@ -424,69 +425,69 @@ abstract class GridGraph extends StaticGraph
     // e.g: it is not possible to remove the box border & the square icon
     // it would require modifying pChart code base which we try to avoid
     // see https://github.com/piwik/piwik/issues/3396
-//	protected function displayMinMaxValues()
-//	{
-//		if ($displayMinMax)
-//		{
-//			// when plotting multiple metrics, display min & max on both series
-//			// to fix: in vertical bars, labels are hidden when multiple metrics are plotted, hence the restriction on count($this->ordinateSeries) == 1
-//			if ($this->multipleMetrics && count($this->ordinateSeries) == 1)
-//			{
-//				$colorIndex = 1;
-//				foreach($this->ordinateSeries as $column => $data)
-//				{
-//					$color = $this->colors[self::GRAPHIC_COLOR_KEY . $colorIndex++];
+//    protected function displayMinMaxValues()
+//    {
+//        if ($displayMinMax)
+//        {
+//            // when plotting multiple metrics, display min & max on both series
+//            // to fix: in vertical bars, labels are hidden when multiple metrics are plotted, hence the restriction on count($this->ordinateSeries) == 1
+//            if ($this->multipleMetrics && count($this->ordinateSeries) == 1)
+//            {
+//                $colorIndex = 1;
+//                foreach($this->ordinateSeries as $column => $data)
+//                {
+//                    $color = $this->colors[self::GRAPHIC_COLOR_KEY . $colorIndex++];
 //
-//					$this->pImage->writeLabel(
-//						$column,
-//						self::locateMinMaxValue($data),
-//						$Format = array(
-//							'NoTitle' => true,
-//							'DrawPoint' => false,
-//							'DrawSerieColor' => true,
-//							'TitleMode' => LABEL_TITLE_NOBACKGROUND,
-//							'GradientStartR' => $color['R'],
-//							'GradientStartG' => $color['G'],
-//							'GradientStartB' => $color['B'],
-//							'GradientEndR' => 255,
-//							'GradientEndG' => 255,
-//							'GradientEndB' => 255,
-//							'BoxWidth' => 0,
-//							'VerticalMargin' => 9,
-//							'HorizontalMargin' => 7,
-//						)
-//					);
-//				}
-//			}
-//			else
-//			{
-//				// display only one min & max label
-//			}
-//		}
-//	}
+//                    $this->pImage->writeLabel(
+//                        $column,
+//                        self::locateMinMaxValue($data),
+//                        $Format = array(
+//                            'NoTitle' => true,
+//                            'DrawPoint' => false,
+//                            'DrawSerieColor' => true,
+//                            'TitleMode' => LABEL_TITLE_NOBACKGROUND,
+//                            'GradientStartR' => $color['R'],
+//                            'GradientStartG' => $color['G'],
+//                            'GradientStartB' => $color['B'],
+//                            'GradientEndR' => 255,
+//                            'GradientEndG' => 255,
+//                            'GradientEndB' => 255,
+//                            'BoxWidth' => 0,
+//                            'VerticalMargin' => 9,
+//                            'HorizontalMargin' => 7,
+//                        )
+//                    );
+//                }
+//            }
+//            else
+//            {
+//                // display only one min & max label
+//            }
+//        }
+//    }
 
-//	protected static function locateMinMaxValue($data)
-//	{
-//		$firstValue = $data[0];
-//		$minValue = $firstValue;
-//		$minValueIndex = 0;
-//		$maxValue = $firstValue;
-//		$maxValueIndex = 0;
-//		foreach($data as $index => $value)
-//		{
-//			if ($value > $maxValue)
-//			{
-//				$maxValue = $value;
-//				$maxValueIndex = $index;
-//			}
+//    protected static function locateMinMaxValue($data)
+//    {
+//        $firstValue = $data[0];
+//        $minValue = $firstValue;
+//        $minValueIndex = 0;
+//        $maxValue = $firstValue;
+//        $maxValueIndex = 0;
+//        foreach($data as $index => $value)
+//        {
+//            if ($value > $maxValue)
+//            {
+//                $maxValue = $value;
+//                $maxValueIndex = $index;
+//            }
 //
-//			if ($value < $minValue)
-//			{
-//				$minValue = $value;
-//				$minValueIndex = $index;
-//			}
-//		}
+//            if ($value < $minValue)
+//            {
+//                $minValue = $value;
+//                $minValueIndex = $index;
+//            }
+//        }
 //
-//		return array($minValueIndex, $maxValueIndex);
-//	}
+//        return array($minValueIndex, $maxValueIndex);
+//    }
 }

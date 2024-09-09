@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\Installation;
@@ -21,7 +21,7 @@ use Piwik\Plugins\SitesManager\API;
 use Piwik\QuickForm2;
 
 /**
- *
+ * phpcs:ignoreFile PSR1.Classes.ClassDeclaration.MultipleClasses
  */
 class FormFirstWebsiteSetup extends QuickForm2
 {
@@ -32,7 +32,7 @@ class FormFirstWebsiteSetup extends QuickForm2
 
     function init()
     {
-        HTML_QuickForm2_Factory::registerRule('checkTimezone', 'Piwik\Plugins\Installation\Rule_isValidTimezone');
+        HTML_QuickForm2_Factory::registerRule('checkTimezone', 'Piwik\Plugins\Installation\RuleIsValidTimezone');
 
         $urlExample = 'https://example.org';
         $javascriptOnClickUrlExample = "javascript:if (this.value=='$urlExample'){this.value='https://';} this.style.color='black';";
@@ -86,7 +86,7 @@ class FormFirstWebsiteSetup extends QuickForm2
  * Timezone validation rule
  *
  */
-class Rule_isValidTimezone extends HTML_QuickForm2_Rule
+class RuleIsValidTimezone extends HTML_QuickForm2_Rule
 {
     function validateOwner()
     {

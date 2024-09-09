@@ -1,16 +1,16 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\CustomDimensions\Dao;
 
 use Piwik\Common;
 use Piwik\DataAccess\TableMetadata;
-use Piwik\DataTable;
 use Piwik\Db;
 use Piwik\DbHelper;
 use Piwik\Plugins\CustomDimensions\CustomDimensions;
@@ -18,7 +18,7 @@ use Exception;
 
 class LogTable
 {
-    const DEFAULT_CUSTOM_DIMENSION_COUNT = 5;
+    public const DEFAULT_CUSTOM_DIMENSION_COUNT = 5;
 
     private $scope = null;
     private $table = null;
@@ -197,6 +197,4 @@ class LogTable
             Db::exec($sql);
         }
     }
-
 }
-

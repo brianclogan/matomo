@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 use Piwik\Container\StaticContainer;
@@ -150,8 +151,9 @@ class Filesystem
             @exec($command, $output, $returnCode);
 
             // check if filesystem is NFS
-            if ($returnCode == 0
-                && count($output) > 1
+            if (
+                $returnCode == 0
+                && is_array($output) && count($output) > 1
                 && preg_match('/\bnfs\d?\b/', implode("\n", $output))
             ) {
                 return true;
@@ -164,9 +166,11 @@ class Filesystem
                 $commandFailed = (false !== strpos($output, "no file systems processed"));
                 $output = trim($output);
                 $outputArray = explode("\n", $output);
-                if (!$commandFailed
+                if (
+                    !$commandFailed
                     && count($outputArray) > 1
-                    && preg_match('/\bnfs\d?\b/', $output)) {
+                    && preg_match('/\bnfs\d?\b/', $output)
+                ) {
                     // check if filesystem is NFS
                     return true;
                 }
@@ -364,8 +368,10 @@ class Filesystem
 
         $path_parts = pathinfo($file);
 
-        if (!empty($path_parts['extension'])
-            && in_array($path_parts['extension'], $phpExtensions)) {
+        if (
+            !empty($path_parts['extension'])
+            && in_array($path_parts['extension'], $phpExtensions)
+        ) {
             return true;
         }
 
@@ -501,7 +507,7 @@ class Filesystem
             apc_clear_cache(); // clear the system (aka 'opcode') cache
         }
 
-        if (function_exists('opcache_reset')) {
+        if (function_exists('opcache_reset') && Config::getInstance()->Cache['enable_opcache_reset'] !== 0) {
             @opcache_reset(); // reset the opcode cache (php 5.5.0+)
         }
 
@@ -566,12 +572,12 @@ class Filesystem
      *
      * @return bool
      */
-    public static function isFileSystemCaseInsensitive() : bool
+    public static function isFileSystemCaseInsensitive(): bool
     {
         $testFileName = 'caseSensitivityTest.txt';
         $pathTmp = StaticContainer::get('path.tmp');
-        @file_put_contents($pathTmp.'/'.$testFileName, 'Nothing to see here.');
-        if (\file_exists($pathTmp.'/'.strtolower($testFileName))) {
+        @file_put_contents($pathTmp . '/' . $testFileName, 'Nothing to see here.');
+        if (\file_exists($pathTmp . '/' . strtolower($testFileName))) {
              // Wrote caseSensitivityTest.txt but casesensitivitytest.txt exists, so case insensitive
             return true;
         }

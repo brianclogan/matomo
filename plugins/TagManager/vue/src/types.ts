@@ -5,8 +5,14 @@
  * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
-import { IScope } from 'angular';
 import { DeepReadonly } from 'vue';
+
+export interface InstallInstructions {
+  description: string;
+  embedCode: string;
+  helpUrl: string;
+  pageViewTriggerEditUrl: string;
+}
 
 // variable types
 export interface LookupTableEntry {
@@ -41,6 +47,7 @@ export interface Variable {
   idvariable?: number;
   lookup_table: LookupTable;
   name: string;
+  description: string;
   status?: string;
   type: string;
   updated_date?: string;
@@ -124,6 +131,7 @@ export interface Trigger {
   idsite: number;
   idtrigger?: number;
   name: string;
+  description: string;
   status?: string;
   type: string;
   typeMetadata: TriggerType;
@@ -169,6 +177,7 @@ export interface Tag {
   idsite: number;
   idtag: number;
   name: string;
+  description: string;
   priority: number;
   start_date: null|string;
   status: string;
@@ -206,9 +215,21 @@ export interface Release {
   version_name: string;
 }
 
+export interface Release {
+  environment: string;
+  idcontainer: string;
+  idcontainerrelease: number;
+  idcontainerversion: number;
+  idsite: number;
+  release_date: string;
+  release_date_pretty: string;
+  release_login: string;
+  status: string;
+}
+
 export interface Version {
-  created_date: string;
-  created_date_pretty: string;
+  created_date?: string;
+  created_date_pretty?: string;
   description: string;
   environments: string[];
   idcontainer: string;
@@ -217,8 +238,15 @@ export interface Version {
   name: string;
   revision: number;
   status: string;
-  updated_date: string;
-  updated_date_pretty: string;
+  updated_date?: string;
+  updated_date_pretty?: string;
+  releases: Release[];
+}
+
+export interface ExportedVersion extends Version {
+  tags: Tag[];
+  triggers: Trigger[];
+  variables: Variable[];
 }
 
 export interface Container {
@@ -226,6 +254,7 @@ export interface Container {
   created_date: string;
   created_date_pretty: string;
   description: string;
+  ignoreGtmDataLayer: boolean;
   draft: Draft;
   idcontainer: string;
   idsite: string|number;
@@ -240,7 +269,6 @@ export interface Container {
 // temporary, will be converted later
 interface TagManagerHelper {
   editVariable(
-    $scope: IScope|null,
     idContainer: string,
     idContainerVersion: number,
     idVariable: number,
@@ -251,12 +279,19 @@ interface TagManagerHelper {
   insertTextSnippetAtElement(inputField: HTMLTextAreaElement|HTMLInputElement, textToAdd: string): void;
 
   editTrigger(
-    $scope: IScope|null,
     idContainer: string,
     idContainerVersion: number,
     idTag: number,
     callback: (trigger: Trigger) => void,
   ): void;
+
+  importVersion(idContainer: string): void;
+
+  enablePreviewMode(idContainer: string, idContainerVersion: number): void;
+
+  showInstallCode(idContainer: string): void;
+
+  truncateText(text: string, maxLength: number): string;
 }
 
 declare global {

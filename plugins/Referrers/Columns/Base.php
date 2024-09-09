@@ -1,14 +1,16 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Referrers\Columns;
 
 use Piwik\Common;
+use Piwik\Exception\UnexpectedWebsiteFoundException;
 use Piwik\Piwik;
 use Piwik\Plugin\Dimension\VisitDimension;
 use Piwik\Plugins\Referrers\SearchEngine as SearchEngineDetection;
@@ -18,12 +20,10 @@ use Piwik\Tracker\Cache;
 use Piwik\Tracker\PageUrl;
 use Piwik\Tracker\Request;
 use Piwik\Tracker\Visitor;
-use Piwik\Tracker\Action;
 use Piwik\UrlHelper;
 
 abstract class Base extends VisitDimension
 {
-
     // @see detect*() referrer methods
     protected $typeReferrerAnalyzed;
     protected $nameReferrerAnalyzed;
@@ -33,10 +33,13 @@ abstract class Base extends VisitDimension
     protected $referrerUrlParse;
     protected $currentUrlParse;
     protected $idsite;
+    protected $campaignNames;
+    protected $campaignKeywords;
 
     // Used to prefix when a adsense referrer is detected
-    const LABEL_PREFIX_ADWORDS_KEYWORD = '(adwords) ';
-    const LABEL_ADWORDS_NAME = 'AdWords';
+    public const LABEL_PREFIX_ADWORDS_KEYWORD = '(adwords) ';
+    public const LABEL_ADWORDS_NAME = 'AdWords';
+
 
     /**
      * Returns an array containing the following information:
@@ -71,19 +74,43 @@ abstract class Base extends VisitDimension
     {
         $this->idsite = $idSite;
 
-        // default values for the referer_* fields
+        $currentUrl = PageUrl::cleanupUrl($currentUrl);
+        $this->currentUrlParse = @parse_url($currentUrl);
+
+        // skip any referrer detection if parameter to exclude the referrer is found
+        if (
+            !empty($this->currentUrlParse['query'])
+            && (
+                UrlHelper::getParameterFromQueryString($this->currentUrlParse['query'], 'ignore_referrer') === '1'
+                || UrlHelper::getParameterFromQueryString($this->currentUrlParse['query'], 'ignore_referer') === '1'
+            )
+        ) {
+            return [
+                'referer_type'    => Common::REFERRER_TYPE_DIRECT_ENTRY,
+                'referer_name'    => '',
+                'referer_keyword' => '',
+                'referer_url'     => '',
+            ];
+        }
+
+
         $referrerUrl = Common::unsanitizeInputValue($referrerUrl);
-        if (!empty($referrerUrl)
-            && !UrlHelper::isLookLikeUrl($referrerUrl)
+
+        // Ignore referrer url if it doesn't look like a URL or is excluded in settings
+        if (
+            !empty($referrerUrl)
+            && (
+                !UrlHelper::isLookLikeUrl($referrerUrl)
+                || $this->isReferrerExcluded($referrerUrl)
+            )
         ) {
             $referrerUrl = '';
         }
 
-        $currentUrl = PageUrl::cleanupUrl($currentUrl);
 
+        // default values for the referer_* fields
         $this->referrerUrl = $referrerUrl;
         $this->referrerUrlParse = @parse_url($this->referrerUrl);
-        $this->currentUrlParse = @parse_url($currentUrl);
         $this->typeReferrerAnalyzed = Common::REFERRER_TYPE_DIRECT_ENTRY;
         $this->nameReferrerAnalyzed = '';
         $this->keywordReferrerAnalyzed = '';
@@ -96,7 +123,8 @@ abstract class Base extends VisitDimension
         $referrerDetected = $this->detectReferrerCampaign($request, $visitor);
 
         if (!$referrerDetected) {
-            if ($this->detectReferrerDirectEntry($request)
+            if (
+                $this->detectReferrerDirectEntry($request)
                 || $this->detectReferrerSearchEngine()
                 || $this->detectReferrerSocialNetwork()
             ) {
@@ -121,12 +149,12 @@ abstract class Base extends VisitDimension
 
         $this->excludeQueryParamsFromReferrerUrl();
 
-        $referrerInformation = array(
+        $referrerInformation = [
             'referer_type'    => $this->typeReferrerAnalyzed,
             'referer_name'    => $this->nameReferrerAnalyzed,
             'referer_keyword' => $this->keywordReferrerAnalyzed,
             'referer_url'     => $this->referrerUrl,
-        );
+        ];
 
         if (!empty($referrerInformation['referer_name'])) {
             $referrerInformation['referer_name'] = $this->truncateReferrerName($referrerInformation['referer_name']);
@@ -137,6 +165,46 @@ abstract class Base extends VisitDimension
         }
 
         return $referrerInformation;
+    }
+
+    protected function getExcludedReferrers($idSite): array
+    {
+        try {
+            $attributes = Cache::getCacheWebsiteAttributes($idSite);
+
+            if (isset($attributes['excluded_referrers'])) {
+                return $attributes['excluded_referrers'];
+            }
+        } catch (UnexpectedWebsiteFoundException $e) {
+            $cached = Cache::getCacheGeneral();
+            if (isset($cached['global_excluded_referrers'])) {
+                return $cached['global_excluded_referrers'];
+            }
+        }
+
+        return [];
+    }
+
+    protected function isReferrerExcluded(string $referrerUrl): bool
+    {
+        $urlsByHost = [];
+        $parsedReferrer = @parse_url($referrerUrl);
+
+        $excludedUrls = new SiteUrls();
+        $excludedReferrers = $this->getExcludedReferrers($this->idsite);
+        foreach ($excludedReferrers as $excludedReferrer) {
+            // ensure referrer is prefixed with protocol, so a parse_url works
+            $excludedReferrer = 'https://' . preg_replace('/^https?:\/\//', '', $excludedReferrer);
+            $excludedUrls->addUrlByHost($urlsByHost, $this->idsite, $excludedReferrer);
+        }
+
+        $matchingSites = $excludedUrls->getIdSitesMatchingUrl($parsedReferrer, $urlsByHost);
+
+        if (is_array($matchingSites) && in_array($this->idsite, $matchingSites)) {
+            return true;
+        }
+
+        return false;
     }
 
     protected function excludeQueryParamsFromReferrerUrl()
@@ -236,7 +304,7 @@ abstract class Base extends VisitDimension
              *                                        logic.
              * @param string referrerUrl The referrer URL from the tracking request.
              */
-            Piwik::postEvent('Tracker.detectReferrerSearchEngine', array(&$searchEngineInformation, $this->referrerUrl));
+            Piwik::postEvent('Tracker.detectReferrerSearchEngine', [&$searchEngineInformation, $this->referrerUrl]);
 
             $cachedReferrerSearchEngine[$this->referrerUrl] = $searchEngineInformation;
             $cache->save($cacheKey, $cachedReferrerSearchEngine);
@@ -287,7 +355,7 @@ abstract class Base extends VisitDimension
              *                                        logic.
              * @param string referrerUrl The referrer URL from the tracking request.
              */
-            Piwik::postEvent('Tracker.detectReferrerSocialNetwork', array(&$socialNetworkName, $this->referrerUrl));
+            Piwik::postEvent('Tracker.detectReferrerSocialNetwork', [&$socialNetworkName, $this->referrerUrl]);
 
             $cachedReferrerSocialNetworks[$this->referrerUrl] = $socialNetworkName;
             $cache->save($cacheKey, $cachedReferrerSocialNetworks);
@@ -310,7 +378,11 @@ abstract class Base extends VisitDimension
     protected function detectCampaignFromString($string)
     {
         foreach ($this->campaignNames as $campaignNameParameter) {
-            $campaignName = trim(urldecode(UrlHelper::getParameterFromQueryString($string, $campaignNameParameter) ?? ''));
+            $campaignName = UrlHelper::getParameterFromQueryString($string, $campaignNameParameter);
+            if (!is_string($campaignName)) {
+                continue; // discard value if it was not provided or as an array
+            }
+            $campaignName = trim(urldecode($campaignName));
             if (!empty($campaignName)) {
                 break;
             }
@@ -324,20 +396,25 @@ abstract class Base extends VisitDimension
 
         foreach ($this->campaignKeywords as $campaignKeywordParameter) {
             $campaignKeyword = UrlHelper::getParameterFromQueryString($string, $campaignKeywordParameter);
+            if (!is_string($campaignKeyword)) {
+                continue; // discard value if it was not provided or as an array
+            }
+            $campaignKeyword = trim(urldecode($campaignKeyword));
             if (!empty($campaignKeyword)) {
-                $this->keywordReferrerAnalyzed = trim(urldecode($campaignKeyword));
+                $this->keywordReferrerAnalyzed = $campaignKeyword;
                 break;
             }
         }
         return !empty($this->keywordReferrerAnalyzed);
     }
 
-    protected function detectReferrerCampaignFromLandingUrl()
+    protected function detectReferrerCampaignFromLandingUrl(): void
     {
-        if (!isset($this->currentUrlParse['query'])
+        if (
+            !isset($this->currentUrlParse['query'])
             && !isset($this->currentUrlParse['fragment'])
         ) {
-            return false;
+            return;
         }
         $campaignParameters = Common::getCampaignParameters();
         $this->campaignNames = $campaignParameters[0];
@@ -351,7 +428,8 @@ abstract class Base extends VisitDimension
         }
 
         // 2) Detect from fragment #hash
-        if (!$found
+        if (
+            !$found
             && isset($this->currentUrlParse['fragment'])
         ) {
             $this->detectCampaignFromString($this->currentUrlParse['fragment']);
@@ -359,22 +437,39 @@ abstract class Base extends VisitDimension
     }
 
 
-    protected function detectReferrerCampaignFromTrackerParams(Request $request)
+    /**
+     * Check if campaign parameters were directly provided in tracking request.
+     * This might e.g. be the case when using image tracking
+     *
+     * @param Request $request
+     * @return void
+     */
+    protected function detectReferrerCampaignFromTrackerParams(Request $request): void
     {
-        $campaignName = $this->getReferrerCampaignQueryParam($request, '_rcn');
+        $campaignName = null;
+        $campaignParameters = Common::getCampaignParameters();
+        $allTrackingParams = $request->getRawParams();
+
+        foreach ($campaignParameters[0] as $parameter) {
+            if (!empty($allTrackingParams[$parameter])) {
+                $campaignName = $allTrackingParams[$parameter];
+                break;
+            }
+        }
+
         if (empty($campaignName)) {
-            return false;
+            return;
         }
 
         $this->typeReferrerAnalyzed = Common::REFERRER_TYPE_CAMPAIGN;
         $this->nameReferrerAnalyzed = $campaignName;
 
-        $keyword = $this->getReferrerCampaignQueryParam($request, '_rck');
-        if (!empty($keyword)) {
-            $this->keywordReferrerAnalyzed = $keyword;
+        foreach ($campaignParameters[1] as $parameter) {
+            if (!empty($allTrackingParams[$parameter])) {
+                $this->keywordReferrerAnalyzed = $allTrackingParams[$parameter];
+                break;
+            }
         }
-
-        return true;
     }
 
     private function getCachedUrlsByHostAndIdSite()
@@ -385,7 +480,7 @@ abstract class Base extends VisitDimension
             return $cache['allUrlsByHostAndIdSite'];
         }
 
-        return array();
+        return [];
     }
 
     /**
@@ -431,12 +526,14 @@ abstract class Base extends VisitDimension
         return false;
     }
 
-    protected function detectCampaignKeywordFromReferrerUrl()
+    protected function detectCampaignKeywordFromReferrerUrl(): void
     {
-        if (!empty($this->nameReferrerAnalyzed)
-            && !empty($this->keywordReferrerAnalyzed)) {
+        if (
+            !empty($this->nameReferrerAnalyzed)
+            && !empty($this->keywordReferrerAnalyzed)
+        ) {
             // keyword is already set, we skip
-            return true;
+            return;
         }
 
         // Set the Campaign keyword to the keyword found in the Referrer URL if any
@@ -448,7 +545,8 @@ abstract class Base extends VisitDimension
         }
 
         // Set the keyword, to the hostname found, in a Adsense Referrer URL '&url=' parameter
-        if (empty($this->keywordReferrerAnalyzed)
+        if (
+            empty($this->keywordReferrerAnalyzed)
             && !empty($this->referrerUrlParse['query'])
             && !empty($this->referrerHost)
             && (strpos($this->referrerHost, 'googleads') !== false || strpos($this->referrerHost, 'doubleclick') !== false)
@@ -458,7 +556,6 @@ abstract class Base extends VisitDimension
             if (!empty($value)) {
                 $parsedAdsenseReferrerUrl = parse_url($value);
                 if (!empty($parsedAdsenseReferrerUrl['host'])) {
-
                     if (empty($this->nameReferrerAnalyzed)) {
                         $type = $this->getParameterValueFromReferrerUrl('ad_type');
                         $type = $type ? " ($type)" : '';
@@ -469,7 +566,6 @@ abstract class Base extends VisitDimension
                 }
             }
         }
-
     }
 
     /**
@@ -477,7 +573,7 @@ abstract class Base extends VisitDimension
      */
     protected function getParameterValueFromReferrerUrl($adsenseReferrerParameter)
     {
-        $value = trim(urldecode(UrlHelper::getParameterFromQueryString($this->referrerUrlParse['query'], $adsenseReferrerParameter)));
+        $value = trim(urldecode(UrlHelper::getParameterFromQueryString($this->referrerUrlParse['query'], $adsenseReferrerParameter) ?? ''));
         return $value;
     }
 
@@ -486,12 +582,9 @@ abstract class Base extends VisitDimension
      */
     protected function detectReferrerCampaign(Request $request, Visitor $visitor)
     {
-        $isCampaign = $this->detectReferrerCampaignFromTrackerParams($request);
-        if (!$isCampaign) {
-            $this->detectReferrerCampaignFromLandingUrl();
-        }
-
+        $this->detectReferrerCampaignFromLandingUrl();
         $this->detectCampaignKeywordFromReferrerUrl();
+        $this->detectReferrerCampaignFromTrackerParams($request);
 
         $referrerNameAnalayzed = mb_strtolower($this->nameReferrerAnalyzed);
         $referrerNameAnalayzed = $this->truncateReferrerName($referrerNameAnalayzed);
@@ -522,7 +615,7 @@ abstract class Base extends VisitDimension
             return false;
         }
 
-        $this->keywordReferrerAnalyzed = mb_strtolower($this->keywordReferrerAnalyzed);
+        $this->keywordReferrerAnalyzed = mb_strtolower($this->keywordReferrerAnalyzed ?? '');
         $this->nameReferrerAnalyzed = mb_strtolower($this->nameReferrerAnalyzed);
         return true;
     }
@@ -530,7 +623,6 @@ abstract class Base extends VisitDimension
     /**
      * @param Request $request
      * @param Visitor $visitor
-     * @param Action|null $action
      * @return mixed
      */
     public function getValueForRecordGoal(Request $request, Visitor $visitor)
@@ -556,26 +648,26 @@ abstract class Base extends VisitDimension
 
         // 0) In some (unknown!?) cases the campaign is not found in the attribution cookie, but the URL ref was found.
         //    In this case we look up if the current visit is credited to a campaign and will credit this campaign rather than the URL ref (since campaigns have higher priority)
-        if (empty($referrerCampaignName)
+        if (
+            empty($referrerCampaignName)
             && $type == Common::REFERRER_TYPE_CAMPAIGN
             && !empty($name)
         ) {
             // Use default values per above
             Common::printDebug("Invalid Referrer information found: current visitor seems to have used a campaign, but campaign name was not found in the request.");
-        } // 1) Campaigns from 1st party cookie
-        elseif (!empty($referrerCampaignName)) {
+        } elseif (!empty($referrerCampaignName)) {
+            // 1) Campaigns from 1st party cookie
             $type    = Common::REFERRER_TYPE_CAMPAIGN;
             $name    = $referrerCampaignName;
             $keyword = $referrerCampaignKeyword;
             Common::printDebug("Campaign information from 1st party cookie is used.");
-        } // 2) Referrer URL parsing
-        elseif (!empty($referrerUrl)) {
-
+        } elseif (!empty($referrerUrl)) {
+            // 2) Referrer URL parsing
             $idSite   = $request->getIdSite();
             $referrer = $this->getReferrerInformation($referrerUrl, $currentUrl = '', $idSite, $request, $visitor);
 
             // if the parsed referrer is interesting enough, ie. website, social network or search engine
-            if (in_array($referrer['referer_type'], array(Common::REFERRER_TYPE_SEARCH_ENGINE, Common::REFERRER_TYPE_WEBSITE, Common::REFERRER_TYPE_SOCIAL_NETWORK))) {
+            if (in_array($referrer['referer_type'], [Common::REFERRER_TYPE_SEARCH_ENGINE, Common::REFERRER_TYPE_WEBSITE, Common::REFERRER_TYPE_SOCIAL_NETWORK])) {
                 $type    = $referrer['referer_type'];
                 $name    = $referrer['referer_name'];
                 $keyword = $referrer['referer_keyword'];
@@ -590,11 +682,11 @@ abstract class Base extends VisitDimension
 
         $this->setCampaignValuesToLowercase($type, $name, $keyword);
 
-        $fields = array(
+        $fields = [
             'referer_type'              => $type,
             'referer_name'              => $name,
             'referer_keyword'           => $keyword,
-        );
+        ];
 
         if (array_key_exists($this->columnName, $fields)) {
             return $fields[$this->columnName];
@@ -622,7 +714,7 @@ abstract class Base extends VisitDimension
 
     protected function isReferrerInformationNew(Visitor $visitor, $information)
     {
-        foreach (array('referer_keyword', 'referer_name', 'referer_type') as $infoName) {
+        foreach (['referer_keyword', 'referer_name', 'referer_type'] as $infoName) {
             if ($this->hasReferrerColumnChanged($visitor, $information, $infoName)) {
                 return true;
             }
@@ -633,7 +725,7 @@ abstract class Base extends VisitDimension
     protected function hasReferrerColumnChanged(Visitor $visitor, $information, $infoName)
     {
         $existing = mb_strtolower($visitor->getVisitorColumn($infoName) ?? '');
-        $new = mb_strtolower($information[$infoName]);
+        $new = mb_strtolower($information[$infoName] ?? '');
 
         $result = $existing != $new;
         if ($result) {
@@ -665,7 +757,7 @@ abstract class Base extends VisitDimension
 
     protected function isCurrentReferrerDirectEntry(Visitor $visitor)
     {
-        $referrerType = $visitor->getVisitorColumn('referer_type');
+        $referrerType = $visitor->getImmutableVisitorColumn('referer_type');
         return $referrerType == Common::REFERRER_TYPE_DIRECT_ENTRY;
     }
 }

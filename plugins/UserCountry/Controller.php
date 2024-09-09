@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\UserCountry;
 
 use Exception;
@@ -14,10 +15,8 @@ use Piwik\IP;
 use Piwik\Notification;
 use Piwik\Piwik;
 use Piwik\Plugin\Manager;
-use Piwik\Plugins\GeoIp2\LocationProvider\GeoIp2;
 use Piwik\Plugins\UserCountry\LocationProvider\DefaultProvider;
 use Piwik\Plugins\UserCountry\LocationProvider\DisabledProvider;
-use Piwik\SettingsPiwik;
 use Piwik\View;
 
 /**
@@ -79,7 +78,8 @@ class Controller extends \Piwik\Plugin\ControllerAdmin
         // check if there is a working provider (that isn't the default one)
         $isThereWorkingProvider = false;
         foreach ($allProviderInfo as $id => $provider) {
-            if ($id != DefaultProvider::ID && $id != DisabledProvider::ID
+            if (
+                $id != DefaultProvider::ID && $id != DisabledProvider::ID
                 && $provider['status'] == LocationProvider::INSTALLED
             ) {
                 $isThereWorkingProvider = true;
@@ -126,7 +126,10 @@ class Controller extends \Piwik\Plugin\ControllerAdmin
                                                  'lang'              => Common::getBrowserLanguage(),
                                                  'disable_fallbacks' => true));
         $location = LocationProvider::prettyFormatLocation(
-            $location, $newline = '<br/>', $includeExtra = true);
+            $location,
+            $newline = '<br/>',
+            $includeExtra = true
+        );
 
         return $location;
     }

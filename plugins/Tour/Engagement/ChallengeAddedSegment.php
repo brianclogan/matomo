@@ -1,15 +1,17 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Tour\Engagement;
 
 use Piwik\Piwik;
 use Piwik\Plugins\Tour\Dao\DataFinder;
+use Piwik\Url;
 
 class ChallengeAddedSegment extends Challenge
 {
@@ -43,10 +45,9 @@ class ChallengeAddedSegment extends Challenge
         return 'add_segment';
     }
 
-    public function isCompleted()
+    public function isCompleted(string $login)
     {
         if (!isset($this->completed)) {
-            $login = Piwik::getCurrentUserLogin();
             $this->completed = $this->finder->hasAddedSegment($login);
         }
         return $this->completed;
@@ -54,8 +55,6 @@ class ChallengeAddedSegment extends Challenge
 
     public function getUrl()
     {
-        return 'https://matomo.org/docs/segmentation/';
+        return Url::addCampaignParametersToMatomoLink('https://matomo.org/docs/segmentation/');
     }
-
-
 }

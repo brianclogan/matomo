@@ -1,18 +1,18 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Tour\Dao;
 
 use Piwik\Common;
 
 class DataFinder
 {
-
     public function hasTrackedData()
     {
         $sql = sprintf('SELECT idsite FROM %s LIMIT 1', Common::prefixTable('log_visit'));
@@ -57,5 +57,4 @@ class DataFinder
 
         return $result > 0;
     }
-
 }

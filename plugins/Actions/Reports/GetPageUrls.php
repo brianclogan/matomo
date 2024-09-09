@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Actions\Reports;
 
 use Piwik\DbHelper;
@@ -42,6 +43,7 @@ class GetPageUrls extends Base
         );
 
         $this->subcategoryId = 'General_Pages';
+        $this->hasGoalMetrics = true;
     }
 
     public function configureWidgets(WidgetsList $widgetsList, ReportWidgetFactory $factory)
@@ -68,16 +70,17 @@ class GetPageUrls extends Base
 
     public function configureView(ViewDataTable $view)
     {
-        $view->config->addTranslation('label', $this->dimension->getName());
         $view->config->columns_to_display = array('label', 'nb_hits', 'nb_visits', 'bounce_rate',
                                                   'avg_time_on_page', 'exit_rate');
 
-        if (version_compare(DbHelper::getInstallVersion(),'4.0.0-b1', '<')) {
+        if (version_compare(DbHelper::getInstallVersion(), '4.0.0-b1', '<')) {
             $view->config->columns_to_display[] = 'avg_time_generation';
         }
 
         $this->addPageDisplayProperties($view);
         $this->addBaseDisplayProperties($view);
+
+        $view->config->show_goals = true;
 
         // related reports are only shown on performance page
         if ($view->requestConfig->getRequestParam('performance') !== '1') {

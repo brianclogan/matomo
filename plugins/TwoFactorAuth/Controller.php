@@ -1,14 +1,14 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\TwoFactorAuth;
 
-use Endroid\QrCode\QrCode;
-use Piwik\API\Request;
 use Piwik\Common;
 use Piwik\Container\StaticContainer;
 use Piwik\IP;
@@ -28,11 +28,11 @@ use Piwik\Plugins\CoreAdminHome\Emails\RecoveryCodesRegeneratedEmail;
 
 class Controller extends \Piwik\Plugin\Controller
 {
-    const AUTH_CODE_NONCE = 'TwoFactorAuth.saveAuthCode';
-    const LOGIN_2FA_NONCE = 'TwoFactorAuth.loginAuthCode';
-    const DISABLE_2FA_NONCE = 'TwoFactorAuth.disableAuthCode';
-    const REGENERATE_CODES_2FA_NONCE = 'TwoFactorAuth.regenerateCodes';
-    const VERIFY_PASSWORD_NONCE = 'TwoFactorAuth.verifyPassword';
+    public const AUTH_CODE_NONCE = 'TwoFactorAuth.saveAuthCode';
+    public const LOGIN_2FA_NONCE = 'TwoFactorAuth.loginAuthCode';
+    public const DISABLE_2FA_NONCE = 'TwoFactorAuth.disableAuthCode';
+    public const REGENERATE_CODES_2FA_NONCE = 'TwoFactorAuth.regenerateCodes';
+    public const VERIFY_PASSWORD_NONCE = 'TwoFactorAuth.verifyPassword';
 
     /**
      * @var SystemSettings
@@ -105,7 +105,7 @@ class Controller extends \Piwik\Plugin\Controller
                         }
                     } catch (Exception $e) {
                         // ignore error eg if login plugin is disabled
-                     }
+                    }
                 }
             }
         }
@@ -144,7 +144,6 @@ class Controller extends \Piwik\Plugin\Controller
         $params = array('module' => 'TwoFactorAuth', 'action' => 'disableTwoFactorAuth', 'disableNonce' => $nonce);
 
         if ($this->passwordVerify->requirePasswordVerifiedRecently($params)) {
-
             Nonce::checkNonce(self::DISABLE_2FA_NONCE, $nonce);
 
             $this->twoFa->disable2FAforUser(Piwik::getCurrentUserLogin());
@@ -216,8 +215,10 @@ class Controller extends \Piwik\Plugin\Controller
         $accessErrorString = '';
         $login = Piwik::getCurrentUserLogin();
 
-        if (!empty($secret) && !empty($authCode)
-            && Nonce::verifyNonce(self::AUTH_CODE_NONCE, $authCodeNonce)) {
+        if (
+            !empty($secret) && !empty($authCode)
+            && Nonce::verifyNonce(self::AUTH_CODE_NONCE, $authCodeNonce)
+        ) {
             if ($this->twoFa->validateAuthCodeDuringSetup(trim($authCode), $secret)) {
                 $this->twoFa->saveSecret($login, $secret);
                 $fingerprint = new SessionFingerprint();
@@ -256,8 +257,10 @@ class Controller extends \Piwik\Plugin\Controller
             }
         }
 
-        if (!$this->recoveryCodeDao->getAllRecoveryCodesForLogin($login)
-            || (!$hasSubmittedForm && !TwoFactorAuthentication::isUserUsingTwoFactorAuthentication($login))) {
+        if (
+            !$this->recoveryCodeDao->getAllRecoveryCodesForLogin($login)
+            || (!$hasSubmittedForm && !TwoFactorAuthentication::isUserUsingTwoFactorAuthentication($login))
+        ) {
             // we cannot generate new codes after form has been submitted and user is not yet using 2fa cause we would
             // change recovery codes in the background without the user noticing... we cannot simply do this:
             // if !getAllRecoveryCodesForLogin => createRecoveryCodesForLogin. Because it could be a security issue that
@@ -286,8 +289,10 @@ class Controller extends \Piwik\Plugin\Controller
         $this->validator->check2FaEnabled();
 
         $regenerateNonce = Common::getRequestVar('regenerateNonce', '', 'string', $_POST);
-        $postedValidNonce = !empty($regenerateNonce) && Nonce::verifyNonce(self::REGENERATE_CODES_2FA_NONCE,
-            $regenerateNonce);
+        $postedValidNonce = !empty($regenerateNonce) && Nonce::verifyNonce(
+            self::REGENERATE_CODES_2FA_NONCE,
+            $regenerateNonce
+        );
 
         $regenerateSuccess = false;
         $regenerateError = false;
@@ -338,9 +343,9 @@ class Controller extends \Piwik\Plugin\Controller
         $title = $this->settings->twoFactorAuthTitle->getValue();
         $descr = Piwik::getCurrentUserLogin();
 
-        $url = 'otpauth://totp/'.urlencode($descr).'?secret='.$secret;
-        if(isset($title)) {
-            $url .= '&issuer='.urlencode($title);
+        $url = 'otpauth://totp/' . urlencode($descr) . '?secret=' . $secret;
+        if (isset($title)) {
+            $url .= '&issuer=' . urlencode($title);
         }
 
         return $url;
@@ -350,5 +355,4 @@ class Controller extends \Piwik\Plugin\Controller
     {
         return sprintf('index.php?module=TwoFactorAuth&action=showQrCode&cb=%s&title=%s&descr=%s', Common::getRandomString(8), urlencode($title), urlencode($description));
     }
-
 }

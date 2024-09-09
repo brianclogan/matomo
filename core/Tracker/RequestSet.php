@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Tracker;
 
 use Piwik\Common;
@@ -33,10 +34,10 @@ class RequestSet
     {
         $this->requests = array();
 
-        if (empty($requests)|| !is_array($requests)) {
+        if (empty($requests) || !is_array($requests)) {
             return;
         }
-        
+
         foreach ($requests as $request) {
             if (empty($request) && !is_array($request)) {
                 continue;
@@ -45,7 +46,6 @@ class RequestSet
             if (!$request instanceof Request) {
                 $request = new Request($request, $this->getTokenAuth());
             }
-
             $this->requests[] = $request;
         }
     }

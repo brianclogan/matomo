@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Referrers;
 
 use Piwik\Cache;
@@ -15,6 +16,7 @@ use Piwik\Option;
 use Piwik\Piwik;
 use Piwik\SettingsPiwik;
 use Piwik\Singleton;
+use Piwik\Url;
 use Piwik\UrlHelper;
 
 /**
@@ -22,10 +24,10 @@ use Piwik\UrlHelper;
  */
 class SearchEngine extends Singleton
 {
-    const OPTION_STORAGE_NAME = 'SearchEngineDefinitions';
+    public const OPTION_STORAGE_NAME = 'SearchEngineDefinitions';
 
     /** @var string location of definition file (relative to PIWIK_INCLUDE_PATH) */
-    const DEFINITION_FILE = '/vendor/matomo/searchengine-and-social-list/SearchEngines.yml';
+    public const DEFINITION_FILE = '/vendor/matomo/searchengine-and-social-list/SearchEngines.yml';
 
     protected $definitionList = null;
 
@@ -54,7 +56,7 @@ class SearchEngine extends Singleton
         if (empty($this->definitionList)) {
             $referrerDefinitionSyncOpt = Config::getInstance()->General['enable_referrer_definition_syncs'];
 
-            if( $referrerDefinitionSyncOpt == 1) {
+            if ($referrerDefinitionSyncOpt == 1) {
                 $this->loadRemoteDefinitions();
             } else {
                 $this->loadLocalYmlData();
@@ -239,7 +241,8 @@ class SearchEngine extends Singleton
                 $query = str_replace('&', '&amp;', strstr($query, '?'));
             }
             $searchEngineName = 'Google Images';
-        } elseif ($searchEngineName === 'Google'
+        } elseif (
+            $searchEngineName === 'Google'
             && (strpos($query, '&as_') !== false || strpos($query, 'as_') === 0)
         ) {
             $keys = array();
@@ -292,7 +295,8 @@ class SearchEngine extends Singleton
                     $key = trim(urldecode($key));
 
                     // Special cases: empty keywords
-                    if (empty($key)
+                    if (
+                        empty($key)
                         && (
                             // empty keyword parameter
                             strpos($query, sprintf('&%s=', $variableName)) !== false
@@ -301,7 +305,8 @@ class SearchEngine extends Singleton
                     ) {
                         $key = false;
                     }
-                    if (!empty($key)
+                    if (
+                        !empty($key)
                         || $key === false
                     ) {
                         break;
@@ -312,13 +317,12 @@ class SearchEngine extends Singleton
 
         // if no keyword found, but empty keywords are allowed
         if (!empty($keywordsHiddenFor) && ($key === null || $key === '')) {
-
             $pathWithQueryAndFragment = $referrerPath;
             if (!empty($query)) {
-                $pathWithQueryAndFragment .= '?'.$query;
+                $pathWithQueryAndFragment .= '?' . $query;
             }
             if (!empty($referrerParsed['fragment'])) {
-                $pathWithQueryAndFragment .= '#'.$referrerParsed['fragment'];
+                $pathWithQueryAndFragment .= '#' . $referrerParsed['fragment'];
             }
 
             foreach ($keywordsHiddenFor as $path) {
@@ -487,7 +491,7 @@ class SearchEngine extends Singleton
     public function getBackLinkFromUrlAndKeyword($url, $keyword)
     {
         if ($keyword === API::LABEL_KEYWORD_NOT_DEFINED) {
-            return 'https://matomo.org/faq/general/#faq_144';
+            return Url::addCampaignParametersToMatomoLink('https://matomo.org/faq/general/faq_144');
         }
         $keyword = urlencode($keyword);
         $keyword = str_replace(urlencode('+'), urlencode(' '), $keyword);

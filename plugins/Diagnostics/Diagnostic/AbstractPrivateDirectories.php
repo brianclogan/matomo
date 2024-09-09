@@ -1,17 +1,18 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\Diagnostics\Diagnostic;
 
 use Piwik\Common;
 use Piwik\Config;
-use Piwik\Filesystem;
 use Piwik\Http;
+use Piwik\Piwik;
 use Piwik\SettingsPiwik;
 use Piwik\Translation\Translator;
 
@@ -132,7 +133,6 @@ abstract class AbstractPrivateDirectories implements Diagnostic
                 }
                 // in other cases we assume it's not publicly accessible because we didn't get any expected output in the response
                 // so it seems like they redirect eg to the homepage or another page
-
             } else {
                 // we assume the file is accessible publicly
                 $result->addItem(new DiagnosticResultItem(DiagnosticResult::STATUS_ERROR, $testUrl));
@@ -140,8 +140,15 @@ abstract class AbstractPrivateDirectories implements Diagnostic
             }
         } catch (\Exception $e) {
             $error = $e->getMessage();
-            $result->addItem(new DiagnosticResultItem(DiagnosticResult::STATUS_WARNING, 'Unable to execute check for '
-                . Common::sanitizeInputValue($testUrl) . ': ' . Common::sanitizeInputValue($error)));
+            $result->addItem(
+                new DiagnosticResultItem(
+                    DiagnosticResult::STATUS_WARNING,
+                    Piwik::translate(
+                        'Diagnostics_PrivateDirectoryCantCheckUrl',
+                        [Common::sanitizeInputValue($testUrl), Common::sanitizeInputValue($error)]
+                    )
+                )
+            );
         }
         return false;
     }
@@ -157,5 +164,5 @@ abstract class AbstractPrivateDirectories implements Diagnostic
         return $atLeastOneIsAccessible;
     }
 
-    protected abstract function addError(DiagnosticResult &$result);
+    abstract protected function addError(DiagnosticResult &$result);
 }

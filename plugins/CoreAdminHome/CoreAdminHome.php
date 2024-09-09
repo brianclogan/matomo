@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\CoreAdminHome;
 
 use Piwik\API\Request;
@@ -61,13 +62,13 @@ class CoreAdminHome extends \Piwik\Plugin
         $stylesheets[] = "plugins/CoreAdminHome/stylesheets/generalSettings.less";
         $stylesheets[] = "plugins/CoreAdminHome/vue/src/TrackingFailures/TrackingFailures.less";
         $stylesheets[] = "plugins/CoreAdminHome/stylesheets/whatIsNew.less";
+        $stylesheets[] = "plugins/CoreAdminHome/stylesheets/trackingCodeGenerator.less";
     }
 
     public function getJsFiles(&$jsFiles)
     {
         $jsFiles[] = "node_modules/jquery/dist/jquery.min.js";
         $jsFiles[] = "node_modules/jquery-ui-dist/jquery-ui.min.js";
-        $jsFiles[] = "node_modules/jquery.browser/dist/jquery.browser.min.js";
         $jsFiles[] = "node_modules/sprintf-js/dist/sprintf.min.js";
         $jsFiles[] = "plugins/Morpheus/javascripts/piwikHelper.js";
         $jsFiles[] = "plugins/CoreHome/javascripts/broadcast.js";
@@ -120,7 +121,6 @@ class CoreAdminHome extends \Piwik\Plugin
         $translationKeys[] = 'CoreAdminHome_ArchivingSettings';
         $translationKeys[] = 'General_AllowPiwikArchivingToTriggerBrowser';
         $translationKeys[] = 'General_ReportsContainingTodayWillBeProcessedAtMostEvery';
-        $translationKeys[] = 'General_SmallTrafficYouCanLeaveDefault';
         $translationKeys[] = 'General_ArchivingTriggerDescription';
         $translationKeys[] = 'General_ArchivingTriggerSegment';
         $translationKeys[] = 'General_SeeTheOfficialDocumentationForMoreInformation';
@@ -152,6 +152,7 @@ class CoreAdminHome extends \Piwik\Plugin
         $translationKeys[] = 'General_OnlyUsedIfUserPwdIsSet';
         $translationKeys[] = 'General_SmtpUsername';
         $translationKeys[] = 'General_OnlyEnterIfRequired';
+        $translationKeys[] = 'General_Plugins';
         $translationKeys[] = 'General_SmtpPassword';
         $translationKeys[] = 'General_SmtpFromAddress';
         $translationKeys[] = 'General_SmtpFromEmailHelp';
@@ -196,7 +197,6 @@ class CoreAdminHome extends \Piwik\Plugin
         $translationKeys[] = 'CoreAdminHome_JSTracking_CampaignKwdParam';
         $translationKeys[] = 'SitesManager_EmailInstructionsSubject';
         $translationKeys[] = 'SitesManager_JsTrackingTagHelp';
-        $translationKeys[] = 'CoreAdminHome_JSTracking_CodeNoteBeforeClosingHeadEmail';
         $translationKeys[] = 'CoreAdminHome_JSTrackingIntro3a';
         $translationKeys[] = 'CoreAdminHome_JSTrackingIntro4';
         $translationKeys[] = 'CoreAdminHome_JSTrackingIntro5';
@@ -205,5 +205,21 @@ class CoreAdminHome extends \Piwik\Plugin
         $translationKeys[] = 'Actions_ColumnPageName';
         $translationKeys[] = 'CoreAdminHome_JSTracking_MergeSubdomainsDesc';
         $translationKeys[] = 'CoreAdminHome_JSTracking_CustomCampaignQueryParamDesc';
+        $translationKeys[] = 'CoreAdminHome_SinglePageApplicationDescription';
+        $translationKeys[] = 'CoreAdminHome_CloudflareDescription';
+        $translationKeys[] = 'CoreAdminHome_SecurityNotificationUserAcceptInviteBody';
+        $translationKeys[] = 'CoreAdminHome_SecurityNotificationUserDeclinedInviteBody';
+        $translationKeys[] = 'CoreAdminHome_JSTracking_ConsentManagerDetected';
+        $translationKeys[] = 'CoreAdminHome_JSTracking_ConsentManagerConnected';
+        $translationKeys[] = 'CoreAdminHome_GoogleTagManagerDescription';
+        $translationKeys[] = 'CoreAdminHome_WordpressDescription';
+        $translationKeys[] = 'CoreAdminHome_VueDescription';
+        $translationKeys[] = 'CoreAdminHome_ShowAdvancedOptions';
+        $translationKeys[] = 'CoreAdminHome_HideAdvancedOptions';
+        $translationKeys[] = 'CoreAdminHome_JSTrackingDocumentationHelp';
+        $translationKeys[] = 'CoreAdminHome_ReactDescription';
+        $translationKeys[] = 'CoreAdminHome_JsTrackingCodeAdvancedOptionsStep';
+        $translationKeys[] = 'CoreAdminHome_JSTracking_DisableCampaignParameters';
+        $translationKeys[] = 'CoreAdminHome_JSTracking_DisableCampaignParametersDesc';
     }
 }

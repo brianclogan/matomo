@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Contents\Reports;
 
 use Piwik\Common;
@@ -14,6 +15,7 @@ use Piwik\Plugin\Report;
 use Piwik\Plugin\ViewDataTable;
 use Piwik\Plugins\Contents\Dimensions;
 use Piwik\Report\ReportWidgetFactory;
+use Piwik\Url;
 use Piwik\Widget\WidgetsList;
 
 abstract class Base extends Report
@@ -22,7 +24,7 @@ abstract class Base extends Report
     {
         $this->categoryId = 'General_Actions';
         $this->subcategoryId = 'Contents_Contents';
-        $this->onlineGuideUrl = 'https://matomo.org/docs/content-tracking/';
+        $this->onlineGuideUrl = Url::addCampaignParametersToMatomoLink('https://matomo.org/docs/content-tracking/');
     }
 
     public function configureWidgets(WidgetsList $widgetsList, ReportWidgetFactory $factory)
@@ -43,10 +45,6 @@ abstract class Base extends Report
         $view->config->datatable_js_type   = 'ContentsDataTable';
         $view->config->datatable_css_class = 'ContentsDataTable';
         $view->config->show_table_all_columns = false;
-
-        if (!empty($this->dimension)) {
-            $view->config->addTranslations(array('label' => $this->dimension->getName()));
-        }
 
         $view->config->columns_to_display = array_merge(
             array('label'),

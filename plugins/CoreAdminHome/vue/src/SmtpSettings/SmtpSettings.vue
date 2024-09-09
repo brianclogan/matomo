@@ -1,7 +1,8 @@
 <!--
   Matomo - free/libre analytics platform
-  @link https://matomo.org
-  @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+
+  @link    https://matomo.org
+  @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
 -->
 
 <template>
@@ -51,7 +52,7 @@
           v-model="mailUsername"
           :title="translate('General_SmtpUsername')"
           :inline-help="translate('General_OnlyEnterIfRequired')"
-          :autocomplete="false"
+          :autocomplete="'off'"
         />
 
         <Field
@@ -62,7 +63,7 @@
           @click="!passwordChanged && $event.target.select();"
           :title="translate('General_SmtpPassword')"
           :inline-help="passwordHelp"
-          :autocomplete="false"
+          :autocomplete="'off'"
         />
 
         <Field
@@ -71,7 +72,7 @@
           v-model="mailFromAddress"
           :title="translate('General_SmtpFromAddress')"
           :inline-help="translate('General_SmtpFromEmailHelp', mailHost)"
-          :autocomplete="false"
+          :autocomplete="'off'"
         />
 
         <Field
@@ -80,7 +81,7 @@
           v-model="mailFromName"
           :title="translate('General_SmtpFromName')"
           :inline-help="translate('General_NameShownInTheSenderColumn')"
-          :autocomplete="false"
+          :autocomplete="'off'"
         />
 
         <Field

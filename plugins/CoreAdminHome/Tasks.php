@@ -1,19 +1,17 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\CoreAdminHome;
 
 use Piwik\API\Request;
-use Piwik\Archive;
-use Piwik\Archive\ArchiveInvalidator;
 use Piwik\ArchiveProcessor\Rules;
 use Piwik\Archive\ArchivePurger;
-use Piwik\Common;
 use Piwik\Config;
 use Piwik\Container\StaticContainer;
 use Piwik\CronArchive;
@@ -35,12 +33,12 @@ use Piwik\Tracker\Failures;
 use Piwik\Site;
 use Piwik\Tracker\FingerprintSalt;
 use Piwik\Tracker\Visit\ReferrerSpamFilter;
-use Psr\Log\LoggerInterface;
+use Piwik\Log\LoggerInterface;
 use Piwik\SettingsPiwik;
 
 class Tasks extends \Piwik\Plugin\Tasks
 {
-    const TRACKING_CODE_CHECK_FLAG = 'trackingCodeExistsCheck';
+    public const TRACKING_CODE_CHECK_FLAG = 'trackingCodeExistsCheck';
     /**
      * @var ArchivePurger
      */
@@ -87,7 +85,7 @@ class Tasks extends \Piwik\Plugin\Tasks
         $this->weekly('notifyTrackingFailures', null, self::LOWEST_PRIORITY);
 
         $generalConfig = Config::getInstance()->Tracker;
-        if((SettingsPiwik::isInternetEnabled() === true) && $generalConfig['enable_spam_filter']){
+        if ((SettingsPiwik::isInternetEnabled() === true) && $generalConfig['enable_spam_filter']) {
             $this->weekly('updateSpammerList');
         }
 
@@ -150,7 +148,7 @@ class Tasks extends \Piwik\Plugin\Tasks
     {
         $this->rememberTrackingCodeReminderRan($idSite);
 
-        if (!SitesManager::shouldPerormEmptySiteCheck($idSite)) {
+        if (!SitesManager::shouldPerformEmptySiteCheck($idSite)) {
             return;
         }
 
@@ -164,9 +162,14 @@ class Tasks extends \Piwik\Plugin\Tasks
             return;
         }
 
-        $user = Request::processRequest('UsersManager.getUser', [
-            'userLogin' => $creatingUser,
-        ]);
+        try {
+            $user = Request::processRequest('UsersManager.getUser', [
+                'userLogin' => $creatingUser,
+            ]);
+        } catch (\Exception $e) {
+            return;
+        }
+
         if (empty($user['email'])) {
             return;
         }
@@ -248,12 +251,16 @@ class Tasks extends \Piwik\Plugin\Tasks
 
         foreach ($archiveTables as $table) {
             $date = ArchiveTableCreator::getDateFromTableName($table);
-            list($year, $month) = explode('_', $date);
+            [$year, $month] = explode('_', $date);
 
             // Somehow we may have archive tables created with older dates, prevent exception from being thrown
             if ($year > 1990) {
                 if (empty($datesPurged[$date])) {
-                    $dateObj = Date::factory("$year-$month-15");
+                    try {
+                        $dateObj = Date::factory("$year-$month-15");
+                    } catch (\Exception $e) {
+                        continue; // skip invalid dates
+                    }
 
                     $this->archivePurger->purgeOutdatedArchives($dateObj);
                     $this->archivePurger->purgeArchivesWithPeriodRange($dateObj);
@@ -320,6 +327,14 @@ class Tasks extends \Piwik\Plugin\Tasks
     {
         $url = 'https://raw.githubusercontent.com/matomo-org/referrer-spam-list/master/spammers.txt';
         $list = Http::sendHttpRequest($url, 30);
+
+        if (preg_match('/[<>&?"\']/', $list)) {
+            throw new \Exception(sprintf(
+                'The spammers list downloaded from %s contains unexpected characters, considering it a fail',
+                $url
+            ));
+        }
+
         $list = preg_split("/\r\n|\n|\r/", $list);
         if (count($list) < 10) {
             throw new \Exception(sprintf(
@@ -348,9 +363,13 @@ class Tasks extends \Piwik\Plugin\Tasks
         $datesPurged = array();
         foreach ($archiveTables as $table) {
             $date = ArchiveTableCreator::getDateFromTableName($table);
-            list($year, $month) = explode('_', $date);
+            [$year, $month] = explode('_', $date);
 
-            $dateObj = Date::factory("$year-$month-15");
+            try {
+                $dateObj = Date::factory("$year-$month-15");
+            } catch (\Exception $e) {
+                continue; // skip invalid dates
+            }
 
             $this->archivePurger->purgeDeletedSiteArchives($dateObj);
             if (count($deletedSegments)) {

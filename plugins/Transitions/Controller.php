@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Transitions;
 
 use Piwik\Piwik;
@@ -55,16 +56,16 @@ class Controller extends \Piwik\Plugin\Controller
      * Translations that are added to JS
      */
     private static $jsTranslations = array(
-        'XOfY'                   => 'Transitions_XOutOfYVisits',
-        'XOfAllPageviews'        => 'Transitions_XOfAllPageviews',
-        'NoDataForAction'        => 'Transitions_NoDataForAction',
-        'NoDataForActionDetails' => 'Transitions_NoDataForActionDetails',
-        'NoDataForActionBack'    => 'Transitions_ErrorBack',
-        'PeriodNotAllowed'       => 'Transitions_PeriodNotAllowed',
-        'PeriodNotAllowedDetails'=> 'Transitions_PeriodNotAllowedDetails',
-        'PeriodNotAllowedBack'   => 'Transitions_ErrorBack',
-        'ShareOfAllPageviews'    => 'Transitions_ShareOfAllPageviews',
-        'DateRange'              => 'General_DateRange'
+        'XOfY'                    => 'Transitions_XOutOfYVisits',
+        'XOfAllPageviews'         => 'Transitions_XOfAllPageviews',
+        'NoDataForAction'         => 'Transitions_NoDataForAction',
+        'NoDataForActionDetails'  => 'Transitions_NoDataForActionDetails',
+        'NoDataForActionBack'     => 'Transitions_ErrorBack',
+        'PeriodNotAllowed'        => 'Transitions_PeriodNotAllowed',
+        'PeriodNotAllowedDetails' => 'Transitions_PeriodNotAllowedDetails',
+        'PeriodNotAllowedBack'    => 'Transitions_ErrorBack',
+        'ShareOfAllPageviews'     => 'Transitions_ShareOfAllPageviews',
+        'DateRange'               => 'General_DateRange'
     );
 
     public static function getTranslation($key)

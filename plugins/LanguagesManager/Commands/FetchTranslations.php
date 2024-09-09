@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\LanguagesManager\Commands;
@@ -13,16 +13,12 @@ use Piwik\Container\StaticContainer;
 use Piwik\Exception\AuthenticationFailedException;
 use Piwik\Plugins\LanguagesManager\API as LanguagesManagerApi;
 use Piwik\Translation\Weblate\API;
-use Symfony\Component\Console\Helper\ProgressBar;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  */
 class FetchTranslations extends TranslationBase
 {
-    const DOWNLOAD_PATH = '/weblate';
+    public const DOWNLOAD_PATH = '/weblate';
 
     protected function configure()
     {
@@ -30,20 +26,22 @@ class FetchTranslations extends TranslationBase
 
         $this->setName('translations:fetch')
              ->setDescription('Fetches translations files from Weblate to ' . $path)
-             ->addOption('token', 't', InputOption::VALUE_OPTIONAL, 'Weblate API token')
-             ->addOption('slug', 's', InputOption::VALUE_OPTIONAL, 'project slug on weblate', 'matomo')
-             ->addOption('plugin', 'r', InputOption::VALUE_OPTIONAL, 'Plugin to update');
+             ->addOptionalValueOption('token', 't', 'Weblate API token')
+             ->addOptionalValueOption('slug', 's', 'project slug on weblate', 'matomo')
+             ->addOptionalValueOption('plugin', 'r', 'Plugin to update');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function doExecute(): int
     {
+        $input = $this->getInput();
+        $output = $this->getOutput();
         $output->setDecorated(true);
 
         $apiToken = $input->getOption('token');
         $plugin = $input->getOption('plugin');
         $slug = $input->getOption('slug');
 
-        $resource = $plugin ? 'plugin-'.strtolower($plugin) : 'matomo-base';
+        $resource = $plugin ? 'plugin-' . strtolower($plugin) : 'matomo-base';
 
         $weblateApi = new API($apiToken, $slug);
 
@@ -53,7 +51,7 @@ class FetchTranslations extends TranslationBase
 
         if (!$weblateApi->resourceExists($resource)) {
             $output->writeln("Skipping resource $resource as it doesn't exist on Weblate");
-            return;
+            return self::SUCCESS;
         }
 
         $output->writeln("Fetching translations from Weblate for resource $resource");
@@ -80,17 +78,15 @@ class FetchTranslations extends TranslationBase
                 $languageCodes[] = implode('_', $codeParts);
             }
 
-            $languageCodes = array_filter($languageCodes, function($code) {
+            $languageCodes = array_filter($languageCodes, function ($code) {
                 return !in_array($code, array('en', 'dev'));
             });
 
             $languages = $languageCodes;
         }
 
-        /** @var ProgressBar $progress */
-        $progress = new ProgressBar($output, count($languages));
-
-        $progress->start();
+        $this->initProgressBar(count($languages));
+        $this->startProgressBar();
 
         foreach ($languages as $language) {
             try {
@@ -99,11 +95,13 @@ class FetchTranslations extends TranslationBase
             } catch (\Exception $e) {
                 $output->writeln("Error fetching language file $language: " . $e->getMessage());
             }
-            $progress->advance();
+            $this->advanceProgressBar();
         }
 
-        $progress->finish();
+        $this->finishProgressBar();
         $output->writeln('');
+
+        return self::SUCCESS;
     }
 
     public static function getDownloadPath()

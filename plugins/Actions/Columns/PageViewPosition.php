@@ -1,18 +1,17 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Actions\Columns;
 
-use Piwik\Plugins\Events\Actions\ActionEvent;
 use Piwik\Tracker\Action;
 use Piwik\Tracker\Request;
 use Piwik\Tracker\Visitor;
-use Piwik\Piwik;
 use Piwik\Plugin\Dimension\ActionDimension;
 
 class PageViewPosition extends ActionDimension
@@ -34,7 +33,7 @@ class PageViewPosition extends ActionDimension
 
         if ($shouldCount && $visitor->isNewVisit()) {
             return 1;
-        } else if ($shouldCount) {
+        } elseif ($shouldCount) {
             return VisitTotalInteractions::getNextInteractionPosition($request);
         }
 
@@ -46,5 +45,4 @@ class PageViewPosition extends ActionDimension
 
         return false;
     }
-
 }

@@ -16,6 +16,8 @@ use Piwik\Exception\UnexpectedWebsiteFoundException;
 use Piwik\Log;
 use Piwik\Piwik;
 use Piwik\Plugin;
+use Piwik\Plugins\SitesManager\SiteContentDetection\ReactJs;
+use Piwik\Plugin\Manager;
 use Piwik\Plugins\TagManager\Access\Capability\PublishLiveContainer;
 use Piwik\Plugins\TagManager\Access\Capability\TagManagerWrite;
 use Piwik\Plugins\TagManager\Access\Capability\UseCustomTemplates;
@@ -32,9 +34,11 @@ use Piwik\Plugins\CoreHome\SystemSummary;
 use Piwik\Plugins\TagManager\Model\Container\ContainerIdGenerator;
 use Piwik\Plugins\TagManager\Model\Salt;
 use Piwik\Site;
+use Piwik\SiteContentDetector;
 use Piwik\View;
 use Piwik\Context;
-use Psr\Log\LoggerInterface;
+use Piwik\Log\LoggerInterface;
+use Piwik\SettingsPiwik;
 
 class TagManager extends \Piwik\Plugin
 {
@@ -47,7 +51,7 @@ class TagManager extends \Piwik\Plugin
             'AssetManager.getJavaScriptFiles' => 'getJsFiles',
             'Translate.getClientSideTranslationKeys' => 'getClientSideTranslationKeys',
             'CoreUpdater.update.end' => 'onPluginActivateOrInstall',
-            'PluginManager.pluginActivated' => 'onPluginActivateOrInstall',
+            'PluginManager.pluginActivated' => 'onPluginActivated',
             'PluginManager.pluginInstalled' => 'onPluginActivateOrInstall',
             'PluginManager.pluginDeactivated' => 'onPluginActivateOrInstall',
             'PluginManager.pluginUninstalled' => 'onPluginActivateOrInstall',
@@ -59,6 +63,7 @@ class TagManager extends \Piwik\Plugin
             'SitesManager.addSite.end' => 'onSiteAdded',
             'System.addSystemSummaryItems' => 'addSystemSummaryItems',
             'Template.endTrackingCodePage' => 'addTagManagerCode',
+            'Template.siteWithoutDataTab.MatomoTagManager.content' => 'setTagManagerCode',
             'Template.endTrackingHelpPage' => 'addTagManagerTrackingCodeHelp',
             'Template.endTrackingCodePageTableOfContents' => 'endTrackingCodePageTableOfContents',
             'Tracker.PageUrl.getQueryParametersToExclude' => 'getQueryParametersToExclude',
@@ -66,7 +71,8 @@ class TagManager extends \Piwik\Plugin
             'Template.bodyClass' => 'addBodyClass',
             'Access.Capability.addCapabilities' => 'addCapabilities',
             'TwoFactorAuth.requiresTwoFactorAuthentication' => 'requiresTwoFactorAuthentication',
-            'Db.getTablesInstalled' => 'getTablesInstalled'
+            'Db.getTablesInstalled' => 'getTablesInstalled',
+            'Template.siteWithoutDataTab.ReactJs.content' => 'embedReactTagManagerTrackingCode',
         );
     }
 
@@ -199,6 +205,47 @@ class TagManager extends \Piwik\Plugin
         }
     }
 
+    public function onPluginActivated($pluginName = '')
+    {
+        if ($pluginName === 'TagManager') {
+            //Need to manually set this since values inc config.php is not loaded
+            $pluginDirectory = Plugin\Manager::getPluginDirectory('TagManager');
+            $configPhp = include $pluginDirectory . '/config/config.php';
+            foreach ($configPhp as $key => $val) {
+                if (!StaticContainer::getContainer()->has($key)) {
+                    StaticContainer::getContainer()->set($key, $val);
+                }
+            }
+
+            $idSite = 1;
+
+            try {
+                Site::getSite($idSite);
+            } catch (UnexpectedWebsiteFoundException $e) {
+                return; // site not exists
+            }
+            $containerModel = StaticContainer::get('Piwik\Plugins\TagManager\Model\Container');
+            if ($containerModel->getContainers($idSite)) {
+                // already has a container
+                return;
+            }
+
+            if (!SettingsPiwik::getPiwikUrl()) {
+                // fixes URL in matomo container variable is empty and cannot be detected
+                SettingsPiwik::overwritePiwikUrl('https://' . SettingsPiwik::getPiwikInstanceId());
+            }
+
+            try {
+                StaticContainer::getContainer()->get('Piwik\Plugins\TagManager\Context\Storage\StorageInterface'); //this will throw an error on cloud, so we need to catch this and avoid the exception stack trace
+                Request::processRequest('TagManager.createDefaultContainerForSite', ['idSite' => $idSite], []);
+            } catch (\Exception $e) {
+                //Do nothing here, it fails on cloud always
+            }
+        } else {
+            $this->onPluginActivateOrInstall($pluginName);
+        }
+    }
+
     public static function getAbsolutePathToContainerDirectory()
     {
         return PIWIK_DOCUMENT_ROOT . StaticContainer::get('TagManagerContainerStorageDir');
@@ -212,13 +259,35 @@ class TagManager extends \Piwik\Plugin
 
     public function endTrackingCodePageTableOfContents(&$out)
     {
-        $out .= '<a href="#tagmanager">' . Piwik::translate('TagManager_TagManager') . '</a>';
+        $out .= '<a href="#/tagmanager">' . Piwik::translate('TagManager_TagManager') . '</a>';
     }
 
     public function addTagManagerCode(&$out)
     {
         Piwik::checkUserHasSomeViewAccess();
+        $model = $this->getContainerModel();
         $view = new View("@TagManager/trackingCode");
+        $view->action = Piwik::getAction();
+        $view->showContainerRow = $model->getNumContainersTotal() > 1;
+        $view->isJsTrackerInstallCheckAvailable = Manager::getInstance()->isPluginActivated('JsTrackerInstallCheck');
+        $out .= $view->render();
+    }
+
+    public function setTagManagerCode(&$out)
+    {
+        $newContent = '<h2>' . Piwik::translate('SitesManager_StepByStepGuide') . '</h2>';
+        $this->addTagManagerCode($newContent);
+        $out = $newContent;
+    }
+
+    public function embedReactTagManagerTrackingCode(&$out, SiteContentDetector $detector)
+    {
+        Piwik::checkUserHasSomeViewAccess();
+        $model = $this->getContainerModel();
+        $view = new View("@TagManager/trackingCodeReact");
+        $view->action = Piwik::getAction();
+        $view->wasDetected = $detector->wasDetected(ReactJs::getId());
+        $view->showContainerRow = $model->getNumContainersTotal() > 1;
         $out .= $view->render();
     }
 
@@ -244,7 +313,10 @@ class TagManager extends \Piwik\Plugin
         return StaticContainer::get('Piwik\Plugins\TagManager\Model\Container');
     }
 
-    public function regenerateReleasedContainers()
+    /**
+     * @param bool $onlyWithPreviewRelease if true only regenerates containers if there is a preview release.
+     */
+    public function regenerateReleasedContainers($onlyWithPreviewRelease = false)
     {
         $pluginManager = Plugin\Manager::getInstance();
         if (!$pluginManager->isPluginInstalled('TagManager')) {
@@ -265,7 +337,7 @@ class TagManager extends \Piwik\Plugin
             return;
         }
 
-        Access::doAsSuperUser(function () {
+        Access::doAsSuperUser(function () use ($onlyWithPreviewRelease) {
             // we need to run as super user because after a core update the user might not be an admin etc
             // (and admin is needed for debug action)
             $containerModel = StaticContainer::get('Piwik\Plugins\TagManager\Model\Container');
@@ -273,8 +345,12 @@ class TagManager extends \Piwik\Plugin
                 $containers = $containerModel->getActiveContainersInfo();
                 foreach ($containers as $container) {
                     try {
-                        Context::changeIdSite($container['idsite'], function () use ($containerModel, $container) {
-                            $containerModel->generateContainer($container['idsite'], $container['idcontainer']);
+                        Context::changeIdSite($container['idsite'], function () use ($containerModel, $container, $onlyWithPreviewRelease) {
+                            if ($onlyWithPreviewRelease) {
+                                $containerModel->generateContainerIfHasPreviewRelease($container['idsite'], $container['idcontainer']);
+                            } else {
+                                $containerModel->generateContainer($container['idsite'], $container['idcontainer']);
+                            }
                         });
                     } catch (UnexpectedWebsiteFoundException $e) {
                         // website was removed, ignore
@@ -340,6 +416,8 @@ class TagManager extends \Piwik\Plugin
         $result[] = 'General_Or';
         $result[] = 'General_Recommended';
         $result[] = 'General_Website';
+        $result[] = 'General_ClickX';
+        $result[] = 'General_Update';
         $result[] = 'Goals_Optional';
         $result[] = 'SitesManager_Type';
         $result[] = 'UserCountryMap_None';
@@ -351,10 +429,8 @@ class TagManager extends \Piwik\Plugin
         $result[] = 'TagManager_ConfigureEnvironmentsSuperUser';
         $result[] = 'TagManager_WantToDeployThisChangeCreateVersion';
         $result[] = 'TagManager_ConfigureWhenTagDoes';
-        $result[] = 'TagManager_CustomizeTracking';
         $result[] = 'TagManager_ViewContainerDashboard';
         $result[] = 'TagManager_NoMatomoConfigFoundForContainer';
-        $result[] = 'TagManager_CustomizeTrackingTeaser';
         $result[] = 'TagManager_PublishLiveEnvironmentCapabilityRequired';
         $result[] = 'TagManager_CapabilityPublishLiveContainer';
         $result[] = 'TagManager_VersionAlreadyPublishedToAllEnvironments';
@@ -392,6 +468,7 @@ class TagManager extends \Piwik\Plugin
         $result[] = 'TagManager_ChooseTriggerToContinue';
         $result[] = 'TagManager_ChooseVariableToContinue';
         $result[] = 'TagManager_TriggerConditionsHelp';
+        $result[] = 'TagManager_TriggerConditionsHelpText';
         $result[] = 'TagManager_EnablingPreviewPleaseWait';
         $result[] = 'TagManager_DisablingPreviewPleaseWait';
         $result[] = 'TagManager_UpdatingDebugSiteUrlPleaseWait';
@@ -520,7 +597,6 @@ class TagManager extends \Piwik\Plugin
         $result[] = 'TagManager_VersionImportContentTitle';
         $result[] = 'TagManager_VersionImportOverwriteContent';
         $result[] = 'TagManager_CustomVariables';
-        $result[] = 'TagManager_PreconfiguredVariables';
         $result[] = 'TagManager_EditContainer';
         $result[] = 'TagManager_CreateNewContainer';
         $result[] = 'TagManager_CreateNewContainerNow';
@@ -532,6 +608,259 @@ class TagManager extends \Piwik\Plugin
         $result[] = 'TagManager_InstallCode';
         $result[] = 'TagManager_InstallCodePublishEnvironmentNote';
         $result[] = 'TagManager_GettingStartedNotice';
+        $result[] = 'TagManager_GettingStarted';
+        $result[] = 'CorePluginsAdmin_WhatIsTagManager';
+        $result[] = 'TagManager_GettingStartedWhatIsIntro';
+        $result[] = 'TagManager_GettingStartedAnalyticsTracking';
+        $result[] = 'TagManager_GettingStartedConversionTracking';
+        $result[] = 'TagManager_GettingStartedNewsletterSignups';
+        $result[] = 'TagManager_GettingStartedExitActions';
+        $result[] = 'TagManager_GettingStartedRemarketing';
+        $result[] = 'TagManager_GettingStartedSocialWidgets';
+        $result[] = 'TagManager_GettingStartedAffiliates';
+        $result[] = 'TagManager_GettingStartedAds';
+        $result[] = 'TagManager_GettingStartedAndMore';
+        $result[] = 'TagManager_GettingStartedMainComponents';
+        $result[] = 'TagManager_GettingStartedTagComponent';
+        $result[] = 'TagManager_GettingStartedTriggerComponent';
+        $result[] = 'TagManager_GettingStartedVariableComponent';
+        $result[] = 'TagManager_GettingStartedWhyDoINeed';
+        $result[] = 'TagManager_GettingStartedWhyMakesLifeEasier';
+        $result[] = 'TagManager_GettingStartedWhyThirdPartySnippets';
+        $result[] = 'TagManager_GettingStartedWhyAccuracyPerformance';
+        $result[] = 'TagManager_GettingStartedHowDoI';
+        $result[] = 'TagManager_GettingStartedHowCreateContainer';
+        $result[] = 'TagManager_GettingStartedHowCopyCode';
+        $result[] = 'TagManager_GettingStartedHowAddTagsToContainer';
+        $result[] = 'TagManager_GettingStartedWhatIfUnsupported';
+        $result[] = 'TagManager_GettingStartedCustomTags';
+        $result[] = 'TagManager_GettingStartedContributeTags';
+        $result[] = 'TagManager_CreateNewVersionNow';
+        $result[] = 'TagManager_TagManager';
+        $result[] = 'TagManager_MatomoTagManager';
+        $result[] = 'TagManager_TagManagerTrackingInfo';
+        $result[] = 'TagManager_InvalidDebugUrlError';
+        $result[] = 'TagManager_TagDescriptionHelp';
+        $result[] = 'TagManager_TriggerDescriptionHelp';
+        $result[] = 'TagManager_VariableDescriptionHelp';
+        $result[] = 'TagManager_InstallCodeDataLayerNote';
+        $result[] = 'TagManager_TagsNameDescription';
+        $result[] = 'TagManager_TagsDescriptionDescription';
+        $result[] = 'TagManager_TagsTypeDescription';
+        $result[] = 'TagManager_TagsTriggersDescription';
+        $result[] = 'TagManager_TagsLastUpdatedDescription';
+        $result[] = 'TagManager_TagsActionDescription';
+        $result[] = 'TagManager_TriggersNameDescription';
+        $result[] = 'TagManager_TriggersDescriptionDescription';
+        $result[] = 'TagManager_TriggersTypeDescription';
+        $result[] = 'TagManager_TriggersFilterDescription';
+        $result[] = 'TagManager_TriggersLastUpdatedDescription';
+        $result[] = 'TagManager_TriggersActionDescription';
+        $result[] = 'TagManager_VariablesNameDescription';
+        $result[] = 'TagManager_VariablesDescriptionDescription';
+        $result[] = 'TagManager_VariablesTypeDescription';
+        $result[] = 'TagManager_VariablesLookupTableDescription';
+        $result[] = 'TagManager_VariablesLastUpdatedDescription';
+        $result[] = 'TagManager_VariablesActionDescription';
+        $result[] = 'TagManager_VersionsRevisionDescription';
+        $result[] = 'TagManager_VersionsNameDescription';
+        $result[] = 'TagManager_VersionsDescriptionDescription';
+        $result[] = 'TagManager_VersionsEnvironmentsDescription';
+        $result[] = 'TagManager_VersionsCreatedDescription';
+        $result[] = 'TagManager_VersionsActionDescription';
+        $result[] = 'TagManager_CreateNewVersionNow';
+        $result[] = 'TagManager_SelectAVariable';
+        $result[] = 'TagManager_AddThisTagPubIdTitle';
+        $result[] = 'TagManager_AddThisTagPubIdDescription';
+        $result[] = 'TagManager_AddThisParentSelectorTitle';
+        $result[] = 'TagManager_AddThisParentSelectorDescription';
+        $result[] = 'TagManager_BingUETTagIdTitle';
+        $result[] = 'TagManager_BingUETTagIdDescription';
+        $result[] = 'TagManager_BugsnagTagApiKeyTitle';
+        $result[] = 'TagManager_BugsnagTagApiKeyDescription';
+        $result[] = 'TagManager_BugsnagTagCollectUserIpTitle';
+        $result[] = 'TagManager_BugsnagTagCollectUserIpDescription';
+        $result[] = 'TagManager_CustomHtmlTagTitle';
+        $result[] = 'TagManager_CustomHtmlTagDescriptionText';
+        $result[] = 'TagManager_CustomHtmlTagHelpText';
+        $result[] = 'TagManager_CustomHtmlHtmlPositionTitle';
+        $result[] = 'TagManager_CustomHtmlHtmlPositionDescription';
+        $result[] = 'TagManager_CustomImageTagSrcTitle';
+        $result[] = 'TagManager_CustomImageTagSrcDescription';
+        $result[] = 'TagManager_CustomImageTagCacheBusterEnabledTitle';
+        $result[] = 'TagManager_CustomImageTagCacheBusterEnabledDescription';
+        $result[] = 'TagManager_DriftTagDriftIdTitle';
+        $result[] = 'TagManager_DriftTagDriftIdDescription';
+        $result[] = 'TagManager_EmarsysTagMerchantIdTitle';
+        $result[] = 'TagManager_EmarsysTagMerchantIdDescription';
+        $result[] = 'TagManager_EmarsysTagCommandCategoryTitle';
+        $result[] = 'TagManager_EmarsysTagCommandCategoryDescription';
+        $result[] = 'TagManager_EmarsysTagCommandViewTitle';
+        $result[] = 'TagManager_EmarsysTagCommandViewDescription';
+        $result[] = 'TagManager_EmarsysTagCommandTagTitle';
+        $result[] = 'TagManager_EmarsysTagCommandTagDescription';
+        $result[] = 'TagManager_EmarsysTagCommandGoTitle';
+        $result[] = 'TagManager_EmarsysTagCommandGoDescription';
+        $result[] = 'TagManager_EtrackerTagTrackingTypeTitle';
+        $result[] = 'TagManager_EtrackerTagTrackingTypeDescription';
+        $result[] = 'TagManager_EtrackerTagConfigTitle';
+        $result[] = 'TagManager_EtrackerTagConfigDescription';
+        $result[] = 'TagManager_EtrackerTagWrapperPageNameTitle';
+        $result[] = 'TagManager_EtrackerTagWrapperPageNameDescription';
+        $result[] = 'TagManager_EtrackerTagWrapperAreaTitle';
+        $result[] = 'TagManager_EtrackerTagWrapperAreaDescription';
+        $result[] = 'TagManager_EtrackerTagWrapperTargetTitle';
+        $result[] = 'TagManager_EtrackerTagWrapperTvalTitle';
+        $result[] = 'TagManager_EtrackerTagWrapperTonrTitle';
+        $result[] = 'TagManager_EtrackerTagWrapperTsaleTitle';
+        $result[] = 'TagManager_EtrackerTagWrapperTcustTitle';
+        $result[] = 'TagManager_EtrackerTagWrapperTBasketTitle';
+        $result[] = 'TagManager_EtrackerTagEventCategoryTitle';
+        $result[] = 'TagManager_EtrackerTagEventCategoryDescription';
+        $result[] = 'TagManager_EtrackerTagEventObjectTitle';
+        $result[] = 'TagManager_EtrackerTagEventObjectDescription';
+        $result[] = 'TagManager_EtrackerTagEventActionTitle';
+        $result[] = 'TagManager_EtrackerTagEventActionDescription';
+        $result[] = 'TagManager_EtrackerTagEventTypeTitle';
+        $result[] = 'TagManager_EtrackerTagEventTypeDescription';
+        $result[] = 'TagManager_FacebookPixelTagPixelIdTitle';
+        $result[] = 'TagManager_GoogleAnalyticsUniversalTagPropertyIdTitle';
+        $result[] = 'TagManager_GoogleAnalyticsUniversalTagPropertyIdDescription';
+        $result[] = 'TagManager_GoogleAnalyticsUniversalTagTrackingTypeTitle';
+        $result[] = 'TagManager_GoogleAnalyticsUniversalTagTrackingTypeDescription';
+        $result[] = 'TagManager_HoneybadgerTagApiKeyTitle';
+        $result[] = 'TagManager_HoneybadgerTagApiKeyDescription';
+        $result[] = 'TagManager_HoneybadgerTagEnvironmentDescription';
+        $result[] = 'TagManager_HoneybadgerTagRevisionTitle';
+        $result[] = 'TagManager_HoneybadgerTagRevisionDescription';
+        $result[] = 'TagManager_LinkedinInsightTagPartnerIdTitle';
+        $result[] = 'TagManager_LinkedinInsightTagPartnerIdDescription';
+        $result[] = 'TagManager_LivezillaDynamicTagIdTitle';
+        $result[] = 'TagManager_LivezillaDynamicTagIdDescription';
+        $result[] = 'TagManager_LivezillaDynamicTagDomainTitle';
+        $result[] = 'TagManager_LivezillaDynamicTagDomainDescription';
+        $result[] = 'TagManager_LivezillaDynamicTagDynamicDeferTitle';
+        $result[] = 'TagManager_LivezillaDynamicTagDynamicDeferDescription';
+        $result[] = 'TagManager_PingdomRUMTagIdTitle';
+        $result[] = 'TagManager_PingdomRUMTagIdDescription';
+        $result[] = 'TagManager_RaygunTagApiKeyTitle';
+        $result[] = 'TagManager_RaygunTagApiKeyDescription';
+        $result[] = 'TagManager_RaygunTagEnablePulseTitle';
+        $result[] = 'TagManager_RaygunTagEnablePulseDescription';
+        $result[] = 'TagManager_SentryRavenTagDSNTitle';
+        $result[] = 'TagManager_SentryRavenTagDSNDescription';
+        $result[] = 'TagManager_ShareaholicTagInPageAppTitle';
+        $result[] = 'TagManager_ShareaholicTagInPageAppDescription';
+        $result[] = 'TagManager_ShareaholicTagSiteIdTitle';
+        $result[] = 'TagManager_ShareaholicTagSiteIdDescription';
+        $result[] = 'TagManager_ShareaholicTagAppIdTitle';
+        $result[] = 'TagManager_ShareaholicTagAppIdDescription';
+        $result[] = 'TagManager_ShareaholicTagParentSelectorTitle';
+        $result[] = 'TagManager_ShareaholicTagParentSelectorDescription';
+        $result[] = 'TagManager_TawkToTagIdTitle';
+        $result[] = 'TagManager_TawkToTagIdDescription';
+        $result[] = 'TagManager_TawkToTagWidgetIdTitle';
+        $result[] = 'TagManager_TawkToTagWidgetIdDescription';
+        $result[] = 'TagManager_ThemeColorTagThemeColorTitle';
+        $result[] = 'TagManager_ThemeColorTagThemeColorDescription';
+        $result[] = 'TagManager_VisualWebsiteOptimizerTagAccountIdTitle';
+        $result[] = 'TagManager_VisualWebsiteOptimizerTagAccountIdDescription';
+        $result[] = 'TagManager_ZendeskChatTagChatIdTitle';
+        $result[] = 'TagManager_ZendeskChatTagChatIdDescription';
+        $result[] = 'TagManager_AllDownloadsClickTriggerDownloadExtensionsTitle';
+        $result[] = 'TagManager_AllDownloadsClickTriggerDownloadExtensionsDescription';
+        $result[] = 'TagManager_CustomEventTriggerEventNameDescription';
+        $result[] = 'TagManager_ElementVisibilityTriggerSelectionMethodTitle';
+        $result[] = 'TagManager_ElementVisibilityTriggerSelectionMethodDescription';
+        $result[] = 'TagManager_ElementVisibilityTriggerCssSelectorTitle';
+        $result[] = 'TagManager_ElementVisibilityTriggerCssSelectorDescription';
+        $result[] = 'TagManager_ElementVisibilityTriggerElementIDTitle';
+        $result[] = 'TagManager_ElementVisibilityTriggerElementIDDescription';
+        $result[] = 'TagManager_ElementVisibilityTriggerFireTriggerWhenTitle';
+        $result[] = 'TagManager_ElementVisibilityTriggerMinPercentVisibleTitle';
+        $result[] = 'TagManager_FullscreenTriggerTriggerActionTitle';
+        $result[] = 'TagManager_FullscreenTriggerTriggerLimitTitle';
+        $result[] = 'TagManager_FullscreenTriggerTriggerLimitDescription';
+        $result[] = 'TagManager_ScrollReachTriggerScrollTypeTitle';
+        $result[] = 'TagManager_ScrollReachTriggerPixelsTitle';
+        $result[] = 'TagManager_ScrollReachTriggerPixelsDescription';
+        $result[] = 'TagManager_ScrollReachTriggerPercentageTitle';
+        $result[] = 'TagManager_ScrollReachTriggerPercentageDescription';
+        $result[] = 'TagManager_TimerTriggerTriggerIntervalTitle';
+        $result[] = 'TagManager_TimerTriggerEventNameDescription';
+        $result[] = 'TagManager_TimerTriggerTriggerLimitTitle';
+        $result[] = 'TagManager_TimerTriggerTriggerLimitDescription';
+        $result[] = 'TagManager_WindowLeaveTriggerTriggerLimitTitle';
+        $result[] = 'TagManager_WindowLeaveTriggerTriggerLimitDescription';
+        $result[] = 'TagManager_CookieVariableCookieNameTitle';
+        $result[] = 'TagManager_CookieVariableUrlDecodeTitle';
+        $result[] = 'TagManager_CookieVariableUrlDecodeDescription';
+        $result[] = 'TagManager_CustomJsFunctionVariableJsFunctionTitle';
+        $result[] = 'TagManager_CustomJsFunctionVariableJsFunctionDescription';
+        $result[] = 'TagManager_DataLayerVariableNameTitle';
+        $result[] = 'TagManager_DataLayerVariableNameDescription';
+        $result[] = 'TagManager_DomElementVariableSelectionMethodDescription';
+        $result[] = 'TagManager_DomElementVariableCssSelectorDescription';
+        $result[] = 'TagManager_DomElementVariableAttributeNameTitle';
+        $result[] = 'TagManager_DomElementVariableAttributeNameInlineHelp';
+        $result[] = 'TagManager_EtrackerConfigurationVariableIdTitle';
+        $result[] = 'TagManager_EtrackerConfigurationVariableIdDescription';
+        $result[] = 'TagManager_EtrackerConfigurationVariableBlockCookiesTitle';
+        $result[] = 'TagManager_EtrackerConfigurationVariableDNTTitle';
+        $result[] = 'TagManager_EtrackerConfigurationVariablePageNameTitle';
+        $result[] = 'TagManager_EtrackerConfigurationVariablePageNameDescription';
+        $result[] = 'TagManager_EtrackerConfigurationVariableAreaTitle';
+        $result[] = 'TagManager_EtrackerConfigurationVariableTargetTitle';
+        $result[] = 'TagManager_EtrackerConfigurationVariableTValTitle';
+        $result[] = 'TagManager_EtrackerConfigurationVariableTonrTitle';
+        $result[] = 'TagManager_EtrackerConfigurationVariableTSaleTitle';
+        $result[] = 'TagManager_EtrackerConfigurationVariableBasketTitle';
+        $result[] = 'TagManager_EtrackerConfigurationVariableCustTitle';
+        $result[] = 'TagManager_EtrackerConfigurationVariableCustomDimensionsTitle';
+        $result[] = 'TagManager_EtrackerConfigurationVariableCustomDimensionsDescription';
+        $result[] = 'TagManager_JavaScriptVariableNameTitle';
+        $result[] = 'TagManager_JavaScriptVariableNameDescription';
+        $result[] = 'TagManager_MetaContentVariableNameTitle';
+        $result[] = 'TagManager_ReferrerUrlVariableUrlPartTitle';
+        $result[] = 'TagManager_ReferrerUrlVariableUrlPartDescription';
+        $result[] = 'TagManager_TimeSinceLoadVariableUnitTitle';
+        $result[] = 'TagManager_TimeSinceLoadVariableUnitDescription';
+        $result[] = 'TagManager_UrlParameterVariableNameTitle';
+        $result[] = 'TagManager_UrlParameterVariableNameDescription';
+        $result[] = 'TagManager_MatomoTagManagerTrackingInfoLine1';
+        $result[] = 'TagManager_MatomoTagManagerTrackingInfoLine2';
+        $result[] = 'TagManager_SiteWithoutDataReactIntro';
+        $result[] = 'TagManager_SiteWithoutDataReactFollowStepCompleted';
+        $result[] = 'SitesManager_SiteWithoutDataCloudflareFollowStepsIntro';
+        $result[] = 'TagManager_SPAFollowStep1';
+        $result[] = 'TagManager_SPAFollowStep2';
+        $result[] = 'TagManager_SPAFollowStep3';
+        $result[] = 'TagManager_SPAFollowStep5';
+        $result[] = 'TagManager_SPAFollowStep7';
+        $result[] = 'TagManager_SPAFollowStep8';
+        $result[] = 'TagManager_SPAFollowStep9';
+        $result[] = 'TagManager_SPAFollowStep10';
+        $result[] = 'TagManager_SPAFollowStep10a';
+        $result[] = 'TagManager_SPAFollowStep10b';
+        $result[] = 'TagManager_SPAFollowStep11';
+        $result[] = 'TagManager_SPAFollowStep13';
+        $result[] = 'TagManager_SPAFollowStep14';
+        $result[] = 'TagManager_SPAFollowStep15';
+        $result[] = 'TagManager_SPAFollowStep16';
+        $result[] = 'TagManager_ReactFollowStep16';
+        $result[] = 'TagManager_HistoryChangeTriggerName';
+        $result[] = 'TagManager_CategoryUserEngagement';
+        $result[] = 'TagManager_Publish';
+        $result[] = 'TagManager_CustomTitle';
+        $result[] = 'TagManager_CustomUrl';
+        $result[] = 'TagManager_PageViewTriggerName';
+        $result[] = 'TagManager_MatomoTagName';
+        $result[] = 'TagManager_SiteWithoutDataMtmIntro';
+        $result[] = 'TagManager_SiteWithoutDataMtmStep2';
+        $result[] = 'TagManager_SiteWithoutDataMtmStep3';
+        $result[] = 'TagManager_IgnoreGtmDataLaterDescription';
+        $result[] = 'TagManager_IgnoreGtmDataLaterTitle';
+        $result[] = 'TagManager_VersionEditWithNoAccessMessage';
     }
 
     public function getStylesheetFiles(&$stylesheets)
@@ -542,46 +871,16 @@ class TagManager extends \Piwik\Plugin
         $stylesheets[] = "plugins/TagManager/vue/src/Tag/TagEdit.less";
         $stylesheets[] = "plugins/TagManager/vue/src/VariableSelectType/VariableSelectType.less";
         $stylesheets[] = "plugins/TagManager/vue/src/Field/FieldVariableTemplate.less";
-        $stylesheets[] = "plugins/TagManager/angularjs/containerSelector/container-selector.less";
-        $stylesheets[] = "plugins/TagManager/angularjs/manageVersion/edit.directive.less";
+        $stylesheets[] = "plugins/TagManager/vue/src/ContainerSelector/ContainerSelector.less";
+        $stylesheets[] = "plugins/TagManager/vue/src/ContainerDashboard/ContainerDashboard.less";
+        $stylesheets[] = "plugins/TagManager/vue/src/Version/VersionEdit.less";
+        $stylesheets[] = "plugins/TagManager/vue/src/TagmanagerTrackingCode/TagManagerTrackingCode.less";
     }
 
     public function getJsFiles(&$jsFiles)
     {
         $jsFiles[] = "plugins/TagManager/libs/jquery-timepicker/jquery.timepicker.min.js";
-
         $jsFiles[] = "plugins/TagManager/javascripts/tagmanagerHelper.js";
-
-        $jsFiles[] = "plugins/TagManager/angularjs/manageContainer/model.js";
-        $jsFiles[] = "plugins/TagManager/angularjs/manageContainer/list.controller.js";
-        $jsFiles[] = "plugins/TagManager/angularjs/manageContainer/list.directive.js";
-        $jsFiles[] = "plugins/TagManager/angularjs/manageContainer/edit.controller.js";
-        $jsFiles[] = "plugins/TagManager/angularjs/manageContainer/edit.directive.js";
-        $jsFiles[] = "plugins/TagManager/angularjs/manageContainer/manage.controller.js";
-        $jsFiles[] = "plugins/TagManager/angularjs/manageContainer/manage.directive.js";
-
-        $jsFiles[] = "plugins/TagManager/angularjs/manageVersion/model.js";
-        $jsFiles[] = "plugins/TagManager/angularjs/manageVersion/diff.js";
-        $jsFiles[] = "plugins/TagManager/angularjs/manageVersion/list.controller.js";
-        $jsFiles[] = "plugins/TagManager/angularjs/manageVersion/list.directive.js";
-        $jsFiles[] = "plugins/TagManager/angularjs/manageVersion/edit.controller.js";
-        $jsFiles[] = "plugins/TagManager/angularjs/manageVersion/edit.directive.js";
-        $jsFiles[] = "plugins/TagManager/angularjs/manageVersion/manage.controller.js";
-        $jsFiles[] = "plugins/TagManager/angularjs/manageVersion/manage.directive.js";
-
-        $jsFiles[] = "plugins/TagManager/angularjs/manageInstallCode/manage-install-tag-code.controller.js";
-        $jsFiles[] = "plugins/TagManager/angularjs/manageInstallCode/manage-install-tag-code.directive.js";
-
-        $jsFiles[] = "plugins/TagManager/angularjs/containerDashboard/container-dashboard.controller.js";
-        $jsFiles[] = "plugins/TagManager/angularjs/containerDashboard/container-dashboard.directive.js";
-
-        $jsFiles[] = "plugins/TagManager/angularjs/containerSelector/container-selector.controller.js";
-        $jsFiles[] = "plugins/TagManager/angularjs/containerSelector/container-selector.directive.js";
-
-        $jsFiles[] = "plugins/TagManager/angularjs/tagmanagerTrackingCode/tagmanager.controller.js";
-        $jsFiles[] = "plugins/TagManager/angularjs/tagmanagerTrackingCode/tagmanager.directive.js";
-
-        $jsFiles[] = "plugins/TagManager/angularjs/debugging/debugging.controller.js";
     }
 
     private function hasMeasurableTypeWebsite($idSite)

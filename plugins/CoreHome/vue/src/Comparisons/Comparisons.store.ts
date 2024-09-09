@@ -1,8 +1,8 @@
 /*!
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 import {
@@ -13,7 +13,7 @@ import {
 } from 'vue';
 import MatomoUrl from '../MatomoUrl/MatomoUrl';
 import Matomo from '../Matomo/Matomo';
-import translate from '../translate';
+import { translate } from '../translate';
 import Periods from '../Periods/Periods';
 import AjaxHelper from '../AjaxHelper/AjaxHelper';
 import SegmentsStore from '../Segmentation/Segments.store';
@@ -77,7 +77,14 @@ export default class ComparisonsStore {
   readonly isEnabled = computed(() => this.checkEnabledForCurrentPage());
 
   constructor() {
-    this.loadComparisonsDisabledFor();
+    if (document.readyState === 'complete'
+      || document.readyState === 'interactive') {
+      this.loadComparisonsDisabledFor();
+    } else {
+      document.addEventListener('DOMContentLoaded', () => {
+        this.loadComparisonsDisabledFor();
+      });
+    }
 
     $(() => {
       this.colors = this.getAllSeriesColors() as { [key: string]: string };
@@ -262,7 +269,7 @@ export default class ComparisonsStore {
     };
 
     // change the page w/ these new param values
-    const baseParams = Matomo.helper.isAngularRenderingThePage()
+    const baseParams = Matomo.helper.isReportingPage()
       ? MatomoUrl.hashParsed.value
       : MatomoUrl.urlParsed.value;
     MatomoUrl.updateLocation({
@@ -293,15 +300,13 @@ export default class ComparisonsStore {
   private loadComparisonsDisabledFor() {
     const matomoModule: string = MatomoUrl.parsed.value.module as string;
 
-    // check if body id #installation exist
-    if (window.piwik.installation) {
-      this.privateState.comparisonsDisabledFor = [];
-      return;
-    }
-
+    // Skip while installing, updating or logging in
     if (matomoModule === 'CoreUpdater'
       || matomoModule === 'Installation'
       || matomoModule === 'Overlay'
+      || window.piwik.isPagesComparisonApiDisabled
+      || window.piwik.installation
+      || window.broadcast.isLoginPage()
     ) {
       this.privateState.comparisonsDisabledFor = [];
       return;

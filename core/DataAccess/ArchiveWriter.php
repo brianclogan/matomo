@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\DataAccess;
 
 use Exception;
@@ -16,7 +17,8 @@ use Piwik\Container\StaticContainer;
 use Piwik\Date;
 use Piwik\Db;
 use Piwik\Db\BatchInsert;
-use Psr\Log\LoggerInterface;
+use Piwik\Log\LoggerInterface;
+use Piwik\SettingsServer;
 
 /**
  * This class is used to create a new Archive.
@@ -30,14 +32,14 @@ class ArchiveWriter
      *
      * @var int
      */
-    const DONE_OK = 1;
+    public const DONE_OK = 1;
     /**
      * Flag stored at the start of the archiving
      * When requesting an Archive, we make sure that non-finished archive are not considered valid
      *
      * @var int
      */
-    const DONE_ERROR = 2;
+    public const DONE_ERROR = 2;
 
     /**
      * Flag indicates the archive is over a period that is not finished, eg. the current day, current week, etc.
@@ -49,37 +51,57 @@ class ArchiveWriter
      * @deprecated it should not be used anymore as temporary archives have been removed. It still exists though for
      *             historical reasons.
      */
-    const DONE_OK_TEMPORARY = 3;
+    public const DONE_OK_TEMPORARY = 3;
 
     /**
      * Flag indicated that archive is done but was marked as invalid later and needs to be re-processed during next archiving process
      *
      * @var int
      */
-    const DONE_INVALIDATED = 4;
+    public const DONE_INVALIDATED = 4;
 
     /**
      * Flag indicating that the archive is
      *
      * @var int
      */
-    const DONE_PARTIAL = 5;
+    public const DONE_PARTIAL = 5;
 
-    protected $fields = array('idarchive',
+    protected $fields = ['idarchive',
         'idsite',
         'date1',
         'date2',
         'period',
         'ts_archived',
         'name',
-        'value');
+        'value'];
 
-    private $recordsToWriteSpool = array(
-        'numeric' => array(),
-        'blob' => array()
-    );
+    private $recordsToWriteSpool = [
+        'numeric' => [],
+        'blob' => []
+    ];
 
-    const MAX_SPOOL_SIZE = 50;
+    public const MAX_SPOOL_SIZE = 50;
+
+    /**
+     * @var int|false
+     */
+    public $idArchive;
+
+    /**
+     * @var int|null
+     */
+    private $idSite;
+
+    /**
+     * @var \Piwik\Segment
+     */
+    private $segment;
+
+    /**
+     * @var \Piwik\Period
+     */
+    private $period;
 
     /**
      * @var ArchiveProcessor\Parameters
@@ -90,6 +112,16 @@ class ArchiveWriter
      * @var string
      */
     private $earliestNow;
+
+    /**
+     * @var string
+     */
+    private $doneFlag;
+
+    /**
+     * @var Date|null
+     */
+    private $dateStart;
 
     /**
      * ArchiveWriter constructor.
@@ -105,7 +137,7 @@ class ArchiveWriter
         $this->period    = $params->getPeriod();
         $this->parameters = $params;
 
-        $idSites = array($this->idSite);
+        $idSites = [$this->idSite];
         $this->doneFlag = Rules::getDoneStringFlagFor($idSites, $this->segment, $this->period->getLabel(), $params->getRequestedPlugin());
 
         $this->dateStart = $this->period->getDateStart();
@@ -122,7 +154,6 @@ class ArchiveWriter
     public function insertBlobRecord($name, $values)
     {
         if (is_array($values)) {
-
             if (isset($values[0])) {
                 // we always store the root table in a single blob for fast access
                 $this->insertRecord($name, $this->compress($values[0]));
@@ -171,7 +202,8 @@ class ArchiveWriter
 
         $this->getModel()->updateArchiveStatus($numericTable, $idArchive, $this->doneFlag, $doneValue);
 
-        if (!$this->parameters->isPartialArchive()
+        if (
+            !$this->parameters->isPartialArchive()
             // sanity check, just in case nothing was inserted (the archive status should always be inserted)
             && !empty($this->earliestNow)
         ) {
@@ -211,7 +243,7 @@ class ArchiveWriter
         $records = $this->recordsToWriteSpool[$valueType];
 
         $bindSql = $this->getInsertRecordBind();
-        $values  = array();
+        $values  = [];
 
         $valueSeen = false;
         foreach ($records as $record) {
@@ -260,10 +292,10 @@ class ArchiveWriter
         }
 
         $valueType = $this->isRecordNumeric($value) ? 'numeric' : 'blob';
-        $this->recordsToWriteSpool[$valueType][] = array(
+        $this->recordsToWriteSpool[$valueType][] = [
             0 => $name,
             1 => $value
-        );
+        ];
 
         if (count($this->recordsToWriteSpool[$valueType]) >= self::MAX_SPOOL_SIZE) {
             $this->flushSpool($valueType);
@@ -274,8 +306,15 @@ class ArchiveWriter
 
     public function flushSpools()
     {
-        $this->flushSpool('numeric');
-        $this->flushSpool('blob');
+        if (SettingsServer::isArchivePhpTriggered()) {
+            Db::executeWithDatabaseWriterReconnectionAttempt(function () {
+                $this->flushSpool('numeric');
+                $this->flushSpool('blob');
+            });
+        } else {
+            $this->flushSpool('numeric');
+            $this->flushSpool('blob');
+        }
     }
 
     private function flushSpool($valueType)
@@ -285,14 +324,14 @@ class ArchiveWriter
         if ($numRecords > 1) {
             $this->batchInsertSpool($valueType);
         } elseif ($numRecords === 1) {
-            list($name, $value) = $this->recordsToWriteSpool[$valueType][0];
+            [$name, $value] = $this->recordsToWriteSpool[$valueType][0];
             $tableName = $this->getTableNameToInsert($value);
             $fields    = $this->getInsertFields();
             $record    = $this->getInsertRecordBind();
 
             $this->getModel()->insertRecord($tableName, $fields, $record, $name, $value);
         }
-        $this->recordsToWriteSpool[$valueType] = array();
+        $this->recordsToWriteSpool[$valueType] = [];
     }
 
     protected function getInsertRecordBind()
@@ -301,12 +340,12 @@ class ArchiveWriter
         if (empty($this->earliestNow)) {
             $this->earliestNow = $now;
         }
-        return array($this->getIdArchive(),
+        return [$this->getIdArchive(),
             $this->idSite,
             $this->dateStart->toString('Y-m-d'),
             $this->period->getDateEnd()->toString('Y-m-d'),
             $this->period->getId(),
-            $now);
+            $now];
     }
 
     protected function getTableNameToInsert($value)
@@ -343,8 +382,10 @@ class ArchiveWriter
         // if the done flag is not like done%.PluginName, then it shouldn't be a partial archive.
         // log a warning.
         if ($doneValue == self::DONE_PARTIAL && strpos($this->doneFlag, '.') == false) {
-            $ex = new \Exception(sprintf("Trying to create a partial archive w/ an all plugins done flag (done flag = %s). This should not happen.",
-                $this->doneFlag));
+            $ex = new \Exception(sprintf(
+                "Trying to create a partial archive w/ an all plugins done flag (done flag = %s). This should not happen.",
+                $this->doneFlag
+            ));
             StaticContainer::get(LoggerInterface::class)->warning('{exception}', [
                 'exception' => $ex,
             ]);

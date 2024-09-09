@@ -1,8 +1,8 @@
 /*!
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 function initTopControls() {
     function getOverlap(element1, element2)
@@ -43,9 +43,15 @@ function initTopControls() {
         });
 
         if (allRendered) {
+            var alreadyRendered = $('.top_controls').css('visibility') === 'visible';
+
             // we make top controls visible only after all selectors are rendered
             $('.top_controls').css('visibility', 'visible');
             $('.top_controls').css('opacity', '1');
+
+            if (!alreadyRendered) {
+              window.CoreHome.Matomo.postEvent('Matomo.topControlsRendered');
+            }
         }
 
     }
@@ -108,3 +114,22 @@ function blockPropegation(){
         e.stopPropagation();
     })
 }
+
+//refresh page short cut 'r'
+$(function () {
+  piwikHelper.registerShortcut('r', _pk_translate('CoreHome_ShortcutRefresh'), function (event) {
+    if (event.altKey) {
+      return;
+    }
+    if (event.preventDefault) {
+      event.preventDefault();
+    } else {
+      event.returnValue = false; // IE
+    }
+
+    var Matomo = window.CoreHome.Matomo;
+    var hashParsed = window.CoreHome.MatomoUrl.hashParsed.value;
+
+    Matomo.postEvent('loadPage', hashParsed.category, hashParsed.subcategory);
+  });
+});

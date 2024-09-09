@@ -1,10 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\Plugins\Goals\Columns\Metrics;
 
 use Piwik\DataTable\Row;
@@ -23,7 +25,6 @@ use Piwik\Tracker\GoalManager;
  */
 class GoalConversionRate extends GoalSpecificProcessedMetric
 {
-
     public function getName()
     {
         return Goals::makeGoalColumn($this->idGoal, 'conversion_rate');
@@ -41,7 +42,7 @@ class GoalConversionRate extends GoalSpecificProcessedMetric
 
     public function getDependentMetrics()
     {
-        return array('nb_visits', Goals::makeGoalColumn($this->idGoal, 'nb_conversions'));
+        return array('nb_visits', Goals::makeGoalColumn($this->idGoal, 'nb_conversions'),  Goals::makeGoalColumn($this->idGoal, 'nb_visits_converted'));
     }
 
     public function format($value, Formatter $formatter)

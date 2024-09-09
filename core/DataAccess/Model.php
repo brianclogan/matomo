@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik\DataAccess;
 
 use Exception;
@@ -22,7 +23,7 @@ use Piwik\Segment;
 use Piwik\Sequence;
 use Piwik\SettingsServer;
 use Piwik\Site;
-use Psr\Log\LoggerInterface;
+use Piwik\Log\LoggerInterface;
 
 /**
  * Cleans up outdated archives
@@ -36,7 +37,7 @@ class Model
 
     public function __construct(LoggerInterface $logger = null)
     {
-        $this->logger = $logger ?: StaticContainer::get('Psr\Log\LoggerInterface');
+        $this->logger = $logger ?: StaticContainer::get(LoggerInterface::class);
     }
 
     /**
@@ -64,7 +65,6 @@ class Model
                        GROUP_CONCAT(idarchive, '.', value ORDER BY ts_archived DESC) as archives
                   FROM `$archiveTable`
                  WHERE name LIKE 'done%'
-                   AND ts_archived IS NOT NULL
                    AND `value` NOT IN (" . ArchiveWriter::DONE_ERROR . ")
               GROUP BY idsite, date1, date2, period, name HAVING count(*) > 1";
 
@@ -108,17 +108,14 @@ class Model
         return $archiveIds;
     }
 
-    public function getPlaceholderArchiveIds($archiveTable)
-    {
-        $sql = "SELECT DISTINCT idarchive FROM `$archiveTable` WHERE ts_archived IS NULL";
-        $result = Db::fetchAll($sql);
-        $result = array_column($result, 'idarchive');
-        return $result;
-    }
-
-    public function updateArchiveAsInvalidated($archiveTable, $idSites, $allPeriodsToInvalidate, Segment $segment = null,
-                                               $forceInvalidateNonexistantRanges = false, $name = null)
-    {
+    public function updateArchiveAsInvalidated(
+        $archiveTable,
+        $idSites,
+        $allPeriodsToInvalidate,
+        Segment $segment = null,
+        $forceInvalidateNonexistentRanges = false,
+        $name = null
+    ) {
         if (empty($idSites)) {
             return 0;
         }
@@ -219,8 +216,9 @@ class Model
 
             $siteCreationTime = Date::factory($siteCreationTime);
             foreach ($allPeriodsToInvalidate as $period) {
-                if ($period->getLabel() == 'range'
-                    && !$forceInvalidateNonexistantRanges
+                if (
+                    $period->getLabel() == 'range'
+                    && !$forceInvalidateNonexistentRanges
                 ) {
                     continue; // range
                 }
@@ -247,7 +245,8 @@ class Model
                     }
 
                     $hash = $this->getHashFromDoneFlag($doneFlagToCheck);
-                    if ($doneFlagToCheck != $doneFlag
+                    if (
+                        $doneFlagToCheck != $doneFlag
                         && (empty($hash)
                             || !in_array($hash, $hashesOfAllSegmentsToArchiveInCoreArchive)
                             || strpos($doneFlagToCheck, '.') !== false)
@@ -433,9 +432,16 @@ class Model
         $this->deleteArchiveIds($numericTable, $blobTable, $idArchives);
     }
 
-    public function getArchiveIdAndVisits($numericTable, $idSite, $period, $dateStartIso, $dateEndIso, $minDatetimeIsoArchiveProcessedUTC,
-                                          $doneFlags, $doneFlagValues = null)
-    {
+    public function getArchiveIdAndVisits(
+        $numericTable,
+        $idSite,
+        $period,
+        $dateStartIso,
+        $dateEndIso,
+        $minDatetimeIsoArchiveProcessedUTC,
+        $doneFlags,
+        $doneFlagValues = null
+    ) {
         $bindSQL = array($idSite,
             $dateStartIso,
             $dateEndIso,
@@ -461,7 +467,6 @@ class Model
                          AND arc1.period = ?
                          AND ($sqlWhereArchiveName)
                          $timeStampWhere
-                         AND arc1.ts_archived IS NOT NULL
                      ORDER BY arc1.ts_archived DESC, arc1.idarchive DESC";
 
         $results = Db::fetchAll($sqlQuery, $bindSQL);
@@ -499,7 +504,7 @@ class Model
     public function getInstalledArchiveTables()
     {
         $allArchiveNumeric = Db::get()->fetchCol("SHOW TABLES LIKE '" . Common::prefixTable('archive_numeric%') . "'");
-        $allArchiveBlob    = Db::get()->fetchCol("SHOW TABLES LIKE '" . Common::prefixTable('archive_blob%') ."'");
+        $allArchiveBlob    = Db::get()->fetchCol("SHOW TABLES LIKE '" . Common::prefixTable('archive_blob%') . "'");
 
         return array_merge($allArchiveBlob, $allArchiveNumeric);
     }
@@ -529,7 +534,8 @@ class Model
 
     public function updateArchiveStatus($numericTable, $archiveId, $doneFlag, $value)
     {
-        Db::query("UPDATE $numericTable SET `value` = ? WHERE idarchive = ? and `name` = ?",
+        Db::query(
+            "UPDATE $numericTable SET `value` = ? WHERE idarchive = ? and `name` = ?",
             array($value, $archiveId, $doneFlag)
         );
     }
@@ -597,7 +603,7 @@ class Model
         $deletedSites = array_values($deletedSites);
         $deletedSites = array_map('intval', $deletedSites);
 
-        $sql = "SELECT DISTINCT idarchive FROM " . $archiveTableName . " WHERE idsite IN (".implode(',',$deletedSites).")";
+        $sql = "SELECT DISTINCT idarchive FROM " . $archiveTableName . " WHERE idsite IN (" . implode(',', $deletedSites) . ")";
 
         $rows = Db::getReader()->fetchAll($sql, array());
 
@@ -698,7 +704,8 @@ class Model
 
         // archive was not originally started or was started within 24 hours, we assume it's ongoing and another process
         // (on this machine or another) is actively archiving it.
-        if (empty($invalidation['ts_started'])
+        if (
+            empty($invalidation['ts_started'])
             || $invalidation['ts_started'] > Date::now()->subDay(1)->getTimestamp()
         ) {
             return false;
@@ -983,6 +990,40 @@ class Model
         return $query->rowCount();
     }
 
+    public function getRecordsContainedInArchives(Date $archiveStartDate, array $idArchives, $requestedRecords): array
+    {
+        $idArchives = array_map('intval', $idArchives);
+        $idArchives = implode(',', $idArchives);
+
+        $requestedRecords = is_string($requestedRecords) ? [$requestedRecords] : $requestedRecords;
+        $placeholders = Common::getSqlStringFieldsArray($requestedRecords);
+
+        $countSql = "SELECT DISTINCT name FROM %s WHERE idarchive IN ($idArchives) AND name IN ($placeholders) LIMIT " . count($requestedRecords);
+
+        $numericTable = ArchiveTableCreator::getNumericTable($archiveStartDate);
+        $blobTable = ArchiveTableCreator::getBlobTable($archiveStartDate);
+
+        // if the requested metrics look numeric, prioritize the numeric table, otherwise the blob table. this way, if all the metrics are
+        // found in this table (which will be most of the time), we don't have to query the other table
+        if ($this->doRequestedRecordsLookNumeric($requestedRecords)) {
+            $tablesToSearch = [$numericTable, $blobTable];
+        } else {
+            $tablesToSearch = [$blobTable, $numericTable];
+        }
+
+        $existingRecords = [];
+        foreach ($tablesToSearch as $tableName) {
+            $sql = sprintf($countSql, $tableName);
+            $rows = Db::fetchAll($sql, $requestedRecords);
+            $existingRecords = array_merge($existingRecords, array_column($rows, 'name'));
+
+            if (count($existingRecords) == count($requestedRecords)) {
+                break;
+            }
+        }
+        return $existingRecords;
+    }
+
     private function isCutOffGroupConcatResult($pair)
     {
         $position = strpos($pair, '.');
@@ -993,5 +1034,15 @@ class Model
     {
         preg_match('/^done([a-zA-Z0-9]+)/', $doneFlag, $matches);
         return $matches[1] ?? '';
+    }
+
+    private function doRequestedRecordsLookNumeric(array $requestedRecords): bool
+    {
+        foreach ($requestedRecords as $record) {
+            if (preg_match('/^nb_/', $record)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

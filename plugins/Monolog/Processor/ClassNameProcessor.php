@@ -1,9 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\Monolog\Processor;
@@ -21,6 +22,7 @@ class ClassNameProcessor
         'Piwik\Piwik',
         'Piwik\CronArchive',
         'Monolog\Logger',
+        'Piwik\Log\Logger'
     );
 
     public function __invoke(array $record)

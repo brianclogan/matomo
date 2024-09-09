@@ -1,10 +1,10 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
 
 namespace Piwik\Plugins\Transitions;
@@ -38,14 +38,12 @@ class Transitions extends \Piwik\Plugin
     public function getStylesheetFiles(&$stylesheets)
     {
         $stylesheets[] = 'plugins/Transitions/stylesheets/transitions.less';
-        $stylesheets[] = 'plugins/Transitions/angularjs/transitionexporter/transitionexporter.popover.less';
+        $stylesheets[] = 'plugins/Transitions/vue/src/TransitionExporter/TransitionExporterPopover.less';
     }
 
     public function getJsFiles(&$jsFiles)
     {
         $jsFiles[] = 'plugins/Transitions/javascripts/transitions.js';
-        $jsFiles[] = 'plugins/Transitions/angularjs/transitionswitcher/transitionswitcher.controller.js';
-        $jsFiles[] = 'plugins/Transitions/angularjs/transitionexporter/transitionexporter.directive.js';
     }
 
     public function getClientSideTranslationKeys(&$translationKeys)
@@ -58,6 +56,14 @@ class Transitions extends \Piwik\Plugin
         $translationKeys[] = 'Transitions_Transitions';
         $translationKeys[] = 'CoreHome_ThereIsNoDataForThisReport';
         $translationKeys[] = 'General_Others';
+        $translationKeys[] = 'Actions_ActionType';
+        $translationKeys[] = 'Transitions_TopX';
+        $translationKeys[] = 'Transitions_AvailableInOtherReports';
+        $translationKeys[] = 'Actions_SubmenuPageTitles';
+        $translationKeys[] = 'Actions_SubmenuPagesEntry';
+        $translationKeys[] = 'Actions_SubmenuPagesExit';
+        $translationKeys[] = 'Transitions_AvailableInOtherReports2';
+        $translationKeys[] = 'Transitions_FeatureDescription';
     }
 
     public function addJsGlobalVariables(&$out)
@@ -65,7 +71,7 @@ class Transitions extends \Piwik\Plugin
         $idSite = Common::getRequestVar('idSite', 1, 'int');
         $maxPeriodAllowed = self::getPeriodAllowedConfig($idSite);
 
-        $out .= '    piwik.transitionsMaxPeriodAllowed = "'.($maxPeriodAllowed ? $maxPeriodAllowed : 'all').'"'."\n";
+        $out .= '    piwik.transitionsMaxPeriodAllowed = "' . ($maxPeriodAllowed ? $maxPeriodAllowed : 'all') . '"' . "\n";
     }
 
     /**
@@ -75,14 +81,14 @@ class Transitions extends \Piwik\Plugin
      *
      * @return string
      */
-    public static function getPeriodAllowedConfig($idSite) : string
+    public static function getPeriodAllowedConfig($idSite): string
     {
         $transitionsGeneralConfig = Config::getInstance()->Transitions;
-        $generalMaxPeriodAllowed = ($transitionsGeneralConfig && !empty($transitionsGeneralConfig['max_period_allowed']) ? $transitionsGeneralConfig['max_period_allowed']: null);
+        $generalMaxPeriodAllowed = ($transitionsGeneralConfig && !empty($transitionsGeneralConfig['max_period_allowed']) ? $transitionsGeneralConfig['max_period_allowed'] : null);
 
         $siteMaxPeriodAllowed = null;
         if ($idSite) {
-            $sectionName = 'Transitions_'.$idSite;
+            $sectionName = 'Transitions_' . $idSite;
             $transitionsSiteConfig = Config::getInstance()->$sectionName;
             $siteMaxPeriodAllowed = ($transitionsSiteConfig && !empty($transitionsSiteConfig['max_period_allowed']) ? $transitionsSiteConfig['max_period_allowed'] : null);
         }

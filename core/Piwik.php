@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
- * @link https://matomo.org
- * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
+ * @link    https://matomo.org
+ * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+
 namespace Piwik;
 
 use Exception;
@@ -44,14 +45,14 @@ class Piwik
      *
      * @api
      */
-    const LABEL_ID_GOAL_IS_ECOMMERCE_CART = 'ecommerceAbandonedCart';
+    public const LABEL_ID_GOAL_IS_ECOMMERCE_CART = 'ecommerceAbandonedCart';
 
     /**
      * The idGoal query parameter value for the special 'ecommerce' goal.
      *
      * @api
      */
-    const LABEL_ID_GOAL_IS_ECOMMERCE_ORDER = 'ecommerceOrder';
+    public const LABEL_ID_GOAL_IS_ECOMMERCE_ORDER = 'ecommerceOrder';
 
     /**
      * Trigger E_USER_ERROR with optional message
@@ -75,7 +76,7 @@ class Piwik
 
         $message = str_replace("\n", "<br/>", $message);
 
-        $output = "<html><body>".
+        $output = "<html><body>" .
             "<style>a{color:red;}</style>\n" .
             "<div style='color:red;font-size:120%; width:100%;margin: 30px;'>" .
             " <div style='width: 50px; float: left;'><img src='plugins/Morpheus/images/error_medium.png' /></div>" .
@@ -83,7 +84,7 @@ class Piwik
             $message .
             "  </div>" .
             " </div>" .
-            "</div>".
+            "</div>" .
             "</body></html>";
         print($output);
         exit;
@@ -135,8 +136,13 @@ class Piwik
             $dividend = 0;
         }
         if (!is_numeric($dividend) || !is_numeric($divisor)) {
-            throw new \Exception(sprintf('Trying to round unsupported operands for dividend %s (%s) and divisor %s (%s)',
-                $dividend, gettype($dividend), $divisor, gettype($divisor)));
+            throw new \Exception(sprintf(
+                'Trying to round unsupported operands for dividend %s (%s) and divisor %s (%s)',
+                $dividend,
+                gettype($dividend),
+                $divisor,
+                gettype($divisor)
+            ));
         }
         return round($dividend / $divisor, $precision);
     }
@@ -283,6 +289,32 @@ class Piwik
     }
 
     /**
+     * Returns if the given user needs to confirm his password in UI and for certain API methods
+     *
+     * @param string $login
+     * @return bool
+     */
+    public static function doesUserRequirePasswordConfirmation(string $login)
+    {
+        $requiresPasswordConfirmation = true;
+
+        /**
+         * Triggered to check if a password confirmation for a user is required.
+         *
+         * This event can be used in custom login plugins to skip the password confirmation checks for certain users,
+         * where e.g. no password would be available.
+         *
+         * Attention: Use this event wisely. Disabling password confirmation decreases the security.
+         *
+         * @param bool $requiresPasswordConfirmation Indicates if the password should be checked or not
+         * @param string $login Login of a user the password should be confirmed for
+         */
+        Piwik::postEvent('Login.userRequiresPasswordConfirmation', [&$requiresPasswordConfirmation, $login]);
+
+        return $requiresPasswordConfirmation;
+    }
+
+    /**
      * Check that the current user is either the specified user or the superuser.
      *
      * @param string $theUser A username.
@@ -339,11 +371,11 @@ class Piwik
                 'System generated ' . $reason,
                 Date::now()->getDatetime(),
                 $expireDate,
-            true);
+                true
+            );
 
             return $token[$reason];
         }
-
     }
 
     /**
@@ -697,9 +729,9 @@ class Piwik
     public static function redirectToModule($newModule, $newAction = '', $parameters = array())
     {
         $newUrl = 'index.php' . Url::getCurrentQueryStringWithParametersModified(
-                array('module' => $newModule, 'action' => $newAction)
+            array('module' => $newModule, 'action' => $newAction)
                 + $parameters
-            );
+        );
         Url::redirectToUrl($newUrl);
     }
 
@@ -730,7 +762,8 @@ class Piwik
      */
     public static function checkValidLoginString($userLogin)
     {
-        if (!SettingsPiwik::isUserCredentialsSanityCheckEnabled()
+        if (
+            !SettingsPiwik::isUserCredentialsSanityCheckEnabled()
             && !empty($userLogin)
         ) {
             return;
@@ -738,7 +771,8 @@ class Piwik
         $loginMinimumLength = 2;
         $loginMaximumLength = 100;
         $l = strlen($userLogin);
-        if (!($l >= $loginMinimumLength
+        if (
+            !($l >= $loginMinimumLength
             && $l <= $loginMaximumLength
             && (preg_match('/^[A-Za-zÄäÖöÜüß0-9_.@+-]*$/D', $userLogin) > 0))
         ) {
@@ -778,7 +812,8 @@ class Piwik
     public static function isAssociativeArray($array)
     {
         reset($array);
-        if (!is_numeric(key($array))
+        if (
+            !is_numeric(key($array))
             || key($array) != 0
         ) {
             // first key must be 0
@@ -916,5 +951,47 @@ class Piwik
     public static function getDate($default = null)
     {
         return Common::getRequestVar('date', $default, 'string');
+    }
+
+    /**
+     * Returns the earliest date to rearchive provided in the config.
+     * @return Date|null
+     */
+    public static function getEarliestDateToRearchive()
+    {
+        $lastNMonthsToInvalidate = Config::getInstance()->General['rearchive_reports_in_past_last_n_months'];
+        if (empty($lastNMonthsToInvalidate)) {
+            return null;
+        }
+
+        if (!is_numeric($lastNMonthsToInvalidate)) {
+            $lastNMonthsToInvalidate = (int)str_replace('last', '', $lastNMonthsToInvalidate);
+            if (empty($lastNMonthsToInvalidate)) {
+                return null;
+            }
+        }
+
+        if ($lastNMonthsToInvalidate <= 0) {
+            return null;
+        }
+
+        return Date::yesterday()->subMonth($lastNMonthsToInvalidate)->setDay(1);
+    }
+
+    /**
+     * Given the fully qualified name of a class located within a Matomo plugin,
+     * returns the name of the plugin.
+     *
+     * Uses the fact that Matomo plugins have namespaces like Piwik\Plugins\MyPlugin.
+     *
+     * @param string $className the name of a class located within a Matomo plugin
+     * @return string the plugin name
+     */
+    public static function getPluginNameOfMatomoClass(string $className): string
+    {
+        $parts = explode('\\', $className);
+        $parts = array_filter($parts);
+        $plugin = $parts[2] ?? '';
+        return $plugin;
     }
 }
